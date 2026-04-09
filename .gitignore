@@ -1,0 +1,159 @@
+# ============================================================================
+# Personal operating contract — keep local, never commit
+# ============================================================================
+/CLAUDE.md
+
+# ============================================================================
+# Go
+# ============================================================================
+# Compiled binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/build/
+/dist/
+
+# Test binaries and coverage output
+*.test
+*.out
+coverage.txt
+coverage.html
+/coverage/
+
+# Go workspace file (we use modules, not workspaces)
+go.work
+go.work.sum
+
+# Vendor directory — we use go modules, never vendor
+/vendor/
+
+# ============================================================================
+# Frontend (Nuxt 3)
+# ============================================================================
+frontend/.nuxt/
+frontend/.output/
+frontend/.data/
+frontend/dist/
+frontend/node_modules/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Nuxt build cache
+frontend/.nitro/
+frontend/.cache/
+
+# ============================================================================
+# Node.js (root-level safety net)
+# ============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ============================================================================
+# Environment & secrets
+# ============================================================================
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Secret files we never commit
+*.pem
+*.key
+secrets/
+
+# ============================================================================
+# Docker
+# ============================================================================
+# Local compose overrides (personal tweaks)
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# ============================================================================
+# Terraform
+# ============================================================================
+# State files — never commit, contain secrets and are environment-specific
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Local .terraform directories
+**/.terraform/
+*.tfplan
+*.tfvars
+!example.tfvars
+
+# Terraform lock files are tracked — do not ignore them
+# .terraform.lock.hcl stays in git
+
+# Crash logs
+crash.log
+crash.*.log
+
+# ============================================================================
+# Ansible
+# ============================================================================
+*.retry
+ansible/vault_pass
+ansible/.vault_pass
+
+# ============================================================================
+# IDE & editors
+# ============================================================================
+.vscode/
+!.vscode/settings.json.example
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# ============================================================================
+# Operating systems
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.Trash-*
+.nfs*
+
+# ============================================================================
+# Tooling cache & temporary files
+# ============================================================================
+tmp/
+temp/
+.cache/
+*.log
+logs/
+
+# Pre-commit cache
+.pre-commit-cache/
+
+# ============================================================================
+# sqlc
+# ============================================================================
+# sqlc-generated code IS committed (it's the source of truth for types).
+# Do not ignore it — the whole point of sqlc is that the generated code
+# is versioned alongside the queries.
