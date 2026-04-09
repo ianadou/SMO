@@ -1,0 +1,93 @@
+# Pre-commit hooks configuration for SMO.
+#
+# To install the hooks locally (first time after cloning):
+#   pre-commit install --install-hooks
+#
+# To run all hooks manually on all files:
+#   pre-commit run --all-files
+#
+# To bypass hooks in an emergency (avoid this):
+#   git commit --no-verify
+
+# Install both pre-commit (code checks) and commit-msg (message format) hook types.
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
+# Run these hooks only on relevant stages to keep commits fast.
+default_stages:
+  - pre-commit
+
+repos:
+  # --- Generic file hygiene -------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Trim trailing whitespace from all text files.
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      # Ensure every text file ends with exactly one newline.
+      - id: end-of-file-fixer
+
+      # Validate YAML syntax (our .golangci.yml, .pre-commit-config.yaml, future GitHub Actions workflows).
+      - id: check-yaml
+
+      # Refuse to commit files larger than 500 KB (default), catches accidental binaries.
+      - id: check-added-large-files
+
+      # Detect leftover merge conflict markers (<<<<<<<, =======, >>>>>>>).
+      - id: check-merge-conflict
+
+      # Normalize mixed line endings (CRLF on Windows vs LF on Linux).
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+      # Refuse files with non-resolved symlinks.
+      - id: check-symlinks
+
+      # Refuse to commit private keys (SSH, GPG, etc.).
+      - id: detect-private-key
+
+  # --- Go formatting and linting (local — uses our installed binaries) ------
+  - repo: local
+    hooks:
+      # Run gofumpt on all staged Go files. Fails if any file needs formatting.
+      - id: gofumpt
+        name: gofumpt
+        description: Format Go code with gofumpt
+        entry: gofumpt -l -d
+        language: system
+        types: [go]
+        pass_filenames: true
+
+      # Run golangci-lint on the whole project. Fails if any linter reports an issue.
+      # We run on the whole project rather than staged files because Go linters
+      # need the full package context to resolve types correctly.
+      - id: golangci-lint
+        name: golangci-lint
+        description: Lint Go code with golangci-lint
+        entry: golangci-lint run
+        language: system
+        types: [go]
+        pass_filenames: false
+
+  # --- Conventional Commits message format ---------------------------------
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - --strict
+          - feat
+          - fix
+          - refactor
+          - docs
+          - style
+          - test
+          - chore
+          - ci
+          - perf
+          - build
+          - revert
