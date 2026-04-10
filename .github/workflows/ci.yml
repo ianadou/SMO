@@ -81,7 +81,23 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run tests with race detector and coverage
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+        # Coverage is measured only on packages that are meant to be unit-tested.
+        # Excluded from the coverage calculation:
+        #   - cmd/...                  → main, tested via integration
+        #   - domain/errors            → only sentinel errors, no logic to test
+        #   - domain/ports             → interface declarations only
+        #   - .../generated            → sqlc-generated code
+        # Repositories are kept in scope: they are 0% now but will be covered
+        # by integration tests with testcontainers in a dedicated PR.
+        run: |
+          coverpkg=$(go list ./... \
+            | grep -v '/cmd/' \
+            | grep -v '/domain/errors' \
+            | grep -v '/domain/ports' \
+            | grep -v '/generated' \
+            | paste -sd ',' -)
+          echo "Coverage measured on: $coverpkg"
+          go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg="$coverpkg" ./...
       - name: Enforce minimum coverage threshold
         run: |
           threshold=80.0
