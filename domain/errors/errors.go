@@ -30,6 +30,10 @@ var (
 // Business rule errors — returned when a domain operation is not allowed
 // in the current state of the entity.
 var (
+	// ErrInvalidTransition is returned when a state machine transition is
+	// not allowed from the current state.
+	ErrInvalidTransition = errors.New("invalid transition")
+
 	// ErrMatchFull is returned when trying to add a player to a match
 	// that already has the maximum number of participants.
 	ErrMatchFull = errors.New("match is full")
