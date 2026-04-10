@@ -25,6 +25,10 @@ var (
 	// ErrInvalidStatus is returned when a match status string does not
 	// match any known status value.
 	ErrInvalidStatus = errors.New("invalid status")
+
+	// ErrInvalidParameter is returned when a configuration parameter is
+	// outside its accepted range (e.g., a learning rate outside (0, 1]).
+	ErrInvalidParameter = errors.New("invalid parameter")
 )
 
 // Business rule errors — returned when a domain operation is not allowed
