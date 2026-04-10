@@ -1,8 +1,9 @@
 // Package main is the HTTP server entry point for the SMO backend.
 //
-// This file currently wires a minimal Gin router with a single /health
-// endpoint. It will grow into the full dependency wiring location as use
-// cases, repositories, and adapters are introduced.
+// This file is the composition root of the application: the only
+// place where concrete implementations are instantiated and wired
+// together. Every other layer depends on interfaces (ports) and
+// receives its dependencies via constructor injection.
 package main
 
 import (
@@ -14,6 +15,12 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+
+	groupusecase "github.com/ianadou/smo/application/usecases/group"
+	"github.com/ianadou/smo/infrastructure/clock"
+	"github.com/ianadou/smo/infrastructure/http/handlers"
+	"github.com/ianadou/smo/infrastructure/idgen"
+	"github.com/ianadou/smo/infrastructure/persistence/inmemory"
 )
 
 const (
@@ -36,24 +43,58 @@ func main() {
 		os.Exit(1)
 	}
 
-	router := gin.New()
-	router.Use(gin.Recovery())
-
-	// TODO: extract to infrastructure/http/handlers/health.go once the
-	// first real use case is introduced and the handler layer is set up.
-	router.GET("/health", func(context *gin.Context) {
-		context.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	router := buildRouter()
 
 	address := ":" + port
 	// #nosec G706 -- address is built from a port validated by parsePort()
 	// to be an integer in [1, 65535], so it cannot contain injection chars.
 	slog.Info("starting http server", "address", address)
-
-	if err := router.Run(address); err != nil {
-		slog.Error("http server stopped with error", "error", err)
+	if runErr := router.Run(address); runErr != nil {
+		slog.Error("http server stopped with error", "error", runErr)
 		os.Exit(1)
 	}
+}
+
+// buildRouter assembles all the application dependencies and returns a
+// fully configured Gin router ready to serve HTTP requests.
+//
+// This is the composition root: every concrete adapter is instantiated
+// here, and the resulting wiring is the only place where the application
+// is coupled to specific implementations (UUID, system clock, in-memory
+// repository, etc.).
+//
+// TODO: replace inmemory.NewGroupRepository() with a PostgreSQL-backed
+// implementation in PR #16 once Docker Compose makes Postgres available
+// locally.
+func buildRouter() *gin.Engine {
+	// Infrastructure adapters (concrete implementations of domain ports).
+	groupRepo := inmemory.NewGroupRepository()
+	idGenerator := idgen.New()
+	systemClock := clock.New()
+
+	// Application use cases (orchestrators that depend only on domain ports).
+	createGroupUC := groupusecase.NewCreateGroupUseCase(groupRepo, idGenerator, systemClock)
+	getGroupUC := groupusecase.NewGetGroupUseCase(groupRepo)
+
+	// HTTP handlers (thin wrappers around use cases).
+	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC)
+
+	// Router configuration.
+	router := gin.New()
+	router.Use(gin.Recovery())
+
+	// System endpoints (no /api prefix).
+	// TODO: extract to infrastructure/http/handlers/health.go once we
+	// add more system endpoints (readiness, metrics, etc.).
+	router.GET("/health", func(context *gin.Context) {
+		context.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// API endpoints (under /api prefix).
+	api := router.Group("/api")
+	groupHandler.Register(api)
+
+	return router
 }
 
 // parsePort validates that the given raw value is a usable TCP port number

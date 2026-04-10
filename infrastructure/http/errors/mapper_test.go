@@ -1,0 +1,121 @@
+package errors
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+	"testing"
+
+	domainerrors "github.com/ianadou/smo/domain/errors"
+)
+
+func TestMapError_NotFoundErrors(t *testing.T) {
+	t.Parallel()
+
+	status, message := MapError(domainerrors.ErrGroupNotFound)
+
+	if status != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", status)
+	}
+	if message != "group not found" {
+		t.Errorf("expected message 'group not found', got %q", message)
+	}
+}
+
+func TestMapError_ValidationErrors(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		err         error
+		wantStatus  int
+		wantMessage string
+	}{
+		{name: "invalid id", err: domainerrors.ErrInvalidID, wantStatus: http.StatusBadRequest, wantMessage: "invalid id"},
+		{name: "invalid name", err: domainerrors.ErrInvalidName, wantStatus: http.StatusBadRequest, wantMessage: "invalid name"},
+		{name: "invalid score", err: domainerrors.ErrInvalidScore, wantStatus: http.StatusBadRequest, wantMessage: "invalid score"},
+		{name: "invalid date", err: domainerrors.ErrInvalidDate, wantStatus: http.StatusBadRequest, wantMessage: "invalid date"},
+		{name: "invalid status", err: domainerrors.ErrInvalidStatus, wantStatus: http.StatusBadRequest, wantMessage: "invalid status"},
+		{name: "invalid parameter", err: domainerrors.ErrInvalidParameter, wantStatus: http.StatusBadRequest, wantMessage: "invalid parameter"},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			status, message := MapError(testCase.err)
+
+			if status != testCase.wantStatus {
+				t.Errorf("expected status %d, got %d", testCase.wantStatus, status)
+			}
+			if message != testCase.wantMessage {
+				t.Errorf("expected message %q, got %q", testCase.wantMessage, message)
+			}
+		})
+	}
+}
+
+func TestMapError_BusinessRuleErrors(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		err         error
+		wantStatus  int
+		wantMessage string
+	}{
+		{name: "invalid transition", err: domainerrors.ErrInvalidTransition, wantStatus: http.StatusConflict, wantMessage: "operation not allowed in current state"},
+		{name: "invalid assignment", err: domainerrors.ErrInvalidAssignment, wantStatus: http.StatusBadRequest, wantMessage: "invalid team assignment"},
+		{name: "self vote", err: domainerrors.ErrSelfVote, wantStatus: http.StatusBadRequest, wantMessage: "cannot vote for yourself"},
+		{name: "match full", err: domainerrors.ErrMatchFull, wantStatus: http.StatusConflict, wantMessage: "match is full"},
+		{name: "team full", err: domainerrors.ErrTeamFull, wantStatus: http.StatusConflict, wantMessage: "team is full"},
+		{name: "player not in match", err: domainerrors.ErrPlayerNotInMatch, wantStatus: http.StatusBadRequest, wantMessage: "player is not in this match"},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			status, message := MapError(testCase.err)
+
+			if status != testCase.wantStatus {
+				t.Errorf("expected status %d, got %d", testCase.wantStatus, status)
+			}
+			if message != testCase.wantMessage {
+				t.Errorf("expected message %q, got %q", testCase.wantMessage, message)
+			}
+		})
+	}
+}
+
+func TestMapError_UnknownErrorReturns500(t *testing.T) {
+	t.Parallel()
+
+	unknownErr := errors.New("something completely unexpected")
+
+	status, message := MapError(unknownErr)
+
+	if status != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d", status)
+	}
+	if message != "internal server error" {
+		t.Errorf("expected message 'internal server error', got %q", message)
+	}
+}
+
+func TestMapError_HandlesWrappedErrors(t *testing.T) {
+	t.Parallel()
+
+	// MapError must work with errors wrapped via fmt.Errorf("...: %w", ...)
+	// because that is the standard pattern in our use cases and repositories.
+	wrapped := fmt.Errorf("use case: do something: %w", domainerrors.ErrGroupNotFound)
+
+	status, message := MapError(wrapped)
+
+	if status != http.StatusNotFound {
+		t.Errorf("expected status 404 for wrapped not-found error, got %d", status)
+	}
+	if message != "group not found" {
+		t.Errorf("expected message 'group not found', got %q", message)
+	}
+}

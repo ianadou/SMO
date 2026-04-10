@@ -87,6 +87,10 @@ jobs:
         #   - domain/errors            → only sentinel errors, no logic to test
         #   - domain/ports             → interface declarations only
         #   - .../generated            → sqlc-generated code
+        #   - infrastructure/clock     → trivial wrapper around time.Now()
+        #   - infrastructure/idgen     → trivial wrapper around uuid.NewString()
+        #   - .../inmemory             → temporary repo for local dev, will be
+        #                                replaced by Postgres in PR #16
         # Repositories are kept in scope: they are 0% now but will be covered
         # by integration tests with testcontainers in a dedicated PR.
         run: |
@@ -95,6 +99,9 @@ jobs:
             | grep -v '/domain/errors' \
             | grep -v '/domain/ports' \
             | grep -v '/generated' \
+            | grep -v '/infrastructure/clock' \
+            | grep -v '/infrastructure/idgen' \
+            | grep -v '/inmemory' \
             | paste -sd ',' -)
           echo "Coverage measured on: $coverpkg"
           go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg="$coverpkg" ./...
