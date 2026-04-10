@@ -1,0 +1,73 @@
+# -----------------------------------------------------------------------------
+# SMO — Docker Compose stack for local development
+#
+# Services:
+#   - postgres : PostgreSQL 16 database with a named volume for persistence
+#   - app      : SMO HTTP server, built from the local Dockerfile
+#
+# Usage:
+#   cp .env.example .env          create your local .env file (REQUIRED)
+#   docker compose up -d          start everything in the background
+#   docker compose logs -f app    tail the app logs
+#   docker compose down           stop and remove containers (keeps data)
+#   docker compose down -v        stop and remove containers AND data volume
+#
+# IMPORTANT: POSTGRES_PASSWORD has no default value on purpose. Compose
+# refuses to start if .env is missing or if POSTGRES_PASSWORD is not set,
+# which forces every developer to make a conscious choice instead of
+# relying on a hardcoded password baked into version control.
+# -----------------------------------------------------------------------------
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required, see .env.example}
+      POSTGRES_DB: ${POSTGRES_DB:-smo_dev}
+    ports:
+      # Expose on 5433 on the host to avoid colliding with a local Postgres
+      # that might already be running on 5432.
+      - "5433:5432"
+    volumes:
+      - smo-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smo} -d ${POSTGRES_DB:-smo_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smo-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: ${PORT:-8081}
+      # Inside the compose network, the postgres host is "postgres" (the
+      # service name), not "localhost". The port is 5432 (container-internal),
+      # not 5433 (which is the host-side port mapping).
+      # POSTGRES_PASSWORD has no default here either; the guard in the
+      # postgres service above ensures it is set before compose runs.
+      DATABASE_URL: postgres://${POSTGRES_USER:-smo}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smo_dev}?sslmode=disable
+    ports:
+      - "${PORT:-8081}:8081"
+
+# TODO: add a redis service here when the auth/cache layer needs it.
+#   redis:
+#     image: redis:7-alpine
+#     container_name: smo-redis
+#     restart: unless-stopped
+#     ports:
+#       - "6379:6379"
+
+volumes:
+  smo-postgres-data:
+    name: smo-postgres-data

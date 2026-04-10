@@ -53,7 +53,7 @@ clean: ## Remove build artifacts
 # DATABASE_URL must point to a running Postgres instance. The default value
 # below assumes a local development database; override it for other envs:
 #   make migrate-up DATABASE_URL=postgres://user:pass@host:5432/db?sslmode=disable
-DATABASE_URL ?= postgres://smo:smo@localhost:5432/smo_dev?sslmode=disable
+DATABASE_URL ?= postgres://smo:smo@localhost:5433/smo_dev?sslmode=disable
 MIGRATIONS_DIR := infrastructure/persistence/migrations
 
 .PHONY: migrate-up
@@ -72,3 +72,44 @@ migrate-status: ## Show the status of all migrations
 migrate-create: ## Create a new SQL migration file (use NAME=description)
 	@if [ -z "$(NAME)" ]; then echo "Usage: make migrate-create NAME=description_here"; exit 1; fi
 	goose -dir $(MIGRATIONS_DIR) -s create $(NAME) sql
+
+# ----------------------------------------------------------------------------
+# Docker Compose
+# ----------------------------------------------------------------------------
+# Convenience targets around `docker compose`. They assume Docker Compose v2
+# (the `docker compose` subcommand, not the legacy `docker-compose` binary).
+#
+# The compose stack defines two services:
+#   - postgres : PostgreSQL 16 database with a named persistent volume
+#   - app      : the SMO HTTP server, built from the local Dockerfile
+#
+# Environment variables come from .env at the repository root. Copy
+# .env.example to .env to get started.
+
+.PHONY: compose-up
+compose-up: ## Start the full Docker Compose stack in the background
+	docker compose up -d
+
+.PHONY: compose-up-db
+compose-up-db: ## Start only the postgres service (useful for `go run` against it)
+	docker compose up -d postgres
+
+.PHONY: compose-down
+compose-down: ## Stop and remove containers (keeps the data volume)
+	docker compose down
+
+.PHONY: compose-reset
+compose-reset: ## Stop containers AND delete the data volume (full reset)
+	docker compose down -v
+
+.PHONY: compose-logs
+compose-logs: ## Tail the logs of all services
+	docker compose logs -f
+
+.PHONY: compose-logs-app
+compose-logs-app: ## Tail only the app service logs
+	docker compose logs -f app
+
+.PHONY: compose-ps
+compose-ps: ## Show the status of compose services
+	docker compose ps

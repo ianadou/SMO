@@ -1,0 +1,53 @@
+# -----------------------------------------------------------------------------
+# .dockerignore — files and directories excluded from the Docker build context
+#
+# Keeping the context small speeds up builds and avoids leaking secrets or
+# build artifacts into the image.
+# -----------------------------------------------------------------------------
+
+# Version control
+.git
+.gitignore
+.github
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment files — never ship secrets into images
+.env
+.env.*
+!.env.example
+
+# Build output
+bin/
+dist/
+*.test
+*.out
+coverage.out
+
+# Docker files themselves (not needed inside the image)
+Dockerfile
+.dockerignore
+compose.yml
+docker-compose.yml
+
+# Documentation that is not runtime-required
+*.md
+!README.md
+docs/
+
+# Tooling
+.pre-commit-config.yaml
+.golangci.yml
+Makefile
+
+# Node / frontend (if added later)
+node_modules/
+frontend/node_modules/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
