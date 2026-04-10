@@ -7,26 +7,37 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	groupusecase "github.com/ianadou/smo/application/usecases/group"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/idgen"
-	"github.com/ianadou/smo/infrastructure/persistence/inmemory"
+	"github.com/ianadou/smo/infrastructure/persistence"
+	"github.com/ianadou/smo/infrastructure/persistence/postgres"
+	"github.com/ianadou/smo/infrastructure/persistence/postgres/repositories"
 )
 
 const (
 	defaultPort = "8081"
-	minPort     = 1
-	maxPort     = 65535
+	// #nosec G101 -- this is a development-only default used when
+	// DATABASE_URL is not set; in production, the real connection
+	// string (including real credentials) is always injected via the
+	// DATABASE_URL environment variable from a secret store.
+	defaultDatabaseURL = "postgres://smo:smo@localhost:5433/smo_dev?sslmode=disable"
+	minPort            = 1
+	maxPort            = 65535
+	connectTimeout     = 30 * time.Second
 )
 
 // errInvalidPort is returned by parsePort when the provided value is not a
@@ -37,22 +48,60 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	port, err := parsePort(os.Getenv("PORT"))
-	if err != nil {
-		slog.Error("invalid port configuration", "error", err)
+	// run() owns all resources that need deferred cleanup (context
+	// cancellation, connection pool close). main() only exits on the
+	// result, which guarantees that defers inside run() actually fire
+	// before the process terminates.
+	if err := run(); err != nil {
+		slog.Error("server stopped with error", "error", err)
 		os.Exit(1)
 	}
+}
 
-	router := buildRouter()
+// run performs the full server lifecycle: read configuration, connect
+// to the database, apply migrations, build the router, and serve HTTP.
+//
+// It returns an error instead of calling os.Exit so that defers can
+// clean up resources properly.
+func run() error {
+	port, err := parsePort(os.Getenv("PORT"))
+	if err != nil {
+		return fmt.Errorf("invalid port configuration: %w", err)
+	}
+
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		databaseURL = defaultDatabaseURL
+		slog.Info("DATABASE_URL not set, using default", "url", defaultDatabaseURL)
+	}
+
+	// Connection + migrations happen before the router is built so that
+	// any startup failure surfaces as a fast exit, not as a broken server.
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+
+	pool, err := postgres.Connect(ctx, databaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer pool.Close()
+	slog.Info("database connection established")
+
+	if migrateErr := postgres.RunMigrations(pool, persistence.MigrationsFS); migrateErr != nil {
+		return fmt.Errorf("failed to apply migrations: %w", migrateErr)
+	}
+	slog.Info("database migrations applied")
+
+	router := buildRouter(pool)
 
 	address := ":" + port
 	// #nosec G706 -- address is built from a port validated by parsePort()
 	// to be an integer in [1, 65535], so it cannot contain injection chars.
 	slog.Info("starting http server", "address", address)
 	if runErr := router.Run(address); runErr != nil {
-		slog.Error("http server stopped with error", "error", runErr)
-		os.Exit(1)
+		return fmt.Errorf("http server stopped with error: %w", runErr)
 	}
+	return nil
 }
 
 // buildRouter assembles all the application dependencies and returns a
@@ -60,15 +109,11 @@ func main() {
 //
 // This is the composition root: every concrete adapter is instantiated
 // here, and the resulting wiring is the only place where the application
-// is coupled to specific implementations (UUID, system clock, in-memory
+// is coupled to specific implementations (UUID, system clock, Postgres
 // repository, etc.).
-//
-// TODO: replace inmemory.NewGroupRepository() with a PostgreSQL-backed
-// implementation in PR #16 once Docker Compose makes Postgres available
-// locally.
-func buildRouter() *gin.Engine {
+func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	// Infrastructure adapters (concrete implementations of domain ports).
-	groupRepo := inmemory.NewGroupRepository()
+	groupRepo := repositories.NewPostgresGroupRepository(pool)
 	idGenerator := idgen.New()
 	systemClock := clock.New()
 
