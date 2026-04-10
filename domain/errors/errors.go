@@ -34,6 +34,10 @@ var (
 	// not allowed from the current state.
 	ErrInvalidTransition = errors.New("invalid transition")
 
+	// ErrInvalidAssignment is returned when an assignment strategy cannot
+	// produce a valid team distribution from the given input.
+	ErrInvalidAssignment = errors.New("invalid assignment")
+
 	// ErrMatchFull is returned when trying to add a player to a match
 	// that already has the maximum number of participants.
 	ErrMatchFull = errors.New("match is full")
