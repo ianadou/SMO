@@ -4,11 +4,10 @@
 #   - lint: golangci-lint with our strict v2 config
 #   - build: compiles the server binary to catch build errors
 #   - tidy: ensures go.mod and go.sum are clean and minimal
+#   - test: runs the test suite with race detection and coverage gate
 #
 # All jobs run in parallel for fast feedback.
-
 name: CI
-
 on:
   push:
     branches:
@@ -16,16 +15,13 @@ on:
   pull_request:
     branches:
       - main
-
 # Cancel in-flight runs of the same workflow on the same branch
 # when a new commit is pushed. Saves CI minutes and gives faster feedback.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 permissions:
   contents: read
-
 jobs:
   lint:
     name: Lint
@@ -33,49 +29,40 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           # Read the Go version directly from go.mod to avoid duplication.
           go-version-file: go.mod
-
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           # Pin to the same minor version we use locally.
           version: v2.11
-
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-
       - name: Build server binary
         run: go build -v ./cmd/server
-
       - name: Build all packages
         run: go build -v ./...
-
   tidy:
     name: Mod tidy check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-
       - name: Verify go.mod and go.sum are tidy
         run: |
           go mod tidy
@@ -83,3 +70,25 @@ jobs:
             echo "::error::go.mod or go.sum is not tidy. Run 'go mod tidy' locally and commit the changes."
             exit 1
           fi
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Run tests with race detector and coverage
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Enforce minimum coverage threshold
+        run: |
+          threshold=80.0
+          coverage=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | tr -d '%')
+          echo "Total coverage: ${coverage}%"
+          echo "Minimum required: ${threshold}%"
+          awk -v cov="$coverage" -v min="$threshold" 'BEGIN { if (cov + 0 < min + 0) { exit 1 } }' || {
+            echo "::error::Coverage ${coverage}% is below the required ${threshold}% threshold."
+            exit 1
+          }
