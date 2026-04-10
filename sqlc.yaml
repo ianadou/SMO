@@ -1,0 +1,34 @@
+# sqlc configuration for SMO.
+#
+# sqlc reads the SQL schema from the migrations directory, parses the
+# query files in the queries directory, and generates type-safe Go bindings
+# in the output directory.
+#
+# Documentation: https://docs.sqlc.dev/en/latest/reference/config.html
+version: "2"
+
+sql:
+  - engine: "postgresql"
+    schema: "infrastructure/persistence/migrations"
+    queries: "infrastructure/persistence/queries"
+    gen:
+      go:
+        # The package name and the directory where the generated code lives.
+        package: "generated"
+        out: "infrastructure/persistence/postgres/generated"
+        # Use pgx/v5 (the modern Postgres driver) instead of database/sql.
+        sql_package: "pgx/v5"
+        # Use *string instead of sql.NullString for nullable columns.
+        emit_pointers_for_null_types: true
+        # Do NOT emit JSON tags on the generated structs. These structs are
+        # internal to the persistence layer; HTTP DTOs are defined separately.
+        emit_json_tags: false
+        # Use exact field names from the schema (no automatic pluralization).
+        emit_exact_table_names: true
+        # Generate an interface for the Querier type, useful for mocking
+        # in tests if needed (we will use a real Postgres via testcontainers
+        # instead, but the interface is generated for free).
+        emit_interface: true
+        # Generate a prepared queries struct as well as the regular one.
+        # Useful for high-throughput scenarios but optional.
+        emit_prepared_queries: false
