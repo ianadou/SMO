@@ -37,7 +37,8 @@ func mapNotFoundError(err error) (int, string, bool) {
 }
 
 // mapValidationError handles errors that translate to HTTP 400 because
-// the input did not pass format or value validation.
+// the input did not pass format or value validation, or because it
+// referenced an entity that does not exist.
 func mapValidationError(err error) (int, string, bool) {
 	switch {
 	case errors.Is(err, domainerrors.ErrInvalidID):
@@ -52,6 +53,8 @@ func mapValidationError(err error) (int, string, bool) {
 		return http.StatusBadRequest, "invalid status", true
 	case errors.Is(err, domainerrors.ErrInvalidParameter):
 		return http.StatusBadRequest, "invalid parameter", true
+	case errors.Is(err, domainerrors.ErrReferencedEntityNotFound):
+		return http.StatusBadRequest, "referenced entity does not exist", true
 	}
 	return 0, "", false
 }

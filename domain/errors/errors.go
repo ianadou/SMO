@@ -64,4 +64,12 @@ var (
 var (
 	// ErrGroupNotFound is returned when a group lookup by ID has no match.
 	ErrGroupNotFound = errors.New("group not found")
+
+	// ErrReferencedEntityNotFound is returned when a persistence operation
+	// fails because it references another entity that does not exist
+	// (e.g., creating a group with an organizer_id that is not in the
+	// organizers table). This corresponds to a foreign-key violation at
+	// the SQL level, but the concept is storage-agnostic: any backend
+	// that enforces referential integrity can produce this error.
+	ErrReferencedEntityNotFound = errors.New("referenced entity not found")
 )

@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/ianadou/smo/domain/entities"
 	domainerrors "github.com/ianadou/smo/domain/errors"
@@ -29,9 +31,19 @@ func NewPostgresGroupRepository(db generated.DBTX) *PostgresGroupRepository {
 }
 
 // Save persists a new group by inserting a row into the groups table.
+//
+// Translates PostgreSQL errors that have a business meaning into domain
+// sentinel errors so callers do not need to know anything about pgx:
+//   - foreign key violation → ErrReferencedEntityNotFound
 func (r *PostgresGroupRepository) Save(ctx context.Context, group *entities.Group) error {
 	params := mappers.GroupToCreateParams(group)
 	if _, err := r.queries.CreateGroup(ctx, params); err != nil {
+		if isForeignKeyViolation(err) {
+			return fmt.Errorf(
+				"postgres group repository: save group %q: %w",
+				group.ID(), domainerrors.ErrReferencedEntityNotFound,
+			)
+		}
 		return fmt.Errorf("postgres group repository: save group %q: %w", group.ID(), err)
 	}
 	return nil
@@ -99,4 +111,17 @@ func (r *PostgresGroupRepository) Delete(ctx context.Context, id entities.GroupI
 		return fmt.Errorf("postgres group repository: delete group %q: %w", id, err)
 	}
 	return nil
+}
+
+// isForeignKeyViolation returns true if the given error wraps a
+// PostgreSQL foreign key violation (SQLSTATE 23503).
+//
+// Using errors.As walks the error chain, which means this works even if
+// the error has been wrapped by higher layers with fmt.Errorf("...: %w", ...).
+func isForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+	return pgErr.Code == pgerrcode.ForeignKeyViolation
 }

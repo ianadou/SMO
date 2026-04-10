@@ -37,6 +37,7 @@ func TestMapError_ValidationErrors(t *testing.T) {
 		{name: "invalid date", err: domainerrors.ErrInvalidDate, wantStatus: http.StatusBadRequest, wantMessage: "invalid date"},
 		{name: "invalid status", err: domainerrors.ErrInvalidStatus, wantStatus: http.StatusBadRequest, wantMessage: "invalid status"},
 		{name: "invalid parameter", err: domainerrors.ErrInvalidParameter, wantStatus: http.StatusBadRequest, wantMessage: "invalid parameter"},
+		{name: "referenced entity not found", err: domainerrors.ErrReferencedEntityNotFound, wantStatus: http.StatusBadRequest, wantMessage: "referenced entity does not exist"},
 	}
 
 	for _, testCase := range cases {
@@ -117,5 +118,31 @@ func TestMapError_HandlesWrappedErrors(t *testing.T) {
 	}
 	if message != "group not found" {
 		t.Errorf("expected message 'group not found', got %q", message)
+	}
+}
+
+func TestMapError_HandlesWrappedReferencedEntityNotFound(t *testing.T) {
+	t.Parallel()
+
+	// This is the exact wrapping pattern used by the Postgres repository
+	// when detecting a foreign key violation during a Save call. The
+	// mapper must unwrap correctly through both the repository layer and
+	// the use case layer to return a 400.
+	wrapped := fmt.Errorf(
+		"create group use case: save group %q: %w",
+		"group-1",
+		fmt.Errorf(
+			"postgres group repository: save group %q: %w",
+			"group-1", domainerrors.ErrReferencedEntityNotFound,
+		),
+	)
+
+	status, message := MapError(wrapped)
+
+	if status != http.StatusBadRequest {
+		t.Errorf("expected status 400 for wrapped referenced-entity-not-found, got %d", status)
+	}
+	if message != "referenced entity does not exist" {
+		t.Errorf("expected message 'referenced entity does not exist', got %q", message)
 	}
 }
