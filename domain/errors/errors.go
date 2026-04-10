@@ -57,3 +57,11 @@ var (
 	// ErrSelfVote is returned when a player tries to vote for themselves.
 	ErrSelfVote = errors.New("cannot vote for yourself")
 )
+
+// Repository errors — returned when a persistence operation fails for a
+// reason that has a meaningful business interpretation (not a generic
+// "database is down" failure).
+var (
+	// ErrGroupNotFound is returned when a group lookup by ID has no match.
+	ErrGroupNotFound = errors.New("group not found")
+)
