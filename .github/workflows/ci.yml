@@ -4,7 +4,8 @@
 #   - lint: golangci-lint with our strict v2 config
 #   - build: compiles the server binary to catch build errors
 #   - tidy: ensures go.mod and go.sum are clean and minimal
-#   - test: runs the test suite with race detection and coverage gate
+#   - test: runs the test suite (unit + integration) with race detection
+#           and coverage gate
 #
 # All jobs run in parallel for fast feedback.
 name: CI
@@ -15,8 +16,6 @@ on:
   pull_request:
     branches:
       - main
-# Cancel in-flight runs of the same workflow on the same branch
-# when a new commit is pushed. Saves CI minutes and gives faster feedback.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -32,12 +31,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          # Read the Go version directly from go.mod to avoid duplication.
           go-version-file: go.mod
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          # Pin to the same minor version we use locally.
           version: v2.11
   build:
     name: Build
@@ -65,9 +62,9 @@ jobs:
           go-version-file: go.mod
       - name: Verify go.mod and go.sum are tidy
         run: |
-          go mod tidy
+          GOFLAGS="-tags=integration" go mod tidy
           if ! git diff --exit-code go.mod go.sum; then
-            echo "::error::go.mod or go.sum is not tidy. Run 'go mod tidy' locally and commit the changes."
+            echo "::error::go.mod or go.sum is not tidy. Run 'GOFLAGS=-tags=integration go mod tidy' locally and commit the changes."
             exit 1
           fi
   test:
@@ -81,18 +78,20 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run tests with race detector and coverage
-        # Coverage is measured only on packages that are meant to be unit-tested.
-        # Excluded from the coverage calculation:
-        #   - cmd/...                  → main, tested via integration
-        #   - domain/errors            → only sentinel errors, no logic to test
+        # Coverage is measured only on packages that are meant to be tested.
+        # Excluded:
+        #   - cmd/...                  → main, tested via integration smoke
+        #   - domain/errors            → only sentinel errors, no logic
         #   - domain/ports             → interface declarations only
         #   - .../generated            → sqlc-generated code
         #   - infrastructure/clock     → trivial wrapper around time.Now()
         #   - infrastructure/idgen     → trivial wrapper around uuid.NewString()
-        #   - .../inmemory             → temporary repo for local dev, will be
-        #                                replaced by Postgres in PR #16
-        # Repositories are kept in scope: they are 0% now but will be covered
-        # by integration tests with testcontainers in a dedicated PR.
+        #   - .../inmemory             → temporary repo for local dev
+        #
+        # The -tags=integration flag includes the testcontainers-based
+        # integration tests for the Postgres repository. These tests spin
+        # up a real Postgres container per test package, so they require
+        # Docker to be available on the runner (ubuntu-latest provides it).
         run: |
           coverpkg=$(go list ./... \
             | grep -v '/cmd/' \
@@ -104,7 +103,7 @@ jobs:
             | grep -v '/inmemory' \
             | paste -sd ',' -)
           echo "Coverage measured on: $coverpkg"
-          go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg="$coverpkg" ./...
+          go test -tags=integration -race -coverprofile=coverage.out -covermode=atomic -coverpkg="$coverpkg" ./...
       - name: Enforce minimum coverage threshold
         run: |
           threshold=80.0
