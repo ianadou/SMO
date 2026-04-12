@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	groupusecase "github.com/ianadou/smo/application/usecases/group"
+	invitationusecase "github.com/ianadou/smo/application/usecases/invitation"
 	matchusecase "github.com/ianadou/smo/application/usecases/match"
 	playerusecase "github.com/ianadou/smo/application/usecases/player"
 	"github.com/ianadou/smo/infrastructure/clock"
@@ -28,6 +29,7 @@ import (
 	"github.com/ianadou/smo/infrastructure/persistence"
 	"github.com/ianadou/smo/infrastructure/persistence/postgres"
 	"github.com/ianadou/smo/infrastructure/persistence/postgres/repositories"
+	"github.com/ianadou/smo/infrastructure/token"
 )
 
 const (
@@ -101,6 +103,8 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	groupRepo := repositories.NewPostgresGroupRepository(pool)
 	matchRepo := repositories.NewPostgresMatchRepository(pool)
 	playerRepo := repositories.NewPostgresPlayerRepository(pool)
+	invitationRepo := repositories.NewPostgresInvitationRepository(pool)
+	tokenService := token.New()
 	idGenerator := idgen.New()
 	systemClock := clock.New()
 
@@ -123,6 +127,12 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	getPlayerUC := playerusecase.NewGetPlayerUseCase(playerRepo)
 	listPlayersByGroupUC := playerusecase.NewListPlayersByGroupUseCase(playerRepo)
 	updatePlayerRankingUC := playerusecase.NewUpdatePlayerRankingUseCase(playerRepo)
+
+	// Invitation use cases.
+	createInvitationUC := invitationusecase.NewCreateInvitationUseCase(invitationRepo, tokenService, idGenerator, systemClock)
+	getInvitationUC := invitationusecase.NewGetInvitationUseCase(invitationRepo)
+	listInvitationsByMatchUC := invitationusecase.NewListInvitationsByMatchUseCase(invitationRepo)
+	acceptInvitationUC := invitationusecase.NewAcceptInvitationUseCase(invitationRepo, tokenService, systemClock)
 
 	// HTTP handlers.
 	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC)
@@ -151,6 +161,9 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 
 	playerHandler := handlers.NewPlayerHandler(createPlayerUC, getPlayerUC, listPlayersByGroupUC, updatePlayerRankingUC)
 	playerHandler.Register(api)
+
+	invitationHandler := handlers.NewInvitationHandler(createInvitationUC, getInvitationUC, listInvitationsByMatchUC, acceptInvitationUC)
+	invitationHandler.Register(api)
 
 	return router
 }
