@@ -27,19 +27,24 @@ type Querier interface {
 	// typically 'draft' at creation time and evolves through the
 	// Match.Open(), MarkTeamsReady(), etc. state machine methods.
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (Matches, error)
+	CreatePlayer(ctx context.Context, arg CreatePlayerParams) (Players, error)
 	DeleteGroup(ctx context.Context, id string) error
 	DeleteMatch(ctx context.Context, id string) error
+	DeletePlayer(ctx context.Context, id string) error
 	GetGroupByID(ctx context.Context, id string) (Groups, error)
 	GetMatchByID(ctx context.Context, id string) (Matches, error)
+	GetPlayerByID(ctx context.Context, id string) (Players, error)
 	ListGroupsByOrganizerID(ctx context.Context, organizerID string) ([]Groups, error)
 	// Returns all matches for a group, ordered by scheduled date descending
 	// so upcoming and recent matches appear first.
 	ListMatchesByGroupID(ctx context.Context, groupID string) ([]Matches, error)
+	ListPlayersByGroupID(ctx context.Context, groupID string) ([]Players, error)
 	UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Groups, error)
 	// Updates only the status column. The state machine on the Match entity
 	// controls which status transitions are valid; this query trusts the
 	// caller and just persists the new value.
 	UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusParams) (Matches, error)
+	UpdatePlayerRanking(ctx context.Context, arg UpdatePlayerRankingParams) (Players, error)
 }
 
 var _ Querier = (*Queries)(nil)

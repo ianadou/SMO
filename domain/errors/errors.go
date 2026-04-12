@@ -68,6 +68,9 @@ var (
 	// ErrMatchNotFound is returned when a match lookup by ID has no match.
 	ErrMatchNotFound = errors.New("match not found")
 
+	// ErrPlayerNotFound is returned when a player lookup by ID has no match.
+	ErrPlayerNotFound = errors.New("player not found")
+
 	// ErrReferencedEntityNotFound is returned when a persistence operation
 	// fails because it references another entity that does not exist
 	// (e.g., creating a group with an organizer_id that is not in the

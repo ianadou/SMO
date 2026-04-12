@@ -21,6 +21,7 @@ import (
 
 	groupusecase "github.com/ianadou/smo/application/usecases/group"
 	matchusecase "github.com/ianadou/smo/application/usecases/match"
+	playerusecase "github.com/ianadou/smo/application/usecases/player"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/idgen"
@@ -99,6 +100,7 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	// Infrastructure adapters.
 	groupRepo := repositories.NewPostgresGroupRepository(pool)
 	matchRepo := repositories.NewPostgresMatchRepository(pool)
+	playerRepo := repositories.NewPostgresPlayerRepository(pool)
 	idGenerator := idgen.New()
 	systemClock := clock.New()
 
@@ -115,6 +117,12 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	startMatchUC := matchusecase.NewStartMatchUseCase(matchRepo)
 	completeMatchUC := matchusecase.NewCompleteMatchUseCase(matchRepo)
 	closeMatchUC := matchusecase.NewCloseMatchUseCase(matchRepo)
+
+	// Player use cases.
+	createPlayerUC := playerusecase.NewCreatePlayerUseCase(playerRepo, idGenerator)
+	getPlayerUC := playerusecase.NewGetPlayerUseCase(playerRepo)
+	listPlayersByGroupUC := playerusecase.NewListPlayersByGroupUseCase(playerRepo)
+	updatePlayerRankingUC := playerusecase.NewUpdatePlayerRankingUseCase(playerRepo)
 
 	// HTTP handlers.
 	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC)
@@ -140,6 +148,9 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	api := router.Group("/api")
 	groupHandler.Register(api)
 	matchHandler.Register(api)
+
+	playerHandler := handlers.NewPlayerHandler(createPlayerUC, getPlayerUC, listPlayersByGroupUC, updatePlayerRankingUC)
+	playerHandler.Register(api)
 
 	return router
 }
