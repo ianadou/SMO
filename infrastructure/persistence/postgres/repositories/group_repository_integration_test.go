@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestPostgresGroupRepository_Save_PersistsGroup(t *testing.T) {
-	repo := newTestRepository(t)
+	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
 	createdAt := time.Date(2026, 4, 11, 10, 0, 0, 0, time.UTC)
@@ -63,7 +63,7 @@ func TestPostgresGroupRepository_Save_PersistsGroup(t *testing.T) {
 }
 
 func TestPostgresGroupRepository_Save_ReturnsErrReferencedEntityNotFound_WhenOrganizerMissing(t *testing.T) {
-	repo := newTestRepository(t)
+	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
 	group, _ := entities.NewGroup("group-1", "Orphan Group", "nonexistent-org", time.Now())
@@ -76,7 +76,7 @@ func TestPostgresGroupRepository_Save_ReturnsErrReferencedEntityNotFound_WhenOrg
 }
 
 func TestPostgresGroupRepository_FindByID_ReturnsErrGroupNotFound_WhenMissing(t *testing.T) {
-	repo := newTestRepository(t)
+	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
 	_, err := repo.FindByID(ctx, "does-not-exist")
@@ -87,7 +87,7 @@ func TestPostgresGroupRepository_FindByID_ReturnsErrGroupNotFound_WhenMissing(t 
 }
 
 func TestPostgresGroupRepository_ListByOrganizer_ReturnsAllGroupsForOrganizer(t *testing.T) {
-	repo := newTestRepository(t)
+	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
 	for i, name := range []string{"Group A", "Group B", "Group C"} {
@@ -112,7 +112,7 @@ func TestPostgresGroupRepository_ListByOrganizer_ReturnsAllGroupsForOrganizer(t 
 }
 
 func TestPostgresGroupRepository_Update_ChangesGroupName(t *testing.T) {
-	repo := newTestRepository(t)
+	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
 	original, _ := entities.NewGroup("group-1", "Old Name", "test-org", time.Now())
@@ -132,7 +132,7 @@ func TestPostgresGroupRepository_Update_ChangesGroupName(t *testing.T) {
 }
 
 func TestPostgresGroupRepository_Delete_RemovesGroup(t *testing.T) {
-	repo := newTestRepository(t)
+	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
 	group, _ := entities.NewGroup("group-1", "To Delete", "test-org", time.Now())
