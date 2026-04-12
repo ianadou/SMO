@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	groupusecase "github.com/ianadou/smo/application/usecases/group"
+	matchusecase "github.com/ianadou/smo/application/usecases/match"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/idgen"
@@ -48,21 +49,12 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	// run() owns all resources that need deferred cleanup (context
-	// cancellation, connection pool close). main() only exits on the
-	// result, which guarantees that defers inside run() actually fire
-	// before the process terminates.
 	if err := run(); err != nil {
 		slog.Error("server stopped with error", "error", err)
 		os.Exit(1)
 	}
 }
 
-// run performs the full server lifecycle: read configuration, connect
-// to the database, apply migrations, build the router, and serve HTTP.
-//
-// It returns an error instead of calling os.Exit so that defers can
-// clean up resources properly.
 func run() error {
 	port, err := parsePort(os.Getenv("PORT"))
 	if err != nil {
@@ -75,8 +67,6 @@ func run() error {
 		slog.Info("DATABASE_URL not set, using default", "url", defaultDatabaseURL)
 	}
 
-	// Connection + migrations happen before the router is built so that
-	// any startup failure surfaces as a fast exit, not as a broken server.
 	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
 	defer cancel()
 
@@ -96,7 +86,6 @@ func run() error {
 
 	address := ":" + port
 	// #nosec G706 -- address is built from a port validated by parsePort()
-	// to be an integer in [1, 65535], so it cannot contain injection chars.
 	slog.Info("starting http server", "address", address)
 	if runErr := router.Run(address); runErr != nil {
 		return fmt.Errorf("http server stopped with error: %w", runErr)
@@ -104,54 +93,57 @@ func run() error {
 	return nil
 }
 
-// buildRouter assembles all the application dependencies and returns a
+// buildRouter assembles all application dependencies and returns a
 // fully configured Gin router ready to serve HTTP requests.
-//
-// This is the composition root: every concrete adapter is instantiated
-// here, and the resulting wiring is the only place where the application
-// is coupled to specific implementations (UUID, system clock, Postgres
-// repository, etc.).
 func buildRouter(pool *pgxpool.Pool) *gin.Engine {
-	// Infrastructure adapters (concrete implementations of domain ports).
+	// Infrastructure adapters.
 	groupRepo := repositories.NewPostgresGroupRepository(pool)
+	matchRepo := repositories.NewPostgresMatchRepository(pool)
 	idGenerator := idgen.New()
 	systemClock := clock.New()
 
-	// Application use cases (orchestrators that depend only on domain ports).
+	// Group use cases.
 	createGroupUC := groupusecase.NewCreateGroupUseCase(groupRepo, idGenerator, systemClock)
 	getGroupUC := groupusecase.NewGetGroupUseCase(groupRepo)
 
-	// HTTP handlers (thin wrappers around use cases).
+	// Match use cases.
+	createMatchUC := matchusecase.NewCreateMatchUseCase(matchRepo, idGenerator, systemClock)
+	getMatchUC := matchusecase.NewGetMatchUseCase(matchRepo)
+	listMatchesByGroupUC := matchusecase.NewListMatchesByGroupUseCase(matchRepo)
+	openMatchUC := matchusecase.NewOpenMatchUseCase(matchRepo)
+	markTeamsReadyUC := matchusecase.NewMarkTeamsReadyUseCase(matchRepo)
+	startMatchUC := matchusecase.NewStartMatchUseCase(matchRepo)
+	completeMatchUC := matchusecase.NewCompleteMatchUseCase(matchRepo)
+	closeMatchUC := matchusecase.NewCloseMatchUseCase(matchRepo)
+
+	// HTTP handlers.
 	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC)
+	matchHandler := handlers.NewMatchHandler(
+		createMatchUC,
+		getMatchUC,
+		listMatchesByGroupUC,
+		openMatchUC,
+		markTeamsReadyUC,
+		startMatchUC,
+		completeMatchUC,
+		closeMatchUC,
+	)
 
 	// Router configuration.
 	router := gin.New()
 	router.Use(gin.Recovery())
 
-	// System endpoints (no /api prefix).
-	// TODO: extract to infrastructure/http/handlers/health.go once we
-	// add more system endpoints (readiness, metrics, etc.).
 	router.GET("/health", func(context *gin.Context) {
 		context.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// API endpoints (under /api prefix).
 	api := router.Group("/api")
 	groupHandler.Register(api)
+	matchHandler.Register(api)
 
 	return router
 }
 
-// parsePort validates that the given raw value is a usable TCP port number
-// and returns it as a string ready to be used by the HTTP server.
-//
-// An empty input is treated as "use the default port" and returns defaultPort
-// without error. Any other input must parse as a positive integer in the
-// valid TCP range [1, 65535]; otherwise an error is returned so the caller
-// can fail fast at startup.
-//
-// TODO: move to infrastructure/config/ once the full configuration layer
-// is introduced.
 func parsePort(raw string) (string, error) {
 	if raw == "" {
 		return defaultPort, nil
