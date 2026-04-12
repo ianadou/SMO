@@ -65,6 +65,9 @@ var (
 	// ErrGroupNotFound is returned when a group lookup by ID has no match.
 	ErrGroupNotFound = errors.New("group not found")
 
+	// ErrMatchNotFound is returned when a match lookup by ID has no match.
+	ErrMatchNotFound = errors.New("match not found")
+
 	// ErrReferencedEntityNotFound is returned when a persistence operation
 	// fails because it references another entity that does not exist
 	// (e.g., creating a group with an organizer_id that is not in the
