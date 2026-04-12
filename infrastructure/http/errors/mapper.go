@@ -36,6 +36,9 @@ func mapNotFoundError(err error) (int, string, bool) {
 	if errors.Is(err, domainerrors.ErrMatchNotFound) {
 		return http.StatusNotFound, "match not found", true
 	}
+	if errors.Is(err, domainerrors.ErrPlayerNotFound) {
+		return http.StatusNotFound, "player not found", true
+	}
 	return 0, "", false
 }
 
