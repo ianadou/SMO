@@ -42,6 +42,9 @@ func mapNotFoundError(err error) (int, string, bool) {
 	if errors.Is(err, domainerrors.ErrInvitationNotFound) {
 		return http.StatusNotFound, "invitation not found", true
 	}
+	if errors.Is(err, domainerrors.ErrVoteNotFound) {
+		return http.StatusNotFound, "vote not found", true
+	}
 	return 0, "", false
 }
 
@@ -89,6 +92,10 @@ func mapBusinessRuleError(err error) (int, string, bool) {
 		return http.StatusGone, "invitation expired", true
 	case errors.Is(err, domainerrors.ErrInvitationAlreadyUsed):
 		return http.StatusConflict, "invitation already used", true
+	case errors.Is(err, domainerrors.ErrAlreadyVoted):
+		return http.StatusConflict, "already voted for this player in this match", true
+	case errors.Is(err, domainerrors.ErrMatchNotCompleted):
+		return http.StatusConflict, "match is not completed", true
 	}
 	return 0, "", false
 }

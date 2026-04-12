@@ -23,6 +23,7 @@ import (
 	invitationusecase "github.com/ianadou/smo/application/usecases/invitation"
 	matchusecase "github.com/ianadou/smo/application/usecases/match"
 	playerusecase "github.com/ianadou/smo/application/usecases/player"
+	voteusecase "github.com/ianadou/smo/application/usecases/vote"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/idgen"
@@ -104,6 +105,7 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	matchRepo := repositories.NewPostgresMatchRepository(pool)
 	playerRepo := repositories.NewPostgresPlayerRepository(pool)
 	invitationRepo := repositories.NewPostgresInvitationRepository(pool)
+	voteRepo := repositories.NewPostgresVoteRepository(pool)
 	tokenService := token.New()
 	idGenerator := idgen.New()
 	systemClock := clock.New()
@@ -133,6 +135,11 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	getInvitationUC := invitationusecase.NewGetInvitationUseCase(invitationRepo)
 	listInvitationsByMatchUC := invitationusecase.NewListInvitationsByMatchUseCase(invitationRepo)
 	acceptInvitationUC := invitationusecase.NewAcceptInvitationUseCase(invitationRepo, tokenService, systemClock)
+
+	// Vote use cases.
+	castVoteUC := voteusecase.NewCastVoteUseCase(voteRepo, matchRepo, idGenerator, systemClock)
+	getVoteUC := voteusecase.NewGetVoteUseCase(voteRepo)
+	listVotesByMatchUC := voteusecase.NewListVotesByMatchUseCase(voteRepo)
 
 	// HTTP handlers.
 	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC)
@@ -164,6 +171,9 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 
 	invitationHandler := handlers.NewInvitationHandler(createInvitationUC, getInvitationUC, listInvitationsByMatchUC, acceptInvitationUC)
 	invitationHandler.Register(api)
+
+	voteHandler := handlers.NewVoteHandler(castVoteUC, getVoteUC, listVotesByMatchUC)
+	voteHandler.Register(api)
 
 	return router
 }
