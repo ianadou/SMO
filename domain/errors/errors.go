@@ -71,6 +71,18 @@ var (
 	// ErrPlayerNotFound is returned when a player lookup by ID has no match.
 	ErrPlayerNotFound = errors.New("player not found")
 
+	// ErrInvitationNotFound is returned when an invitation lookup by ID
+	// or token hash has no match.
+	ErrInvitationNotFound = errors.New("invitation not found")
+
+	// ErrInvitationExpired is returned when attempting to accept an
+	// invitation whose expires_at is in the past.
+	ErrInvitationExpired = errors.New("invitation expired")
+
+	// ErrInvitationAlreadyUsed is returned when attempting to accept an
+	// invitation that has already been consumed.
+	ErrInvitationAlreadyUsed = errors.New("invitation already used")
+
 	// ErrReferencedEntityNotFound is returned when a persistence operation
 	// fails because it references another entity that does not exist
 	// (e.g., creating a group with an organizer_id that is not in the

@@ -106,3 +106,20 @@ func (i *Invitation) IsUsed() bool { return i.usedAt != nil }
 func (i *Invitation) IsExpired(now time.Time) bool {
 	return !now.Before(i.expiresAt)
 }
+
+// MarkAsUsed transitions the invitation to the "used" state by setting
+// its usedAt timestamp. The transition is rejected if the invitation
+// has already been used or has expired relative to the given now.
+//
+// Callers should pass time.Now() (or a clock's Now()); tests can pass a
+// fixed time for deterministic assertions.
+func (i *Invitation) MarkAsUsed(now time.Time) error {
+	if i.IsUsed() {
+		return domainerrors.ErrInvitationAlreadyUsed
+	}
+	if i.IsExpired(now) {
+		return domainerrors.ErrInvitationExpired
+	}
+	i.usedAt = &now
+	return nil
+}

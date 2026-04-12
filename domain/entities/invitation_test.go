@@ -126,3 +126,66 @@ func TestNewInvitation_ReturnsError_WhenInputsAreInvalid(t *testing.T) {
 		})
 	}
 }
+
+func TestInvitation_MarkAsUsed_SetsUsedAt(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expiresAt := createdAt.Add(7 * 24 * time.Hour)
+	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, nil, createdAt)
+
+	now := createdAt.Add(2 * time.Hour)
+	if err := inv.MarkAsUsed(now); err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !inv.IsUsed() {
+		t.Error("expected invitation to be used after MarkAsUsed")
+	}
+	if inv.UsedAt() == nil || !inv.UsedAt().Equal(now) {
+		t.Errorf("expected UsedAt %v, got %v", now, inv.UsedAt())
+	}
+}
+
+func TestInvitation_MarkAsUsed_ReturnsErrInvitationAlreadyUsed_WhenAlreadyUsed(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expiresAt := createdAt.Add(7 * 24 * time.Hour)
+	firstUsedAt := createdAt.Add(1 * time.Hour)
+	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, &firstUsedAt, createdAt)
+
+	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))
+
+	if !errors.Is(err, domainerrors.ErrInvitationAlreadyUsed) {
+		t.Errorf("expected ErrInvitationAlreadyUsed, got %v", err)
+	}
+}
+
+func TestInvitation_MarkAsUsed_ReturnsErrInvitationExpired_WhenExpired(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expiresAt := createdAt.Add(1 * time.Hour)
+	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, nil, createdAt)
+
+	// now is past expiresAt.
+	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))
+
+	if !errors.Is(err, domainerrors.ErrInvitationExpired) {
+		t.Errorf("expected ErrInvitationExpired, got %v", err)
+	}
+}
+
+func TestInvitation_MarkAsUsed_PrefersAlreadyUsedOverExpired(t *testing.T) {
+	t.Parallel()
+	// An invitation that is both expired AND already used should report
+	// AlreadyUsed because that is the more informative error for the user.
+	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expiresAt := createdAt.Add(1 * time.Hour)
+	firstUsedAt := createdAt.Add(30 * time.Minute)
+	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, &firstUsedAt, createdAt)
+
+	// Now is past expiresAt.
+	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))
+
+	if !errors.Is(err, domainerrors.ErrInvitationAlreadyUsed) {
+		t.Errorf("expected ErrInvitationAlreadyUsed (priority), got %v", err)
+	}
+}
