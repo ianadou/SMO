@@ -33,6 +33,9 @@ func mapNotFoundError(err error) (int, string, bool) {
 	if errors.Is(err, domainerrors.ErrGroupNotFound) {
 		return http.StatusNotFound, "group not found", true
 	}
+	if errors.Is(err, domainerrors.ErrMatchNotFound) {
+		return http.StatusNotFound, "match not found", true
+	}
 	return 0, "", false
 }
 
