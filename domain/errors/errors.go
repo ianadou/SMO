@@ -56,6 +56,11 @@ var (
 
 	// ErrSelfVote is returned when a player tries to vote for themselves.
 	ErrSelfVote = errors.New("cannot vote for yourself")
+
+	// ErrMatchNotCompleted is returned when an operation that requires
+	// the match to be in the completed state (e.g., casting a vote) is
+	// attempted before the match has been marked completed.
+	ErrMatchNotCompleted = errors.New("match is not completed")
 )
 
 // Repository errors — returned when a persistence operation fails for a
@@ -82,6 +87,14 @@ var (
 	// ErrInvitationAlreadyUsed is returned when attempting to accept an
 	// invitation that has already been consumed.
 	ErrInvitationAlreadyUsed = errors.New("invitation already used")
+
+	// ErrVoteNotFound is returned when a vote lookup by ID has no match.
+	ErrVoteNotFound = errors.New("vote not found")
+
+	// ErrAlreadyVoted is returned when a voter attempts to cast a second
+	// vote for the same (match, voted_player) pair. Triggered by the
+	// unique constraint (match_id, voter_id, voted_id).
+	ErrAlreadyVoted = errors.New("already voted for this player in this match")
 
 	// ErrReferencedEntityNotFound is returned when a persistence operation
 	// fails because it references another entity that does not exist
