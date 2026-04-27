@@ -200,7 +200,7 @@ func buildTestRouter(t *testing.T) *testRouter {
 	)
 
 	router := gin.New()
-	api := router.Group("/api")
+	api := router.Group("/api/v1")
 	handler.Register(api)
 	return &testRouter{router: router, matchRepo: matchRepo, voteRepo: voteRepo, playerRepo: playerRepo}
 }
@@ -225,7 +225,7 @@ func TestMatchHandler_Create_Returns201_WithMatchResponse(t *testing.T) {
 	router := tr.router
 
 	body := `{"group_id":"group-1","title":"Friday","venue":"Stadium","scheduled_at":"2026-05-01T18:00:00Z"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/matches", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -248,7 +248,7 @@ func TestMatchHandler_Create_Returns400_WhenBodyIsMissingFields(t *testing.T) {
 	tr := buildTestRouter(t)
 	router := tr.router
 
-	req := httptest.NewRequest(http.MethodPost, "/api/matches", bytes.NewBufferString(`{"title":"Only title"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches", bytes.NewBufferString(`{"title":"Only title"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -264,7 +264,7 @@ func TestMatchHandler_Get_Returns200_WhenMatchExists(t *testing.T) {
 	router := tr.router
 	seedMatch(t, tr.matchRepo)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/matches/match-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/matches/match-1", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -277,7 +277,7 @@ func TestMatchHandler_Get_Returns404_WhenMatchDoesNotExist(t *testing.T) {
 	tr := buildTestRouter(t)
 	router := tr.router
 
-	req := httptest.NewRequest(http.MethodGet, "/api/matches/nonexistent", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/matches/nonexistent", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -291,7 +291,7 @@ func TestMatchHandler_ListByGroup_Returns200_WithArray(t *testing.T) {
 	router := tr.router
 	seedMatch(t, tr.matchRepo)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/groups/group-1/matches", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups/group-1/matches", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -310,7 +310,7 @@ func TestMatchHandler_Open_Returns200_AndTransitionsStatus(t *testing.T) {
 	router := tr.router
 	seedMatch(t, tr.matchRepo)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/matches/match-1/open", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/open", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -330,7 +330,7 @@ func TestMatchHandler_Start_Returns409_WhenTransitionIsInvalid(t *testing.T) {
 	// Start requires TeamsReady; attempting from Draft must return 409 Conflict.
 	seedMatch(t, tr.matchRepo)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/matches/match-1/start", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/start", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -351,10 +351,10 @@ func TestMatchHandler_AllTransitions_ReturnsOK_InOrder(t *testing.T) {
 		path   string
 		status string
 	}{
-		{"/api/matches/match-1/open", "open"},
-		{"/api/matches/match-1/teams-ready", "teams_ready"},
-		{"/api/matches/match-1/start", "in_progress"},
-		{"/api/matches/match-1/complete", "completed"},
+		{"/api/v1/matches/match-1/open", "open"},
+		{"/api/v1/matches/match-1/teams-ready", "teams_ready"},
+		{"/api/v1/matches/match-1/start", "in_progress"},
+		{"/api/v1/matches/match-1/complete", "completed"},
 	}
 
 	for _, step := range steps {
@@ -396,7 +396,7 @@ func TestMatchHandler_Finalize_Returns200_WithMVPAndUpdatedRankings(t *testing.T
 	v3, _ := entities.NewVote("v-3", "match-1", "p-a", "p-c", 3, time.Now())
 	tr.voteRepo.votes["match-1"] = []*entities.Vote{v1, v2, v3}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/matches/match-1/finalize", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/finalize", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 

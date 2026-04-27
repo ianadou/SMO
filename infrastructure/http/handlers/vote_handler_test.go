@@ -122,7 +122,7 @@ func buildVoteTestRouter(t *testing.T, matchStatus entities.MatchStatus) *gin.En
 		vote.NewListVotesByMatchUseCase(voteRepo),
 	)
 	router := gin.New()
-	api := router.Group("/api")
+	api := router.Group("/api/v1")
 	handler.Register(api)
 	return router
 }
@@ -133,7 +133,7 @@ func TestVoteHandler_Cast_Returns201_WhenMatchCompleted(t *testing.T) {
 	router := buildVoteTestRouter(t, entities.MatchStatusCompleted)
 
 	body := `{"match_id":"test-match","voter_id":"p-1","voted_id":"p-2","score":4}`
-	req := httptest.NewRequest(http.MethodPost, "/api/votes", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/votes", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -152,7 +152,7 @@ func TestVoteHandler_Cast_Returns409_WhenMatchNotCompleted(t *testing.T) {
 	router := buildVoteTestRouter(t, entities.MatchStatusDraft)
 
 	body := `{"match_id":"test-match","voter_id":"p-1","voted_id":"p-2","score":4}`
-	req := httptest.NewRequest(http.MethodPost, "/api/votes", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/votes", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -166,7 +166,7 @@ func TestVoteHandler_Cast_Returns400_OnSelfVote(t *testing.T) {
 	router := buildVoteTestRouter(t, entities.MatchStatusCompleted)
 
 	body := `{"match_id":"test-match","voter_id":"p-1","voted_id":"p-1","score":4}`
-	req := httptest.NewRequest(http.MethodPost, "/api/votes", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/votes", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)

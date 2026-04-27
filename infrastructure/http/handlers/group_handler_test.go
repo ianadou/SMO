@@ -88,7 +88,7 @@ func newTestHandlerEnv(t *testing.T, fixedID string, fixedTime time.Time) *testH
 	handler := NewGroupHandler(createUC, getUC)
 
 	router := gin.New()
-	api := router.Group("/api")
+	api := router.Group("/api/v1")
 	handler.Register(api)
 
 	return &testHandlerEnv{router: router, repo: repo}
@@ -105,7 +105,7 @@ func TestGroupHandler_Create_Returns201_WhenRequestIsValid(t *testing.T) {
 	env := newTestHandlerEnv(t, "group-fixed-id", fixedTime)
 
 	body := `{"name":"Foot du jeudi","organizer_id":"org-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/groups", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -135,7 +135,7 @@ func TestGroupHandler_Create_Returns400_WhenBodyIsInvalidJSON(t *testing.T) {
 
 	env := newTestHandlerEnv(t, "group-1", time.Now())
 
-	req := httptest.NewRequest(http.MethodPost, "/api/groups", strings.NewReader(`{not json`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(`{not json`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -164,7 +164,7 @@ func TestGroupHandler_Create_Returns400_WhenRequiredFieldsAreMissing(t *testing.
 
 			env := newTestHandlerEnv(t, "group-1", time.Now())
 
-			req := httptest.NewRequest(http.MethodPost, "/api/groups", strings.NewReader(testCase.body))
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(testCase.body))
 			req.Header.Set("Content-Type", "application/json")
 			rec := httptest.NewRecorder()
 
@@ -184,7 +184,7 @@ func TestGroupHandler_Get_Returns200_WhenGroupExists(t *testing.T) {
 
 	// Pre-seed: create a group via the POST endpoint.
 	createBody := `{"name":"Existing","organizer_id":"org-1"}`
-	createReq := httptest.NewRequest(http.MethodPost, "/api/groups", strings.NewReader(createBody))
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(createBody))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRec := httptest.NewRecorder()
 	env.router.ServeHTTP(createRec, createReq)
@@ -194,7 +194,7 @@ func TestGroupHandler_Get_Returns200_WhenGroupExists(t *testing.T) {
 	}
 
 	// Now fetch it.
-	getReq := httptest.NewRequest(http.MethodGet, "/api/groups/group-1", nil)
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/groups/group-1", nil)
 	getRec := httptest.NewRecorder()
 	env.router.ServeHTTP(getRec, getReq)
 
@@ -214,7 +214,7 @@ func TestGroupHandler_Get_Returns404_WhenGroupDoesNotExist(t *testing.T) {
 
 	env := newTestHandlerEnv(t, "group-1", time.Now())
 
-	req := httptest.NewRequest(http.MethodGet, "/api/groups/nonexistent", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups/nonexistent", nil)
 	rec := httptest.NewRecorder()
 
 	env.router.ServeHTTP(rec, req)
@@ -236,7 +236,7 @@ func TestGroupHandler_Create_PersistsGroupInRepository(t *testing.T) {
 	env := newTestHandlerEnv(t, "group-persisted", time.Now())
 
 	body := `{"name":"Persisted","organizer_id":"org-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/groups", bytes.NewReader([]byte(body)))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
