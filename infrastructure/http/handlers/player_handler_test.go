@@ -95,7 +95,7 @@ func buildPlayerTestRouter(t *testing.T) (*gin.Engine, *fakePlayerRepo) {
 	)
 
 	router := gin.New()
-	api := router.Group("/api")
+	api := router.Group("/api/v1")
 	handler.Register(api)
 	return router, repo
 }
@@ -116,7 +116,7 @@ func TestPlayerHandler_Create_Returns201_WithDefaultRanking(t *testing.T) {
 	router, _ := buildPlayerTestRouter(t)
 
 	body := `{"group_id":"group-1","name":"Alice"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/players", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/players", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -138,7 +138,7 @@ func TestPlayerHandler_Create_Returns201_WithDefaultRanking(t *testing.T) {
 func TestPlayerHandler_Create_Returns400_WhenBodyMissingFields(t *testing.T) {
 	router, _ := buildPlayerTestRouter(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/players", bytes.NewBufferString(`{"name":"Alice"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/players", bytes.NewBufferString(`{"name":"Alice"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -152,7 +152,7 @@ func TestPlayerHandler_Get_Returns200_WhenExists(t *testing.T) {
 	router, repo := buildPlayerTestRouter(t)
 	seedPlayer(t, repo)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/players/player-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/players/player-1", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -164,7 +164,7 @@ func TestPlayerHandler_Get_Returns200_WhenExists(t *testing.T) {
 func TestPlayerHandler_Get_Returns404_WhenMissing(t *testing.T) {
 	router, _ := buildPlayerTestRouter(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/players/nonexistent", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/players/nonexistent", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -177,7 +177,7 @@ func TestPlayerHandler_ListByGroup_Returns200_WithArray(t *testing.T) {
 	router, repo := buildPlayerTestRouter(t)
 	seedPlayer(t, repo)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/groups/group-1/players", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups/group-1/players", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -196,7 +196,7 @@ func TestPlayerHandler_UpdateRanking_Returns200_AndPersistsNewValue(t *testing.T
 	seedPlayer(t, repo)
 
 	body := `{"ranking":1500}`
-	req := httptest.NewRequest(http.MethodPatch, "/api/players/player-1/ranking", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/players/player-1/ranking", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -215,7 +215,7 @@ func TestPlayerHandler_UpdateRanking_Returns404_WhenPlayerMissing(t *testing.T) 
 	router, _ := buildPlayerTestRouter(t)
 
 	body := `{"ranking":1500}`
-	req := httptest.NewRequest(http.MethodPatch, "/api/players/nonexistent/ranking", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/players/nonexistent/ranking", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)

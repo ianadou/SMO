@@ -114,7 +114,7 @@ func buildInvitationTestRouter(t *testing.T) *gin.Engine {
 	)
 
 	router := gin.New()
-	api := router.Group("/api")
+	api := router.Group("/api/v1")
 	handler.Register(api)
 	return router
 }
@@ -125,7 +125,7 @@ func TestInvitationHandler_Create_Returns201_WithPlainToken(t *testing.T) {
 	router := buildInvitationTestRouter(t)
 
 	body := `{"match_id":"match-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/invitations", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -146,7 +146,7 @@ func TestInvitationHandler_Create_Returns201_WithPlainToken(t *testing.T) {
 func TestInvitationHandler_Create_Returns400_WhenBodyMissingFields(t *testing.T) {
 	router := buildInvitationTestRouter(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/invitations", bytes.NewBufferString(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -159,7 +159,7 @@ func TestInvitationHandler_Create_Returns400_WhenBodyMissingFields(t *testing.T)
 func TestInvitationHandler_Get_Returns404_WhenMissing(t *testing.T) {
 	router := buildInvitationTestRouter(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/invitations/nonexistent", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/invitations/nonexistent", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -174,7 +174,7 @@ func TestInvitationHandler_Accept_FullLifecycle(t *testing.T) {
 
 	// 1. Create.
 	createBody := `{"match_id":"match-1"}`
-	createReq := httptest.NewRequest(http.MethodPost, "/api/invitations", bytes.NewBufferString(createBody))
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(createBody))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRec := httptest.NewRecorder()
 	router.ServeHTTP(createRec, createReq)
@@ -188,7 +188,7 @@ func TestInvitationHandler_Accept_FullLifecycle(t *testing.T) {
 
 	// 2. Accept with the plain token.
 	acceptBody := `{"token":"` + plainToken + `"}`
-	acceptReq := httptest.NewRequest(http.MethodPost, "/api/invitations/accept", bytes.NewBufferString(acceptBody))
+	acceptReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations/accept", bytes.NewBufferString(acceptBody))
 	acceptReq.Header.Set("Content-Type", "application/json")
 	acceptRec := httptest.NewRecorder()
 	router.ServeHTTP(acceptRec, acceptReq)
@@ -207,7 +207,7 @@ func TestInvitationHandler_Accept_Returns404_WhenTokenInvalid(t *testing.T) {
 	router := buildInvitationTestRouter(t)
 
 	body := `{"token":"definitely-not-a-real-token"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/invitations/accept", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations/accept", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -221,12 +221,12 @@ func TestInvitationHandler_ListByMatch_Returns200_WithArray(t *testing.T) {
 	router := buildInvitationTestRouter(t)
 
 	// Create one invitation first.
-	createReq := httptest.NewRequest(http.MethodPost, "/api/invitations",
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations",
 		bytes.NewBufferString(`{"match_id":"match-42"}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(httptest.NewRecorder(), createReq)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/matches/match-42/invitations", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/matches/match-42/invitations", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 

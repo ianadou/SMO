@@ -37,8 +37,8 @@ func NewGroupHandler(
 //	POST /groups       → Create
 //	GET  /groups/:id   → Get
 //
-// The caller is expected to mount this under /api (e.g., via
-// router.Group("/api")).
+// The caller is expected to mount this under /api/v1 (e.g., via
+// router.Group("/api/v1")).
 func (h *GroupHandler) Register(router *gin.RouterGroup) {
 	router.POST("/groups", h.Create)
 	router.GET("/groups/:id", h.Get)

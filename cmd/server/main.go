@@ -173,7 +173,12 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 		context.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	api := router.Group("/api")
+	// All business endpoints live under /api/v1. The /v1 prefix locks
+	// in a versioned contract from day one: future breaking changes can
+	// ship as /v2 alongside without breaking existing clients. The
+	// rationale (URL-based vs header-based versioning) is documented in
+	// docs/adr/0003-api-url-versioning.md.
+	api := router.Group("/api/v1")
 	groupHandler.Register(api)
 	matchHandler.Register(api)
 
