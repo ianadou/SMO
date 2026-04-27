@@ -25,6 +25,9 @@ func MapError(err error) (int, string) {
 	if status, message, matched := mapBusinessRuleError(err); matched {
 		return status, message
 	}
+	if status, message, matched := mapAuthError(err); matched {
+		return status, message
+	}
 	return http.StatusInternalServerError, "internal server error"
 }
 
@@ -44,6 +47,9 @@ func mapNotFoundError(err error) (int, string, bool) {
 	}
 	if errors.Is(err, domainerrors.ErrVoteNotFound) {
 		return http.StatusNotFound, "vote not found", true
+	}
+	if errors.Is(err, domainerrors.ErrOrganizerNotFound) {
+		return http.StatusNotFound, "organizer not found", true
 	}
 	return 0, "", false
 }
@@ -67,6 +73,10 @@ func mapValidationError(err error) (int, string, bool) {
 		return http.StatusBadRequest, "invalid parameter", true
 	case errors.Is(err, domainerrors.ErrReferencedEntityNotFound):
 		return http.StatusBadRequest, "referenced entity does not exist", true
+	case errors.Is(err, domainerrors.ErrInvalidEmail):
+		return http.StatusBadRequest, "invalid email", true
+	case errors.Is(err, domainerrors.ErrInvalidPassword):
+		return http.StatusBadRequest, "invalid password", true
 	}
 	return 0, "", false
 }
@@ -96,6 +106,22 @@ func mapBusinessRuleError(err error) (int, string, bool) {
 		return http.StatusConflict, "already voted for this player in this match", true
 	case errors.Is(err, domainerrors.ErrMatchNotCompleted):
 		return http.StatusConflict, "match is not completed", true
+	case errors.Is(err, domainerrors.ErrEmailAlreadyExists):
+		return http.StatusConflict, "email already exists", true
+	}
+	return 0, "", false
+}
+
+// mapAuthError handles errors specific to the authentication flow.
+// Both ErrInvalidCredentials and ErrInvalidToken map to 401 with a
+// short message so the response shape never reveals whether the email
+// exists or whether the token was malformed vs expired.
+func mapAuthError(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, domainerrors.ErrInvalidCredentials):
+		return http.StatusUnauthorized, "invalid credentials", true
+	case errors.Is(err, domainerrors.ErrInvalidToken):
+		return http.StatusUnauthorized, "invalid token", true
 	}
 	return 0, "", false
 }

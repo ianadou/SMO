@@ -19,12 +19,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	authusecase "github.com/ianadou/smo/application/usecases/auth"
 	groupusecase "github.com/ianadou/smo/application/usecases/group"
 	invitationusecase "github.com/ianadou/smo/application/usecases/invitation"
 	matchusecase "github.com/ianadou/smo/application/usecases/match"
 	playerusecase "github.com/ianadou/smo/application/usecases/player"
 	voteusecase "github.com/ianadou/smo/application/usecases/vote"
 	"github.com/ianadou/smo/domain/ranking"
+	bcryptauth "github.com/ianadou/smo/infrastructure/auth/bcrypt"
+	jwtauth "github.com/ianadou/smo/infrastructure/auth/jwt"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/http/middlewares"
@@ -33,6 +36,8 @@ import (
 	"github.com/ianadou/smo/infrastructure/persistence/postgres"
 	"github.com/ianadou/smo/infrastructure/persistence/postgres/repositories"
 	"github.com/ianadou/smo/infrastructure/token"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -45,7 +50,13 @@ const (
 	minPort            = 1
 	maxPort            = 65535
 	connectTimeout     = 30 * time.Second
+	jwtLifetime        = 24 * time.Hour
 )
+
+// errMissingJWTSecret is returned when JWT_SECRET is not set. We refuse
+// to fall back to a hardcoded secret: an unset JWT_SECRET in production
+// would silently degrade to a known-weak key.
+var errMissingJWTSecret = errors.New("JWT_SECRET environment variable is required")
 
 // errInvalidPort is returned by parsePort when the provided value is not a
 // valid TCP port number.
@@ -73,6 +84,11 @@ func run() error {
 		slog.Info("DATABASE_URL not set, using default", "url", defaultDatabaseURL)
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return errMissingJWTSecret
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
 	defer cancel()
 
@@ -88,7 +104,7 @@ func run() error {
 	}
 	slog.Info("database migrations applied")
 
-	router := buildRouter(pool)
+	router := buildRouter(pool, jwtSecret)
 
 	address := ":" + port
 	// #nosec G706 -- address is built from a port validated by parsePort()
@@ -101,16 +117,27 @@ func run() error {
 
 // buildRouter assembles all application dependencies and returns a
 // fully configured Gin router ready to serve HTTP requests.
-func buildRouter(pool *pgxpool.Pool) *gin.Engine {
+//
+// This function is intentionally long: per CLAUDE.md "Dependency wiring
+// is manual and explicit in cmd/server/main.go. A 50-line wiring block
+// is normal and desirable — the flow of dependencies must be readable
+// top-to-bottom." Extracting helpers here would scatter the wiring
+// across the file and hide the composition root.
+//
+//nolint:funlen,cyclop // composition root — see CLAUDE.md project rules
+func buildRouter(pool *pgxpool.Pool, jwtSecret string) *gin.Engine {
 	// Infrastructure adapters.
 	groupRepo := repositories.NewPostgresGroupRepository(pool)
 	matchRepo := repositories.NewPostgresMatchRepository(pool)
 	playerRepo := repositories.NewPostgresPlayerRepository(pool)
 	invitationRepo := repositories.NewPostgresInvitationRepository(pool)
 	voteRepo := repositories.NewPostgresVoteRepository(pool)
+	organizerRepo := repositories.NewPostgresOrganizerRepository(pool)
 	tokenService := token.New()
 	idGenerator := idgen.New()
 	systemClock := clock.New()
+	passwordHasher := bcryptauth.New(bcrypt.DefaultCost)
+	jwtSigner := jwtauth.New(jwtSecret, jwtLifetime)
 
 	// Group use cases.
 	createGroupUC := groupusecase.NewCreateGroupUseCase(groupRepo, idGenerator, systemClock)
@@ -152,6 +179,14 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	castVoteUC := voteusecase.NewCastVoteUseCase(voteRepo, matchRepo, idGenerator, systemClock)
 	getVoteUC := voteusecase.NewGetVoteUseCase(voteRepo)
 	listVotesByMatchUC := voteusecase.NewListVotesByMatchUseCase(voteRepo)
+
+	// Auth use cases.
+	registerOrganizerUC := authusecase.NewRegisterOrganizerUseCase(organizerRepo, passwordHasher, idGenerator, systemClock)
+	loginOrganizerUC := authusecase.NewLoginOrganizerUseCase(organizerRepo, passwordHasher, jwtSigner)
+	// jwtSigner is also used by the JWTAuth middleware applied to
+	// mutation routes — that wiring lands in the next PR; for now the
+	// middleware exists but is not attached.
+	_ = middlewares.JWTAuth(jwtSigner)
 
 	// HTTP handlers.
 	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC)
@@ -201,6 +236,9 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 
 	voteHandler := handlers.NewVoteHandler(castVoteUC, getVoteUC, listVotesByMatchUC)
 	voteHandler.Register(api)
+
+	authHandler := handlers.NewAuthHandler(registerOrganizerUC, loginOrganizerUC)
+	authHandler.Register(api)
 
 	return router
 }

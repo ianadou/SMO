@@ -29,6 +29,16 @@ var (
 	// ErrInvalidParameter is returned when a configuration parameter is
 	// outside its accepted range (e.g., a learning rate outside (0, 1]).
 	ErrInvalidParameter = errors.New("invalid parameter")
+
+	// ErrInvalidEmail is returned when an email string fails the format
+	// check at organizer creation.
+	ErrInvalidEmail = errors.New("invalid email")
+
+	// ErrInvalidPassword is returned when a password fails the policy
+	// (currently: minimum 12 characters). Distinct from ErrInvalidCredentials
+	// so the registration endpoint can return a useful 400 while login keeps
+	// a uniform 401.
+	ErrInvalidPassword = errors.New("invalid password")
 )
 
 // Business rule errors — returned when a domain operation is not allowed
@@ -103,4 +113,23 @@ var (
 	// the SQL level, but the concept is storage-agnostic: any backend
 	// that enforces referential integrity can produce this error.
 	ErrReferencedEntityNotFound = errors.New("referenced entity not found")
+
+	// ErrEmailAlreadyExists is returned when registration would create
+	// an organizer with an email already taken. Triggered by the UNIQUE
+	// constraint on organizers.email.
+	ErrEmailAlreadyExists = errors.New("email already exists")
+
+	// ErrOrganizerNotFound is returned when an organizer lookup by ID
+	// or email has no match.
+	ErrOrganizerNotFound = errors.New("organizer not found")
+
+	// ErrInvalidCredentials is returned by the login flow when the
+	// email/password combination does not match. Deliberately distinct
+	// from ErrOrganizerNotFound and ErrInvalidPassword: the login error
+	// must not reveal whether the email exists, to prevent enumeration.
+	ErrInvalidCredentials = errors.New("invalid credentials")
+
+	// ErrInvalidToken is returned when a JWT cannot be parsed, has an
+	// invalid signature, is expired, or carries unexpected claims.
+	ErrInvalidToken = errors.New("invalid token")
 )
