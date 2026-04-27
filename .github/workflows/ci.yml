@@ -50,6 +50,56 @@ jobs:
           # ignored: the two go build steps are kept separate to give
           # buildx distinct cache layers (server vs healthcheck).
           ignore: DL3059
+  security:
+    name: Trivy security scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Scan filesystem (Go modules + lockfiles)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL,HIGH
+          # Non-blocking on purpose. The plan is to flip this to
+          # exit-code: 1 in a follow-up PR once we have a clean
+          # baseline and trust the signal. Until then findings appear
+          # in the GitHub Security tab without breaking PRs.
+          exit-code: '0'
+      - name: Upload filesystem SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: smo-app:trivy-scan
+      - name: Scan image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: smo-app:trivy-scan
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+      - name: Upload image SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
   build:
     name: Build
     runs-on: ubuntu-latest
