@@ -30,6 +30,7 @@ import (
 	"github.com/ianadou/smo/domain/ranking"
 	bcryptauth "github.com/ianadou/smo/infrastructure/auth/bcrypt"
 	jwtauth "github.com/ianadou/smo/infrastructure/auth/jwt"
+	cacheredis "github.com/ianadou/smo/infrastructure/cache/redis"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/http/middlewares"
@@ -39,6 +40,7 @@ import (
 	"github.com/ianadou/smo/infrastructure/persistence/postgres/repositories"
 	"github.com/ianadou/smo/infrastructure/token"
 
+	rdb "github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -118,7 +120,21 @@ func run() error {
 	}
 	slog.Info("database migrations applied")
 
-	router := buildRouter(pool, jwtSecret)
+	// Redis: optional. Empty REDIS_URL → cache disabled (caching wrappers
+	// not installed). Set + reachable → cache enabled. Set + unreachable
+	// → fail boot. See docs/adr/0002-cache-aside-with-redis.md.
+	redisClient, redisErr := cacheredis.Connect(ctx, os.Getenv("REDIS_URL"))
+	if redisErr != nil {
+		return fmt.Errorf("failed to connect to redis: %w", redisErr)
+	}
+	if redisClient == nil {
+		slog.Info("redis cache disabled (REDIS_URL not set)")
+	} else {
+		slog.Info("redis cache enabled")
+		defer func() { _ = redisClient.Close() }()
+	}
+
+	router := buildRouter(pool, redisClient, jwtSecret)
 
 	address := ":" + port
 	server := &http.Server{
@@ -183,11 +199,13 @@ func runServer(server *http.Server) error {
 // across the file and hide the composition root.
 //
 //nolint:funlen,cyclop // composition root — see CLAUDE.md project rules
-func buildRouter(pool *pgxpool.Pool, jwtSecret string) *gin.Engine {
-	// Infrastructure adapters.
-	groupRepo := repositories.NewPostgresGroupRepository(pool)
+func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) *gin.Engine {
+	// Infrastructure adapters. Group and Player are wrapped in their
+	// caching variants when redisClient is non-nil; otherwise the
+	// wrappers pass through (ADR 0002 state 1).
+	groupRepo := cacheredis.WrapGroupRepository(repositories.NewPostgresGroupRepository(pool), redisClient)
 	matchRepo := repositories.NewPostgresMatchRepository(pool)
-	playerRepo := repositories.NewPostgresPlayerRepository(pool)
+	playerRepo := cacheredis.WrapPlayerRepository(repositories.NewPostgresPlayerRepository(pool), redisClient)
 	invitationRepo := repositories.NewPostgresInvitationRepository(pool)
 	voteRepo := repositories.NewPostgresVoteRepository(pool)
 	organizerRepo := repositories.NewPostgresOrganizerRepository(pool)

@@ -49,6 +49,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       PORT: ${PORT:-8081}
       # Inside the compose network, the postgres host is "postgres" (the
@@ -58,16 +60,24 @@ services:
       # postgres service above ensures it is set before compose runs.
       DATABASE_URL: postgres://${POSTGRES_USER:-smo}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smo_dev}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required, see .env.example}
+      # REDIS_URL is optional. Empty/unset → cache disabled. Set with an
+      # unreachable Redis → boot fails. See ADR 0002.
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     ports:
       - "${PORT:-8081}:8081"
 
-# TODO: add a redis service here when the auth/cache layer needs it.
-#   redis:
-#     image: redis:7-alpine
-#     container_name: smo-redis
-#     restart: unless-stopped
-#     ports:
-#       - "6379:6379"
+  redis:
+    image: redis:7-alpine
+    container_name: smo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
 volumes:
   smo-postgres-data:
