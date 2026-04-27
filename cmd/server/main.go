@@ -24,6 +24,7 @@ import (
 	matchusecase "github.com/ianadou/smo/application/usecases/match"
 	playerusecase "github.com/ianadou/smo/application/usecases/player"
 	voteusecase "github.com/ianadou/smo/application/usecases/vote"
+	"github.com/ianadou/smo/domain/ranking"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/idgen"
@@ -114,6 +115,16 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	createGroupUC := groupusecase.NewCreateGroupUseCase(groupRepo, idGenerator, systemClock)
 	getGroupUC := groupusecase.NewGetGroupUseCase(groupRepo)
 
+	// Ranking calculator. The default learning rate is the right
+	// default for now; making it configurable is on the backlog.
+	rankingCalculator, rankingErr := ranking.NewCalculator(ranking.DefaultLearningRate())
+	if rankingErr != nil {
+		// NewCalculator only fails on out-of-range learning rate, so a
+		// failure here means the default constant itself is invalid —
+		// a programming error, not a configuration issue.
+		panic(fmt.Sprintf("invalid default learning rate: %v", rankingErr))
+	}
+
 	// Match use cases.
 	createMatchUC := matchusecase.NewCreateMatchUseCase(matchRepo, idGenerator, systemClock)
 	getMatchUC := matchusecase.NewGetMatchUseCase(matchRepo)
@@ -122,7 +133,7 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	markTeamsReadyUC := matchusecase.NewMarkTeamsReadyUseCase(matchRepo)
 	startMatchUC := matchusecase.NewStartMatchUseCase(matchRepo)
 	completeMatchUC := matchusecase.NewCompleteMatchUseCase(matchRepo)
-	closeMatchUC := matchusecase.NewCloseMatchUseCase(matchRepo)
+	finalizeMatchUC := matchusecase.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, rankingCalculator)
 
 	// Player use cases.
 	createPlayerUC := playerusecase.NewCreatePlayerUseCase(playerRepo, idGenerator)
@@ -151,7 +162,7 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 		markTeamsReadyUC,
 		startMatchUC,
 		completeMatchUC,
-		closeMatchUC,
+		finalizeMatchUC,
 	)
 
 	// Router configuration.

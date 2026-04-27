@@ -27,5 +27,15 @@ SET status = $2
 WHERE id = $1
 RETURNING *;
 
+-- name: FinalizeMatch :one
+-- Atomic finalize: sets the MVP and the new status (typically 'closed')
+-- in a single statement. Used by FinalizeMatchUseCase to avoid a window
+-- where MVP is set but status hasn't transitioned yet, or vice versa.
+UPDATE matches
+SET mvp_player_id = $2,
+    status        = $3
+WHERE id = $1
+RETURNING *;
+
 -- name: DeleteMatch :exec
 DELETE FROM matches WHERE id = $1;

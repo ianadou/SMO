@@ -21,7 +21,7 @@ type MatchHandler struct {
 	markTeamsReady     *match.MarkTeamsReadyUseCase
 	startMatch         *match.StartMatchUseCase
 	completeMatch      *match.CompleteMatchUseCase
-	closeMatch         *match.CloseMatchUseCase
+	finalizeMatch      *match.FinalizeMatchUseCase
 }
 
 // NewMatchHandler builds a MatchHandler with the full set of use cases.
@@ -33,7 +33,7 @@ func NewMatchHandler(
 	markTeamsReady *match.MarkTeamsReadyUseCase,
 	startMatch *match.StartMatchUseCase,
 	completeMatch *match.CompleteMatchUseCase,
-	closeMatch *match.CloseMatchUseCase,
+	finalizeMatch *match.FinalizeMatchUseCase,
 ) *MatchHandler {
 	return &MatchHandler{
 		createMatch:        createMatch,
@@ -43,7 +43,7 @@ func NewMatchHandler(
 		markTeamsReady:     markTeamsReady,
 		startMatch:         startMatch,
 		completeMatch:      completeMatch,
-		closeMatch:         closeMatch,
+		finalizeMatch:      finalizeMatch,
 	}
 }
 
@@ -59,7 +59,7 @@ func (h *MatchHandler) Register(api *gin.RouterGroup) {
 	matches.POST("/:id/teams-ready", h.MarkTeamsReady)
 	matches.POST("/:id/start", h.Start)
 	matches.POST("/:id/complete", h.Complete)
-	matches.POST("/:id/close", h.Close)
+	matches.POST("/:id/finalize", h.Finalize)
 
 	api.GET("/groups/:id/matches", h.ListByGroup)
 }
@@ -139,9 +139,20 @@ func (h *MatchHandler) Complete(c *gin.Context) {
 	h.runTransition(c, h.completeMatch.Execute)
 }
 
-// Close handles POST /api/matches/:id/close.
-func (h *MatchHandler) Close(c *gin.Context) {
-	h.runTransition(c, h.closeMatch.Execute)
+// Finalize handles POST /api/matches/:id/finalize. Unlike the four other
+// transitions, finalize returns a richer payload: the match itself plus
+// the elected MVP and the per-player ranking deltas.
+func (h *MatchHandler) Finalize(c *gin.Context) {
+	id := entities.MatchID(c.Param("id"))
+
+	out, err := h.finalizeMatch.Execute(c.Request.Context(), id)
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		c.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.FinalizeMatchResponseFromOutput(out))
 }
 
 // runTransition is the shared body of all five transition handlers.

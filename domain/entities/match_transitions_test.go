@@ -18,7 +18,7 @@ func newMatchInStatus(t *testing.T, status MatchStatus) *Match {
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	scheduled := now.Add(24 * time.Hour)
 
-	match, err := NewMatch("m-1", "g-1", "Title", "Venue", scheduled, status, now)
+	match, err := NewMatch("m-1", "g-1", "Title", "Venue", scheduled, status, nil, now)
 	if err != nil {
 		t.Fatalf("test helper failed to build match in status %q: %v", status, err)
 	}
@@ -58,11 +58,31 @@ func TestMatch_HappyPathFullLifecycle(t *testing.T) {
 		t.Errorf("expected status completed, got %q", match.Status())
 	}
 
-	if err := match.Close(); err != nil {
-		t.Fatalf("Close failed: %v", err)
+	mvp := PlayerID("p-mvp")
+	if err := match.Finalize(&mvp); err != nil {
+		t.Fatalf("Finalize failed: %v", err)
 	}
 	if match.Status() != MatchStatusClosed {
 		t.Errorf("expected status closed, got %q", match.Status())
+	}
+	if match.MVP() == nil || *match.MVP() != mvp {
+		t.Errorf("expected MVP %q, got %v", mvp, match.MVP())
+	}
+}
+
+func TestMatch_Finalize_AcceptsNilMVP_WhenNoVotesCast(t *testing.T) {
+	t.Parallel()
+
+	match := newMatchInStatus(t, MatchStatusCompleted)
+
+	if err := match.Finalize(nil); err != nil {
+		t.Fatalf("Finalize with nil MVP failed: %v", err)
+	}
+	if match.Status() != MatchStatusClosed {
+		t.Errorf("expected status closed, got %q", match.Status())
+	}
+	if match.MVP() != nil {
+		t.Errorf("expected nil MVP, got %v", match.MVP())
 	}
 }
 
@@ -80,7 +100,7 @@ func TestMatch_TransitionsRejectInvalidSourceStatus(t *testing.T) {
 		{name: "MarkTeamsReady", allowedFrom: MatchStatusOpen, invoke: (*Match).MarkTeamsReady},
 		{name: "Start", allowedFrom: MatchStatusTeamsReady, invoke: (*Match).Start},
 		{name: "Complete", allowedFrom: MatchStatusInProgress, invoke: (*Match).Complete},
-		{name: "Close", allowedFrom: MatchStatusCompleted, invoke: (*Match).Close},
+		{name: "Finalize", allowedFrom: MatchStatusCompleted, invoke: func(m *Match) error { return m.Finalize(nil) }},
 	}
 
 	allStatuses := []MatchStatus{

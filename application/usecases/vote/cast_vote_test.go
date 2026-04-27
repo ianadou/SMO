@@ -13,7 +13,7 @@ import (
 func seedCompletedMatch(t *testing.T, repo *fakeMatchRepository) {
 	t.Helper()
 	m, err := entities.NewMatch("test-match", "g-1", "Test", "V",
-		time.Now().Add(24*time.Hour), entities.MatchStatusCompleted, time.Now())
+		time.Now().Add(24*time.Hour), entities.MatchStatusCompleted, nil, time.Now())
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -23,7 +23,7 @@ func seedCompletedMatch(t *testing.T, repo *fakeMatchRepository) {
 func seedDraftMatch(t *testing.T, repo *fakeMatchRepository) {
 	t.Helper()
 	m, err := entities.NewMatch("test-match", "g-1", "Test", "V",
-		time.Now().Add(24*time.Hour), entities.MatchStatusDraft, time.Now())
+		time.Now().Add(24*time.Hour), entities.MatchStatusDraft, nil, time.Now())
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}

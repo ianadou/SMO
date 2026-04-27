@@ -90,6 +90,19 @@ func (r *PostgresMatchRepository) UpdateStatus(ctx context.Context, match *entit
 	return nil
 }
 
+// Finalize persists the MVP and the new status of the given match in
+// a single statement. Translates a missing match into ErrMatchNotFound.
+func (r *PostgresMatchRepository) Finalize(ctx context.Context, match *entities.Match) error {
+	params := mappers.MatchToFinalizeParams(match)
+	if _, err := r.queries.FinalizeMatch(ctx, params); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("postgres match repository: finalize match %q: %w", match.ID(), domainerrors.ErrMatchNotFound)
+		}
+		return fmt.Errorf("postgres match repository: finalize match %q: %w", match.ID(), err)
+	}
+	return nil
+}
+
 // Delete removes a match by its identifier. Idempotent.
 func (r *PostgresMatchRepository) Delete(ctx context.Context, id entities.MatchID) error {
 	if err := r.queries.DeleteMatch(ctx, string(id)); err != nil {

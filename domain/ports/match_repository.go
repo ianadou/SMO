@@ -28,6 +28,12 @@ type MatchRepository interface {
 	// transitions are allowed; this port trusts the caller.
 	UpdateStatus(ctx context.Context, match *entities.Match) error
 
+	// Finalize persists both the MVP and the new status (typically
+	// closed) of the given match in a single update. Used by the
+	// FinalizeMatchUseCase to avoid a partial state where MVP is
+	// recorded but status hasn't transitioned yet.
+	Finalize(ctx context.Context, match *entities.Match) error
+
 	// Delete removes a match by its identifier.
 	Delete(ctx context.Context, id entities.MatchID) error
 }

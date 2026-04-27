@@ -17,6 +17,12 @@ func MatchToDomain(row generated.Matches) (*entities.Match, error) {
 		return nil, err
 	}
 
+	var mvp *entities.PlayerID
+	if row.MvpPlayerID != nil {
+		id := entities.PlayerID(*row.MvpPlayerID)
+		mvp = &id
+	}
+
 	return entities.NewMatch(
 		entities.MatchID(row.ID),
 		entities.GroupID(row.GroupID),
@@ -24,6 +30,7 @@ func MatchToDomain(row generated.Matches) (*entities.Match, error) {
 		row.Venue,
 		row.ScheduledAt.Time,
 		status,
+		mvp,
 		row.CreatedAt.Time,
 	)
 }
@@ -49,5 +56,21 @@ func MatchToUpdateStatusParams(match *entities.Match) generated.UpdateMatchStatu
 	return generated.UpdateMatchStatusParams{
 		ID:     string(match.ID()),
 		Status: string(match.Status()),
+	}
+}
+
+// MatchToFinalizeParams converts a domain Match into the parameter
+// struct expected by the generated FinalizeMatch function. The MVP
+// is encoded as a nullable string for sqlc; nil means no MVP elected.
+func MatchToFinalizeParams(match *entities.Match) generated.FinalizeMatchParams {
+	var mvp *string
+	if match.MVP() != nil {
+		s := string(*match.MVP())
+		mvp = &s
+	}
+	return generated.FinalizeMatchParams{
+		ID:          string(match.ID()),
+		MvpPlayerID: mvp,
+		Status:      string(match.Status()),
 	}
 }

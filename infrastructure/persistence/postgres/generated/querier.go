@@ -35,6 +35,10 @@ type Querier interface {
 	DeleteMatch(ctx context.Context, id string) error
 	DeletePlayer(ctx context.Context, id string) error
 	DeleteVote(ctx context.Context, id string) error
+	// Atomic finalize: sets the MVP and the new status (typically 'closed')
+	// in a single statement. Used by FinalizeMatchUseCase to avoid a window
+	// where MVP is set but status hasn't transitioned yet, or vice versa.
+	FinalizeMatch(ctx context.Context, arg FinalizeMatchParams) (Matches, error)
 	GetGroupByID(ctx context.Context, id string) (Groups, error)
 	GetInvitationByID(ctx context.Context, id string) (Invitations, error)
 	GetInvitationByTokenHash(ctx context.Context, tokenHash string) (Invitations, error)

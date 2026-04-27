@@ -32,6 +32,7 @@ type Matches struct {
 	ScheduledAt pgtype.Timestamptz
 	Status      string
 	CreatedAt   pgtype.Timestamptz
+	MvpPlayerID *string
 }
 
 type Organizers struct {
