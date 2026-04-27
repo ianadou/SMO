@@ -27,13 +27,16 @@ func NewVoteHandler(
 	return &VoteHandler{castVote: castVote, getVote: getVote, listVotesByMatch: listVotesByMatch}
 }
 
-// Register wires vote routes.
-func (h *VoteHandler) Register(api *gin.RouterGroup) {
-	votes := api.Group("/votes")
+// Register wires vote routes. All vote routes are public: Cast is
+// authed via the match invitation token (not a JWT), and reads are
+// public by design. The `protected` parameter is accepted to keep the
+// handler interface uniform across the codebase.
+func (h *VoteHandler) Register(public, _ *gin.RouterGroup) {
+	votes := public.Group("/votes")
 	votes.POST("", h.Cast)
 	votes.GET("/:id", h.Get)
 
-	api.GET("/matches/:id/votes", h.ListByMatch)
+	public.GET("/matches/:id/votes", h.ListByMatch)
 }
 
 // Cast handles POST /api/votes.

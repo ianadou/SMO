@@ -34,15 +34,16 @@ func NewInvitationHandler(
 	}
 }
 
-// Register wires the invitation routes. Accept is under the invitations
-// group with a dedicated sub-path to keep the URL predictable.
-func (h *InvitationHandler) Register(api *gin.RouterGroup) {
-	invitations := api.Group("/invitations")
-	invitations.POST("", h.Create)
-	invitations.POST("/accept", h.Accept)
-	invitations.GET("/:id", h.Get)
+// Register wires invitation routes. Token-authed actions (Accept) and
+// public reads of a single invitation go on `public`. Organizer-only
+// operations (Create, ListByMatch) go on `protected`.
+func (h *InvitationHandler) Register(public, protected *gin.RouterGroup) {
+	publicInvitations := public.Group("/invitations")
+	publicInvitations.POST("/accept", h.Accept)
+	publicInvitations.GET("/:id", h.Get)
 
-	api.GET("/matches/:id/invitations", h.ListByMatch)
+	protected.POST("/invitations", h.Create)
+	protected.GET("/matches/:id/invitations", h.ListByMatch)
 }
 
 // Create handles POST /api/invitations.

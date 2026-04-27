@@ -123,7 +123,7 @@ func buildVoteTestRouter(t *testing.T, matchStatus entities.MatchStatus) *gin.En
 	)
 	router := gin.New()
 	api := router.Group("/api/v1")
-	handler.Register(api)
+	handler.Register(api, api)
 	return router
 }
 

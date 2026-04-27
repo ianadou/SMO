@@ -89,7 +89,7 @@ func newTestHandlerEnv(t *testing.T, fixedID string, fixedTime time.Time) *testH
 
 	router := gin.New()
 	api := router.Group("/api/v1")
-	handler.Register(api)
+	handler.Register(api, api)
 
 	return &testHandlerEnv{router: router, repo: repo}
 }

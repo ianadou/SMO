@@ -201,7 +201,7 @@ func buildTestRouter(t *testing.T) *testRouter {
 
 	router := gin.New()
 	api := router.Group("/api/v1")
-	handler.Register(api)
+	handler.Register(api, api)
 	return &testRouter{router: router, matchRepo: matchRepo, voteRepo: voteRepo, playerRepo: playerRepo}
 }
 

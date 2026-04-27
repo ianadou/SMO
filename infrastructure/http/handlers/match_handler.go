@@ -47,21 +47,20 @@ func NewMatchHandler(
 	}
 }
 
-// Register wires match routes on the given API router group. The
-// "list matches by group" route lives under /groups/:id/matches
-// because it expresses a parent→child relation in REST terms.
-func (h *MatchHandler) Register(api *gin.RouterGroup) {
-	matches := api.Group("/matches")
-	matches.POST("", h.Create)
-	matches.GET("/:id", h.Get)
+// Register wires match routes. Reads go on `public`, mutations on
+// `protected` (which carries JWTAuth in production).
+func (h *MatchHandler) Register(public, protected *gin.RouterGroup) {
+	publicMatches := public.Group("/matches")
+	publicMatches.GET("/:id", h.Get)
+	public.GET("/groups/:id/matches", h.ListByGroup)
 
-	matches.POST("/:id/open", h.Open)
-	matches.POST("/:id/teams-ready", h.MarkTeamsReady)
-	matches.POST("/:id/start", h.Start)
-	matches.POST("/:id/complete", h.Complete)
-	matches.POST("/:id/finalize", h.Finalize)
-
-	api.GET("/groups/:id/matches", h.ListByGroup)
+	protectedMatches := protected.Group("/matches")
+	protectedMatches.POST("", h.Create)
+	protectedMatches.POST("/:id/open", h.Open)
+	protectedMatches.POST("/:id/teams-ready", h.MarkTeamsReady)
+	protectedMatches.POST("/:id/start", h.Start)
+	protectedMatches.POST("/:id/complete", h.Complete)
+	protectedMatches.POST("/:id/finalize", h.Finalize)
 }
 
 // Create handles POST /api/matches.
