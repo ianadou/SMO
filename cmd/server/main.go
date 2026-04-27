@@ -13,7 +13,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +53,18 @@ const (
 	maxPort            = 65535
 	connectTimeout     = 30 * time.Second
 	jwtLifetime        = 24 * time.Hour
+
+	// HTTP server timeouts. Aligned with conservative production
+	// defaults: header read fast (10s) to drop slowloris, write
+	// generous (30s) for slow clients on JSON, idle large to amortize
+	// keep-alive across short request bursts.
+	httpReadHeaderTimeout = 10 * time.Second
+	httpWriteTimeout      = 30 * time.Second
+	httpIdleTimeout       = 60 * time.Second
+
+	// Maximum time the server will spend draining in-flight requests
+	// after a SIGTERM/SIGINT before giving up and exiting.
+	shutdownTimeout = 30 * time.Second
 )
 
 // errMissingJWTSecret is returned when JWT_SECRET is not set. We refuse
@@ -107,11 +121,55 @@ func run() error {
 	router := buildRouter(pool, jwtSecret)
 
 	address := ":" + port
-	// #nosec G706 -- address is built from a port validated by parsePort()
-	slog.Info("starting http server", "address", address)
-	if runErr := router.Run(address); runErr != nil {
-		return fmt.Errorf("http server stopped with error: %w", runErr)
+	server := &http.Server{
+		Addr:              address,
+		Handler:           router,
+		ReadHeaderTimeout: httpReadHeaderTimeout,
+		WriteTimeout:      httpWriteTimeout,
+		IdleTimeout:       httpIdleTimeout,
 	}
+
+	return runServer(server)
+}
+
+// runServer starts the HTTP server in a goroutine and blocks until
+// either ListenAndServe fails or a SIGTERM/SIGINT arrives. On signal,
+// in-flight requests are drained up to shutdownTimeout. The database
+// pool is closed by the deferred pool.Close() in the caller, not here:
+// that keeps pool ownership single-responsibility and avoids a
+// double-close when ListenAndServe errors out.
+func runServer(server *http.Server) error {
+	serverErr := make(chan error, 1)
+	go func() {
+		slog.Info("starting http server", "address", server.Addr)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+			return
+		}
+		serverErr <- nil
+	}()
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case err := <-serverErr:
+		if err != nil {
+			return fmt.Errorf("http server stopped with error: %w", err)
+		}
+		return nil
+	case sig := <-signals:
+		slog.Info("shutdown initiated", "signal", sig.String())
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		slog.Error("graceful shutdown failed, forcing close", "error", err)
+		_ = server.Close()
+	}
+	slog.Info("shutdown complete")
 	return nil
 }
 
@@ -211,9 +269,10 @@ func buildRouter(pool *pgxpool.Pool, jwtSecret string) *gin.Engine {
 	router.Use(middlewares.SLogLogger(slog.Default()))
 	router.Use(gin.Recovery())
 
-	router.GET("/health", func(context *gin.Context) {
-		context.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	// Health endpoints sit at the root, outside /api/v1: they belong to
+	// the infrastructure layer (Docker HEALTHCHECK, Dockhand, future
+	// orchestrator probes), not the business contract.
+	handlers.NewHealthHandler(pool).Register(router)
 
 	// All business endpoints live under /api/v1. The /v1 prefix locks
 	// in a versioned contract from day one: future breaking changes can

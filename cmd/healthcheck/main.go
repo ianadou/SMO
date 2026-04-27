@@ -1,6 +1,9 @@
-// Command healthcheck probes the SMO server's /health endpoint and exits 0
-// on HTTP 200, 1 otherwise. Required because the distroless runtime image
-// has no shell — Dockerfile HEALTHCHECK cannot rely on curl/wget.
+// Command healthcheck probes the SMO server's /health/ready endpoint
+// and exits 0 on HTTP 200, 1 otherwise. Required because the distroless
+// runtime image has no shell — Dockerfile HEALTHCHECK cannot rely on
+// curl/wget. /health/ready is the right target (not /health/live)
+// because we want Docker to mark the container unhealthy when the
+// database connection is lost, not just when the binary crashes.
 package main
 
 import (
@@ -15,7 +18,7 @@ func main() {
 	if port == "" {
 		port = "8081"
 	}
-	url := fmt.Sprintf("http://127.0.0.1:%s/health", port)
+	url := fmt.Sprintf("http://127.0.0.1:%s/health/ready", port)
 
 	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(url) //nolint:gosec // healthcheck always probes 127.0.0.1
