@@ -8,20 +8,21 @@ import (
 	"github.com/ianadou/smo/domain/ports"
 )
 
-// This file contains the five state machine transition use cases for
-// the Match aggregate. They all follow the same three-step pattern:
+// This file contains the four pure-status transition use cases for the
+// Match aggregate. They all follow the same three-step pattern:
 //
 //   1. Load the match from the repository.
 //   2. Invoke the domain transition method on the entity. The entity
 //      validates that the transition is allowed from the current state.
 //   3. Persist the new status via the repository.
 //
-// The transitions form a linear lifecycle:
+// The full lifecycle is:
 //
 //   Draft → Open → TeamsReady → InProgress → Completed → Closed
 //
-// Each use case is a one-liner in terms of real business logic: all
-// the rules live in the Match entity's transition methods.
+// The terminal Completed → Closed transition is NOT in this file: it is
+// owned by FinalizeMatchUseCase, which also computes the MVP and the
+// post-match rankings before persisting the closed state.
 
 // OpenMatchUseCase transitions a match from Draft to Open, making it
 // visible to players who can accept invitations.
@@ -92,24 +93,6 @@ func NewCompleteMatchUseCase(matchRepo ports.MatchRepository) *CompleteMatchUseC
 func (uc *CompleteMatchUseCase) Execute(ctx context.Context, id entities.MatchID) (*entities.Match, error) {
 	return runTransition(ctx, uc.matchRepo, id, "complete", func(m *entities.Match) error {
 		return m.Complete()
-	})
-}
-
-// CloseMatchUseCase transitions a match from Completed to Closed,
-// finalizing the match and preventing any further changes.
-type CloseMatchUseCase struct {
-	matchRepo ports.MatchRepository
-}
-
-// NewCloseMatchUseCase builds a CloseMatchUseCase.
-func NewCloseMatchUseCase(matchRepo ports.MatchRepository) *CloseMatchUseCase {
-	return &CloseMatchUseCase{matchRepo: matchRepo}
-}
-
-// Execute closes the match with the given ID.
-func (uc *CloseMatchUseCase) Execute(ctx context.Context, id entities.MatchID) (*entities.Match, error) {
-	return runTransition(ctx, uc.matchRepo, id, "close", func(m *entities.Match) error {
-		return m.Close()
 	})
 }
 

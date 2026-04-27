@@ -46,12 +46,18 @@ func (m *Match) Complete() error {
 	return nil
 }
 
-// Close transitions the match from completed to closed, signaling that
-// rankings have been computed and no further changes are allowed.
-func (m *Match) Close() error {
+// Finalize transitions the match from completed to closed, simultaneously
+// recording the elected MVP. A nil mvp is permitted: it represents a match
+// that closed without any vote being cast (no participant left feedback).
+//
+// This is the only path from completed to closed: there is no separate
+// Close transition because closing a match without finalizing the MVP and
+// rankings would leave the value loop incomplete.
+func (m *Match) Finalize(mvp *PlayerID) error {
 	if m.status != MatchStatusCompleted {
-		return fmt.Errorf("%w: cannot close match in status %q", domainerrors.ErrInvalidTransition, m.status)
+		return fmt.Errorf("%w: cannot finalize match in status %q", domainerrors.ErrInvalidTransition, m.status)
 	}
+	m.mvpPlayerID = mvp
 	m.status = MatchStatusClosed
 	return nil
 }

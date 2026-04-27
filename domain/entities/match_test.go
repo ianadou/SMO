@@ -22,6 +22,7 @@ func TestNewMatch_ReturnsMatch_WhenInputsAreValid(t *testing.T) {
 		"Stade de Gerland, Lyon",
 		scheduledAt,
 		MatchStatusDraft,
+		nil,
 		createdAt,
 	)
 	if err != nil {
@@ -60,6 +61,7 @@ func TestNewMatch_TrimsTitleAndVenue(t *testing.T) {
 		"  Lyon  ",
 		time.Now().Add(time.Hour),
 		MatchStatusOpen,
+		nil,
 		time.Now(),
 	)
 	if err != nil {
@@ -83,6 +85,7 @@ func TestNewMatch_RejectsInvalidStatusString(t *testing.T) {
 		"Venue",
 		time.Now().Add(time.Hour),
 		MatchStatus("not-a-real-status"),
+		nil,
 		time.Now(),
 	)
 
@@ -133,6 +136,7 @@ func TestNewMatch_ReturnsError_WhenInputsAreInvalid(t *testing.T) {
 				testCase.venue,
 				testCase.scheduledAt,
 				testCase.status,
+				nil,
 				testCase.createdAt,
 			)
 

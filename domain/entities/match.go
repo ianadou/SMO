@@ -18,8 +18,8 @@ type MatchID string
 // Match represents a scheduled sports match within a group.
 //
 // A match has a lifecycle (see MatchStatus) that controls which operations
-// are allowed at each step. The state machine logic itself is not in this
-// PR; it will be added in a dedicated PR with its own tests.
+// are allowed at each step. The state machine transition methods live in
+// match_transitions.go.
 type Match struct {
 	id          MatchID
 	groupID     GroupID
@@ -27,16 +27,17 @@ type Match struct {
 	venue       string
 	scheduledAt time.Time
 	status      MatchStatus
+	mvpPlayerID *PlayerID
 	createdAt   time.Time
 }
 
 // NewMatch builds a Match after validating its inputs.
 //
-// A new match always starts in MatchStatusDraft regardless of what
-// the caller passes; the status parameter is intended for rehydration
-// from persistence, not for new matches. The behavior is identical here
-// because we currently accept any valid status, but a future refactor
-// might split NewMatch and RehydrateMatch into two separate constructors.
+// The mvpPlayerID parameter is nil for new matches; it carries a value
+// only when rehydrating a closed match from persistence. The status and
+// mvpPlayerID parameters are not validated against each other (e.g.,
+// "MVP cannot be set while status is draft") because that invariant is
+// enforced at write time by the Finalize transition, not at construction.
 func NewMatch(
 	id MatchID,
 	groupID GroupID,
@@ -44,6 +45,7 @@ func NewMatch(
 	venue string,
 	scheduledAt time.Time,
 	status MatchStatus,
+	mvpPlayerID *PlayerID,
 	createdAt time.Time,
 ) (*Match, error) {
 	if id == "" {
@@ -85,6 +87,7 @@ func NewMatch(
 		venue:       trimmedVenue,
 		scheduledAt: scheduledAt,
 		status:      status,
+		mvpPlayerID: mvpPlayerID,
 		createdAt:   createdAt,
 	}, nil
 }
@@ -106,6 +109,11 @@ func (m *Match) ScheduledAt() time.Time { return m.scheduledAt }
 
 // Status returns the current status of the match.
 func (m *Match) Status() MatchStatus { return m.status }
+
+// MVP returns the identifier of the player elected MVP for this match,
+// or nil if no MVP was elected (match not yet finalized, or finalized
+// with no votes).
+func (m *Match) MVP() *PlayerID { return m.mvpPlayerID }
 
 // CreatedAt returns the creation timestamp of the match.
 func (m *Match) CreatedAt() time.Time { return m.createdAt }

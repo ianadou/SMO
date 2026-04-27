@@ -19,7 +19,7 @@ func TestPostgresMatchRepository_Save_PersistsMatch(t *testing.T) {
 	scheduledAt := time.Date(2026, 5, 1, 18, 0, 0, 0, time.UTC)
 	match, err := entities.NewMatch(
 		"match-1", "test-group", "Friday football", "Stadium A",
-		scheduledAt, entities.MatchStatusDraft, time.Now(),
+		scheduledAt, entities.MatchStatusDraft, nil, time.Now(),
 	)
 	if err != nil {
 		t.Fatalf("test setup failed: %v", err)
@@ -47,7 +47,7 @@ func TestPostgresMatchRepository_Save_ReturnsErrReferencedEntityNotFound_WhenGro
 
 	match, _ := entities.NewMatch(
 		"match-1", "nonexistent-group", "Title", "Venue",
-		time.Now(), entities.MatchStatusDraft, time.Now(),
+		time.Now(), entities.MatchStatusDraft, nil, time.Now(),
 	)
 
 	err := repo.Save(ctx, match)
@@ -80,6 +80,7 @@ func TestPostgresMatchRepository_ListByGroup_ReturnsAllMatches(t *testing.T) {
 			"Venue",
 			time.Now().Add(time.Duration(i)*time.Hour),
 			entities.MatchStatusDraft,
+			nil,
 			time.Now(),
 		)
 		if err := repo.Save(ctx, match); err != nil {
@@ -102,7 +103,7 @@ func TestPostgresMatchRepository_UpdateStatus_PersistsTransition(t *testing.T) {
 
 	match, _ := entities.NewMatch(
 		"match-1", "test-group", "Title", "Venue",
-		time.Now().Add(time.Hour), entities.MatchStatusDraft, time.Now(),
+		time.Now().Add(time.Hour), entities.MatchStatusDraft, nil, time.Now(),
 	)
 	if err := repo.Save(ctx, match); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -123,13 +124,64 @@ func TestPostgresMatchRepository_UpdateStatus_PersistsTransition(t *testing.T) {
 	}
 }
 
+func TestPostgresMatchRepository_Finalize_PersistsMVPAndStatus(t *testing.T) {
+	repo := newTestMatchRepository(t)
+	ctx := context.Background()
+
+	match, _ := entities.NewMatch(
+		"match-1", "test-group", "Title", "Venue",
+		time.Now().Add(time.Hour), entities.MatchStatusDraft, nil, time.Now(),
+	)
+	if err := repo.Save(ctx, match); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	// Walk the state machine to Completed via the entity's transitions,
+	// then finalize with a non-nil MVP. The MVP value is just a string
+	// here — the FK is ON DELETE SET NULL, so this test does not require
+	// a real player row to exist (we are testing the repo, not the FK).
+	if err := match.Open(); err != nil {
+		t.Fatalf("setup: Open: %v", err)
+	}
+	if err := match.MarkTeamsReady(); err != nil {
+		t.Fatalf("setup: MarkTeamsReady: %v", err)
+	}
+	if err := match.Start(); err != nil {
+		t.Fatalf("setup: Start: %v", err)
+	}
+	if err := match.Complete(); err != nil {
+		t.Fatalf("setup: Complete: %v", err)
+	}
+	if err := repo.UpdateStatus(ctx, match); err != nil {
+		t.Fatalf("setup: persist completed: %v", err)
+	}
+
+	// Finalize with nil MVP: exercises the nullable column path. A non-nil
+	// MVP would require a real player row to satisfy the FK; that case is
+	// covered end-to-end by the FinalizeMatchUseCase tests.
+	if err := match.Finalize(nil); err != nil {
+		t.Fatalf("Finalize: %v", err)
+	}
+	if err := repo.Finalize(ctx, match); err != nil {
+		t.Fatalf("repo.Finalize: %v", err)
+	}
+
+	found, _ := repo.FindByID(ctx, "match-1")
+	if found.Status() != entities.MatchStatusClosed {
+		t.Errorf("expected status closed, got %q", found.Status())
+	}
+	if found.MVP() != nil {
+		t.Errorf("expected nil MVP, got %v", found.MVP())
+	}
+}
+
 func TestPostgresMatchRepository_Delete_RemovesMatch(t *testing.T) {
 	repo := newTestMatchRepository(t)
 	ctx := context.Background()
 
 	match, _ := entities.NewMatch(
 		"match-1", "test-group", "Title", "Venue",
-		time.Now(), entities.MatchStatusDraft, time.Now(),
+		time.Now(), entities.MatchStatusDraft, nil, time.Now(),
 	)
 	if err := repo.Save(ctx, match); err != nil {
 		t.Fatalf("setup: %v", err)

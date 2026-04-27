@@ -72,7 +72,7 @@ func TestMatchToCreateParams_BuildsParamsFromEntity(t *testing.T) {
 	createdAt := time.Date(2026, 4, 11, 11, 0, 0, 0, time.UTC)
 	match, err := entities.NewMatch(
 		"match-1", "group-1", "Title", "Venue",
-		scheduledAt, entities.MatchStatusDraft, createdAt,
+		scheduledAt, entities.MatchStatusDraft, nil, createdAt,
 	)
 	if err != nil {
 		t.Fatalf("test setup failed: %v", err)
@@ -96,7 +96,7 @@ func TestMatchToUpdateStatusParams_BuildsParamsFromEntity(t *testing.T) {
 
 	match, _ := entities.NewMatch(
 		"match-1", "group-1", "Title", "Venue",
-		time.Now(), entities.MatchStatusOpen, time.Now(),
+		time.Now(), entities.MatchStatusOpen, nil, time.Now(),
 	)
 
 	params := MatchToUpdateStatusParams(match)

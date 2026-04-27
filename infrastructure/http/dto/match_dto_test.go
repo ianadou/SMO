@@ -15,7 +15,7 @@ func TestMatchResponseFromEntity_MapsAllFields(t *testing.T) {
 
 	match, err := entities.NewMatch(
 		"match-1", "group-1", "Friday football", "Stadium A",
-		scheduledAt, entities.MatchStatusOpen, createdAt,
+		scheduledAt, entities.MatchStatusOpen, nil, createdAt,
 	)
 	if err != nil {
 		t.Fatalf("test setup failed: %v", err)

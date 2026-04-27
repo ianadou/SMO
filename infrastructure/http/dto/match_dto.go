@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	"github.com/ianadou/smo/application/usecases/match"
 	"github.com/ianadou/smo/domain/entities"
 )
 
@@ -33,14 +34,45 @@ type MatchResponse struct {
 
 // MatchResponseFromEntity converts a domain Match into the HTTP
 // response representation.
-func MatchResponseFromEntity(match *entities.Match) MatchResponse {
+func MatchResponseFromEntity(m *entities.Match) MatchResponse {
 	return MatchResponse{
-		ID:          string(match.ID()),
-		GroupID:     string(match.GroupID()),
-		Title:       match.Title(),
-		Venue:       match.Venue(),
-		ScheduledAt: match.ScheduledAt(),
-		Status:      string(match.Status()),
-		CreatedAt:   match.CreatedAt(),
+		ID:          string(m.ID()),
+		GroupID:     string(m.GroupID()),
+		Title:       m.Title(),
+		Venue:       m.Venue(),
+		ScheduledAt: m.ScheduledAt(),
+		Status:      string(m.Status()),
+		CreatedAt:   m.CreatedAt(),
+	}
+}
+
+// FinalizeMatchResponse is the JSON body returned by POST
+// /api/matches/:id/finalize. It includes the final match state, the
+// elected MVP (if any), and the new ranking of every participant whose
+// score changed during the calculation.
+type FinalizeMatchResponse struct {
+	Match           MatchResponse  `json:"match"`
+	MVPPlayerID     *string        `json:"mvp_player_id"`
+	UpdatedRankings map[string]int `json:"updated_rankings"`
+}
+
+// FinalizeMatchResponseFromOutput converts the use case output into
+// the HTTP response representation.
+func FinalizeMatchResponseFromOutput(out *match.FinalizeMatchOutput) FinalizeMatchResponse {
+	var mvp *string
+	if out.MVP != nil {
+		s := string(*out.MVP)
+		mvp = &s
+	}
+
+	rankings := make(map[string]int, len(out.UpdatedRankings))
+	for playerID, ranking := range out.UpdatedRankings {
+		rankings[string(playerID)] = ranking
+	}
+
+	return FinalizeMatchResponse{
+		Match:           MatchResponseFromEntity(out.Match),
+		MVPPlayerID:     mvp,
+		UpdatedRankings: rankings,
 	}
 }

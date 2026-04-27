@@ -94,6 +94,7 @@ func (r *voteTestMatchRepo) ListByGroup(context.Context, entities.GroupID) ([]*e
 	panic("unused")
 }
 func (r *voteTestMatchRepo) UpdateStatus(context.Context, *entities.Match) error { panic("unused") }
+func (r *voteTestMatchRepo) Finalize(context.Context, *entities.Match) error     { panic("unused") }
 func (r *voteTestMatchRepo) Delete(context.Context, entities.MatchID) error      { panic("unused") }
 
 type voteIDGen struct{ id string }
@@ -112,7 +113,7 @@ func buildVoteTestRouter(t *testing.T, matchStatus entities.MatchStatus) *gin.En
 
 	voteRepo := newFakeVoteRepo()
 	match, _ := entities.NewMatch("test-match", "g-1", "Test", "V",
-		time.Now().Add(24*time.Hour), matchStatus, time.Now())
+		time.Now().Add(24*time.Hour), matchStatus, nil, time.Now())
 	matchRepo := &voteTestMatchRepo{match: match}
 
 	handler := handlers.NewVoteHandler(

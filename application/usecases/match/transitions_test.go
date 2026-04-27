@@ -17,7 +17,7 @@ func seedMatchInStatus(t *testing.T, repo *fakeMatchRepository, status entities.
 
 	match, err := entities.NewMatch(
 		"match-1", "group-1", "Test match", "Venue",
-		time.Now().Add(24*time.Hour), status, time.Now(),
+		time.Now().Add(24*time.Hour), status, nil, time.Now(),
 	)
 	if err != nil {
 		t.Fatalf("seed: NewMatch failed: %v", err)
@@ -89,22 +89,6 @@ func TestCompleteMatchUseCase_Execute_TransitionsInProgressToCompleted(t *testin
 	}
 	if match.Status() != entities.MatchStatusCompleted {
 		t.Errorf("expected status completed, got %q", match.Status())
-	}
-}
-
-func TestCloseMatchUseCase_Execute_TransitionsCompletedToClosed(t *testing.T) {
-	t.Parallel()
-
-	repo := newFakeMatchRepository()
-	seedMatchInStatus(t, repo, entities.MatchStatusCompleted)
-	useCase := NewCloseMatchUseCase(repo)
-
-	match, err := useCase.Execute(context.Background(), "match-1")
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if match.Status() != entities.MatchStatusClosed {
-		t.Errorf("expected status closed, got %q", match.Status())
 	}
 }
 

@@ -16,7 +16,7 @@ INSERT INTO matches (
     id, group_id, title, venue, scheduled_at, status, created_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7
-) RETURNING id, group_id, title, venue, scheduled_at, status, created_at
+) RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id
 `
 
 type CreateMatchParams struct {
@@ -51,6 +51,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		&i.ScheduledAt,
 		&i.Status,
 		&i.CreatedAt,
+		&i.MvpPlayerID,
 	)
 	return i, err
 }
@@ -64,8 +65,41 @@ func (q *Queries) DeleteMatch(ctx context.Context, id string) error {
 	return err
 }
 
+const finalizeMatch = `-- name: FinalizeMatch :one
+UPDATE matches
+SET mvp_player_id = $2,
+    status        = $3
+WHERE id = $1
+RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id
+`
+
+type FinalizeMatchParams struct {
+	ID          string
+	MvpPlayerID *string
+	Status      string
+}
+
+// Atomic finalize: sets the MVP and the new status (typically 'closed')
+// in a single statement. Used by FinalizeMatchUseCase to avoid a window
+// where MVP is set but status hasn't transitioned yet, or vice versa.
+func (q *Queries) FinalizeMatch(ctx context.Context, arg FinalizeMatchParams) (Matches, error) {
+	row := q.db.QueryRow(ctx, finalizeMatch, arg.ID, arg.MvpPlayerID, arg.Status)
+	var i Matches
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Title,
+		&i.Venue,
+		&i.ScheduledAt,
+		&i.Status,
+		&i.CreatedAt,
+		&i.MvpPlayerID,
+	)
+	return i, err
+}
+
 const getMatchByID = `-- name: GetMatchByID :one
-SELECT id, group_id, title, venue, scheduled_at, status, created_at FROM matches WHERE id = $1
+SELECT id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id FROM matches WHERE id = $1
 `
 
 func (q *Queries) GetMatchByID(ctx context.Context, id string) (Matches, error) {
@@ -79,12 +113,13 @@ func (q *Queries) GetMatchByID(ctx context.Context, id string) (Matches, error) 
 		&i.ScheduledAt,
 		&i.Status,
 		&i.CreatedAt,
+		&i.MvpPlayerID,
 	)
 	return i, err
 }
 
 const listMatchesByGroupID = `-- name: ListMatchesByGroupID :many
-SELECT id, group_id, title, venue, scheduled_at, status, created_at FROM matches
+SELECT id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id FROM matches
 WHERE group_id = $1
 ORDER BY scheduled_at DESC
 `
@@ -108,6 +143,7 @@ func (q *Queries) ListMatchesByGroupID(ctx context.Context, groupID string) ([]M
 			&i.ScheduledAt,
 			&i.Status,
 			&i.CreatedAt,
+			&i.MvpPlayerID,
 		); err != nil {
 			return nil, err
 		}
@@ -123,7 +159,7 @@ const updateMatchStatus = `-- name: UpdateMatchStatus :one
 UPDATE matches
 SET status = $2
 WHERE id = $1
-RETURNING id, group_id, title, venue, scheduled_at, status, created_at
+RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id
 `
 
 type UpdateMatchStatusParams struct {
@@ -145,6 +181,7 @@ func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusPa
 		&i.ScheduledAt,
 		&i.Status,
 		&i.CreatedAt,
+		&i.MvpPlayerID,
 	)
 	return i, err
 }

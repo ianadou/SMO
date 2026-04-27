@@ -56,6 +56,16 @@ func (r *fakeMatchRepository) UpdateStatus(_ context.Context, m *entities.Match)
 	return nil
 }
 
+func (r *fakeMatchRepository) Finalize(_ context.Context, m *entities.Match) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, exists := r.matches[m.ID()]; !exists {
+		return domainerrors.ErrMatchNotFound
+	}
+	r.matches[m.ID()] = m
+	return nil
+}
+
 func (r *fakeMatchRepository) Delete(_ context.Context, id entities.MatchID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
