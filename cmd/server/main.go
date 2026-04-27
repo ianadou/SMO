@@ -188,7 +188,7 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	// in a versioned contract from day one: future breaking changes can
 	// ship as /v2 alongside without breaking existing clients. The
 	// rationale (URL-based vs header-based versioning) is documented in
-	// docs/adr/0003-api-url-versioning.md.
+	// docs/adr/0001-api-url-versioning.md.
 	api := router.Group("/api/v1")
 	groupHandler.Register(api)
 	matchHandler.Register(api)
