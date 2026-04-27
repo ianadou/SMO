@@ -115,7 +115,7 @@ func buildInvitationTestRouter(t *testing.T) *gin.Engine {
 
 	router := gin.New()
 	api := router.Group("/api/v1")
-	handler.Register(api)
+	handler.Register(api, api)
 	return router
 }
 

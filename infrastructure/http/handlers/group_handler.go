@@ -30,18 +30,16 @@ func NewGroupHandler(
 	}
 }
 
-// Register attaches the group routes to the given router group.
+// Register attaches the group routes. Reads go on `public`, mutations
+// on `protected` (which carries the JWTAuth middleware in production).
 //
 // Routes:
 //
-//	POST /groups       → Create
-//	GET  /groups/:id   → Get
-//
-// The caller is expected to mount this under /api/v1 (e.g., via
-// router.Group("/api/v1")).
-func (h *GroupHandler) Register(router *gin.RouterGroup) {
-	router.POST("/groups", h.Create)
-	router.GET("/groups/:id", h.Get)
+//	GET  /groups/:id   → Get      (public)
+//	POST /groups       → Create   (protected — organizer only)
+func (h *GroupHandler) Register(public, protected *gin.RouterGroup) {
+	public.GET("/groups/:id", h.Get)
+	protected.POST("/groups", h.Create)
 }
 
 // Create handles POST /api/groups.

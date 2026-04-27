@@ -34,14 +34,16 @@ func NewPlayerHandler(
 	}
 }
 
-// Register wires the player routes.
-func (h *PlayerHandler) Register(api *gin.RouterGroup) {
-	players := api.Group("/players")
-	players.POST("", h.Create)
-	players.GET("/:id", h.Get)
-	players.PATCH("/:id/ranking", h.UpdateRanking)
+// Register wires player routes. Reads go on `public`, mutations on
+// `protected` (which carries JWTAuth in production).
+func (h *PlayerHandler) Register(public, protected *gin.RouterGroup) {
+	publicPlayers := public.Group("/players")
+	publicPlayers.GET("/:id", h.Get)
+	public.GET("/groups/:id/players", h.ListByGroup)
 
-	api.GET("/groups/:id/players", h.ListByGroup)
+	protectedPlayers := protected.Group("/players")
+	protectedPlayers.POST("", h.Create)
+	protectedPlayers.PATCH("/:id/ranking", h.UpdateRanking)
 }
 
 // Create handles POST /api/players.

@@ -27,9 +27,11 @@ func NewAuthHandler(
 	return &AuthHandler{register: register, login: login}
 }
 
-// Register attaches the auth routes under the given /api/v1 router group.
-func (h *AuthHandler) Register(api *gin.RouterGroup) {
-	authGroup := api.Group("/auth")
+// Register wires auth routes. Both register and login are public:
+// you cannot present a JWT before logging in. The `protected`
+// parameter is accepted to keep the handler interface uniform.
+func (h *AuthHandler) Register(public, _ *gin.RouterGroup) {
+	authGroup := public.Group("/auth")
 	authGroup.POST("/register", h.RegisterOrganizer)
 	authGroup.POST("/login", h.Login)
 }

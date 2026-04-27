@@ -183,10 +183,6 @@ func buildRouter(pool *pgxpool.Pool, jwtSecret string) *gin.Engine {
 	// Auth use cases.
 	registerOrganizerUC := authusecase.NewRegisterOrganizerUseCase(organizerRepo, passwordHasher, idGenerator, systemClock)
 	loginOrganizerUC := authusecase.NewLoginOrganizerUseCase(organizerRepo, passwordHasher, jwtSigner)
-	// jwtSigner is also used by the JWTAuth middleware applied to
-	// mutation routes — that wiring lands in the next PR; for now the
-	// middleware exists but is not attached.
-	_ = middlewares.JWTAuth(jwtSigner)
 
 	// HTTP handlers.
 	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC)
@@ -224,21 +220,31 @@ func buildRouter(pool *pgxpool.Pool, jwtSecret string) *gin.Engine {
 	// ship as /v2 alongside without breaking existing clients. The
 	// rationale (URL-based vs header-based versioning) is documented in
 	// docs/adr/0001-api-url-versioning.md.
-	api := router.Group("/api/v1")
-	groupHandler.Register(api)
-	matchHandler.Register(api)
+	//
+	// Two parallel groups are created on the same /api/v1 path: `public`
+	// without auth, `protected` with the JWTAuth middleware. Each
+	// handler decides on a per-route basis which group to attach to —
+	// reads typically go on `public`, mutations on `protected`, and a
+	// few special cases (token-authed accept invitation, cast vote)
+	// stay on `public` despite being mutations.
+	public := router.Group("/api/v1")
+	protected := router.Group("/api/v1")
+	protected.Use(middlewares.JWTAuth(jwtSigner))
+
+	groupHandler.Register(public, protected)
+	matchHandler.Register(public, protected)
 
 	playerHandler := handlers.NewPlayerHandler(createPlayerUC, getPlayerUC, listPlayersByGroupUC, updatePlayerRankingUC)
-	playerHandler.Register(api)
+	playerHandler.Register(public, protected)
 
 	invitationHandler := handlers.NewInvitationHandler(createInvitationUC, getInvitationUC, listInvitationsByMatchUC, acceptInvitationUC)
-	invitationHandler.Register(api)
+	invitationHandler.Register(public, protected)
 
 	voteHandler := handlers.NewVoteHandler(castVoteUC, getVoteUC, listVotesByMatchUC)
-	voteHandler.Register(api)
+	voteHandler.Register(public, protected)
 
 	authHandler := handlers.NewAuthHandler(registerOrganizerUC, loginOrganizerUC)
-	authHandler.Register(api)
+	authHandler.Register(public, protected)
 
 	return router
 }
