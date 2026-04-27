@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/http/middlewares"
+	"github.com/ianadou/smo/infrastructure/http/middlewares/ratelimit"
 	"github.com/ianadou/smo/infrastructure/idgen"
 	"github.com/ianadou/smo/infrastructure/persistence"
 	"github.com/ianadou/smo/infrastructure/persistence/postgres"
@@ -283,8 +285,12 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	//   3. Recovery — catches panics from handlers and turns them into
 	//      500 responses; sits innermost so SLogLogger above logs them.
 	router := gin.New()
+	if err := router.SetTrustedProxies(parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))); err != nil {
+		panic(fmt.Sprintf("invalid TRUSTED_PROXIES: %v", err))
+	}
 	router.Use(middlewares.RequestID())
 	router.Use(middlewares.SLogLogger(slog.Default()))
+	router.Use(ratelimit.New(redisClient, ratelimit.DefaultConfig()).Middleware())
 	router.Use(gin.Recovery())
 
 	// Health endpoints sit at the root, outside /api/v1: they belong to
@@ -324,6 +330,29 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	authHandler.Register(public, protected)
 
 	return router
+}
+
+// parseTrustedProxies returns the list of CIDRs Gin should trust as
+// upstream proxies (only proxies from these ranges are allowed to set
+// X-Forwarded-For for c.ClientIP() resolution). Falls back to a
+// localhost + RFC1918 default when TRUSTED_PROXIES is unset, which
+// covers compose, dev, and any deploy where Nginx sits in a private
+// network. The Hetzner deploy PR can override via env var.
+func parseTrustedProxies(raw string) []string {
+	if raw == "" {
+		return []string{
+			"127.0.0.1", "::1",
+			"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+		}
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 
 func parsePort(raw string) (string, error) {
