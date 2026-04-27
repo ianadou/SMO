@@ -28,6 +28,10 @@ type Querier interface {
 	// typically 'draft' at creation time and evolves through the
 	// Match.Open(), MarkTeamsReady(), etc. state machine methods.
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (Matches, error)
+	// Inserts a new organizer. The UNIQUE constraint on email rejects
+	// duplicates; the repository translates that violation into
+	// ErrEmailAlreadyExists.
+	CreateOrganizer(ctx context.Context, arg CreateOrganizerParams) (Organizers, error)
 	CreatePlayer(ctx context.Context, arg CreatePlayerParams) (Players, error)
 	CreateVote(ctx context.Context, arg CreateVoteParams) (Votes, error)
 	DeleteGroup(ctx context.Context, id string) error
@@ -43,6 +47,12 @@ type Querier interface {
 	GetInvitationByID(ctx context.Context, id string) (Invitations, error)
 	GetInvitationByTokenHash(ctx context.Context, tokenHash string) (Invitations, error)
 	GetMatchByID(ctx context.Context, id string) (Matches, error)
+	// Email lookups go through this query exclusively. Emails are stored
+	// lower-cased by the entity, so the WHERE clause does not need
+	// LOWER() — but we still pass the lowered value at the application
+	// layer for safety.
+	GetOrganizerByEmail(ctx context.Context, email string) (Organizers, error)
+	GetOrganizerByID(ctx context.Context, id string) (Organizers, error)
 	GetPlayerByID(ctx context.Context, id string) (Players, error)
 	GetVoteByID(ctx context.Context, id string) (Votes, error)
 	ListGroupsByOrganizerID(ctx context.Context, organizerID string) ([]Groups, error)

@@ -57,6 +57,7 @@ services:
       # POSTGRES_PASSWORD has no default here either; the guard in the
       # postgres service above ensures it is set before compose runs.
       DATABASE_URL: postgres://${POSTGRES_USER:-smo}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smo_dev}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required, see .env.example}
     ports:
       - "${PORT:-8081}:8081"
 
