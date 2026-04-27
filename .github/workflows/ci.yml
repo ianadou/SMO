@@ -36,6 +36,20 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.11
+  hadolint:
+    name: Hadolint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Run hadolint on Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          # DL3059 (consecutive RUN instructions) is intentionally
+          # ignored: the two go build steps are kept separate to give
+          # buildx distinct cache layers (server vs healthcheck).
+          ignore: DL3059
   build:
     name: Build
     runs-on: ubuntu-latest
