@@ -19,7 +19,7 @@ func TestPostgresMatchRepository_Save_PersistsMatch(t *testing.T) {
 	scheduledAt := time.Date(2026, 5, 1, 18, 0, 0, 0, time.UTC)
 	match, err := entities.NewMatch(
 		"match-1", "test-group", "Friday football", "Stadium A",
-		scheduledAt, entities.MatchStatusDraft, nil, time.Now(),
+		scheduledAt, time.Now(),
 	)
 	if err != nil {
 		t.Fatalf("test setup failed: %v", err)
@@ -47,7 +47,7 @@ func TestPostgresMatchRepository_Save_ReturnsErrReferencedEntityNotFound_WhenGro
 
 	match, _ := entities.NewMatch(
 		"match-1", "nonexistent-group", "Title", "Venue",
-		time.Now(), entities.MatchStatusDraft, nil, time.Now(),
+		time.Now(), time.Now(),
 	)
 
 	err := repo.Save(ctx, match)
@@ -79,8 +79,6 @@ func TestPostgresMatchRepository_ListByGroup_ReturnsAllMatches(t *testing.T) {
 			"Match",
 			"Venue",
 			time.Now().Add(time.Duration(i)*time.Hour),
-			entities.MatchStatusDraft,
-			nil,
 			time.Now(),
 		)
 		if err := repo.Save(ctx, match); err != nil {
@@ -103,7 +101,7 @@ func TestPostgresMatchRepository_UpdateStatus_PersistsTransition(t *testing.T) {
 
 	match, _ := entities.NewMatch(
 		"match-1", "test-group", "Title", "Venue",
-		time.Now().Add(time.Hour), entities.MatchStatusDraft, nil, time.Now(),
+		time.Now().Add(time.Hour), time.Now(),
 	)
 	if err := repo.Save(ctx, match); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -130,7 +128,7 @@ func TestPostgresMatchRepository_Finalize_PersistsMVPAndStatus(t *testing.T) {
 
 	match, _ := entities.NewMatch(
 		"match-1", "test-group", "Title", "Venue",
-		time.Now().Add(time.Hour), entities.MatchStatusDraft, nil, time.Now(),
+		time.Now().Add(time.Hour), time.Now(),
 	)
 	if err := repo.Save(ctx, match); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -181,7 +179,7 @@ func TestPostgresMatchRepository_Delete_RemovesMatch(t *testing.T) {
 
 	match, _ := entities.NewMatch(
 		"match-1", "test-group", "Title", "Venue",
-		time.Now(), entities.MatchStatusDraft, nil, time.Now(),
+		time.Now(), time.Now(),
 	)
 	if err := repo.Save(ctx, match); err != nil {
 		t.Fatalf("setup: %v", err)

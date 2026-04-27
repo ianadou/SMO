@@ -18,7 +18,15 @@ func newMatchInStatus(t *testing.T, status MatchStatus) *Match {
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	scheduled := now.Add(24 * time.Hour)
 
-	match, err := NewMatch("m-1", "g-1", "Title", "Venue", scheduled, status, nil, now)
+	match, err := RehydrateMatch(MatchSnapshot{
+		ID:          "m-1",
+		GroupID:     "g-1",
+		Title:       "Title",
+		Venue:       "Venue",
+		ScheduledAt: scheduled,
+		Status:      status,
+		CreatedAt:   now,
+	})
 	if err != nil {
 		t.Fatalf("test helper failed to build match in status %q: %v", status, err)
 	}

@@ -112,8 +112,15 @@ func buildVoteTestRouter(t *testing.T, matchStatus entities.MatchStatus) *gin.En
 	gin.SetMode(gin.TestMode)
 
 	voteRepo := newFakeVoteRepo()
-	match, _ := entities.NewMatch("test-match", "g-1", "Test", "V",
-		time.Now().Add(24*time.Hour), matchStatus, nil, time.Now())
+	match, _ := entities.RehydrateMatch(entities.MatchSnapshot{
+		ID:          "test-match",
+		GroupID:     "g-1",
+		Title:       "Test",
+		Venue:       "V",
+		ScheduledAt: time.Now().Add(24 * time.Hour),
+		Status:      matchStatus,
+		CreatedAt:   time.Now(),
+	})
 	matchRepo := &voteTestMatchRepo{match: match}
 
 	handler := handlers.NewVoteHandler(

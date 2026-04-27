@@ -31,64 +31,90 @@ type Match struct {
 	createdAt   time.Time
 }
 
-// NewMatch builds a Match after validating its inputs.
-//
-// The mvpPlayerID parameter is nil for new matches; it carries a value
-// only when rehydrating a closed match from persistence. The status and
-// mvpPlayerID parameters are not validated against each other (e.g.,
-// "MVP cannot be set while status is draft") because that invariant is
-// enforced at write time by the Finalize transition, not at construction.
+// MatchSnapshot is the full state of a Match as persisted. Used by
+// RehydrateMatch to rebuild an entity from a database row without
+// re-validating against the state machine — the row was valid when it
+// was written, and lifecycle invariants are enforced at write time.
+type MatchSnapshot struct {
+	ID          MatchID
+	GroupID     GroupID
+	Title       string
+	Venue       string
+	ScheduledAt time.Time
+	Status      MatchStatus
+	MVPPlayerID *PlayerID
+	CreatedAt   time.Time
+}
+
+// NewMatch builds a brand new Match in MatchStatusDraft. Use this from
+// the create-match use case; for rehydration from persistence, call
+// RehydrateMatch with a snapshot instead.
 func NewMatch(
 	id MatchID,
 	groupID GroupID,
 	title string,
 	venue string,
 	scheduledAt time.Time,
-	status MatchStatus,
-	mvpPlayerID *PlayerID,
 	createdAt time.Time,
 ) (*Match, error) {
-	if id == "" {
+	return RehydrateMatch(MatchSnapshot{
+		ID:          id,
+		GroupID:     groupID,
+		Title:       title,
+		Venue:       venue,
+		ScheduledAt: scheduledAt,
+		Status:      MatchStatusDraft,
+		MVPPlayerID: nil,
+		CreatedAt:   createdAt,
+	})
+}
+
+// RehydrateMatch rebuilds a Match from its persisted snapshot. Inputs
+// are validated for shape (non-empty IDs, sane lengths, valid status
+// string) but not against state-machine invariants: a stored row was
+// already validated when it was first written.
+func RehydrateMatch(s MatchSnapshot) (*Match, error) {
+	if s.ID == "" {
 		return nil, domainerrors.ErrInvalidID
 	}
 
-	if groupID == "" {
+	if s.GroupID == "" {
 		return nil, domainerrors.ErrInvalidID
 	}
 
-	trimmedTitle := strings.TrimSpace(title)
+	trimmedTitle := strings.TrimSpace(s.Title)
 	if trimmedTitle == "" || len(trimmedTitle) > maxMatchTitleLength {
 		return nil, domainerrors.ErrInvalidName
 	}
 
-	trimmedVenue := strings.TrimSpace(venue)
+	trimmedVenue := strings.TrimSpace(s.Venue)
 	if trimmedVenue == "" || len(trimmedVenue) > maxVenueLength {
 		return nil, domainerrors.ErrInvalidName
 	}
 
-	if scheduledAt.IsZero() {
+	if s.ScheduledAt.IsZero() {
 		return nil, domainerrors.ErrInvalidDate
 	}
 
 	// Validate the status by re-parsing it. This protects against callers
 	// passing a string-cast invalid status (e.g., MatchStatus("typo")).
-	if _, err := ParseMatchStatus(string(status)); err != nil {
+	if _, err := ParseMatchStatus(string(s.Status)); err != nil {
 		return nil, err
 	}
 
-	if createdAt.IsZero() {
+	if s.CreatedAt.IsZero() {
 		return nil, domainerrors.ErrInvalidDate
 	}
 
 	return &Match{
-		id:          id,
-		groupID:     groupID,
+		id:          s.ID,
+		groupID:     s.GroupID,
 		title:       trimmedTitle,
 		venue:       trimmedVenue,
-		scheduledAt: scheduledAt,
-		status:      status,
-		mvpPlayerID: mvpPlayerID,
-		createdAt:   createdAt,
+		scheduledAt: s.ScheduledAt,
+		status:      s.Status,
+		mvpPlayerID: s.MVPPlayerID,
+		createdAt:   s.CreatedAt,
 	}, nil
 }
 

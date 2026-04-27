@@ -53,8 +53,6 @@ func (uc *CreateMatchUseCase) Execute(ctx context.Context, input CreateMatchInpu
 		input.Title,
 		input.Venue,
 		input.ScheduledAt,
-		entities.MatchStatusDraft,
-		nil,
 		now,
 	)
 	if err != nil {

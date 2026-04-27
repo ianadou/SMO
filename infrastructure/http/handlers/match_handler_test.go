@@ -209,7 +209,7 @@ func seedMatch(t *testing.T, repo *fakeMatchRepo) *entities.Match {
 	t.Helper()
 	m, err := entities.NewMatch(
 		"match-1", "group-1", "Test", "Venue",
-		time.Now().Add(24*time.Hour), entities.MatchStatusDraft, nil, time.Now(),
+		time.Now().Add(24*time.Hour), time.Now(),
 	)
 	if err != nil {
 		t.Fatalf("seed: %v", err)
@@ -385,10 +385,15 @@ func TestMatchHandler_Finalize_Returns200_WithMVPAndUpdatedRankings(t *testing.T
 	_ = tr.playerRepo.Save(ctx, playerB)
 	_ = tr.playerRepo.Save(ctx, playerC)
 
-	completedMatch, _ := entities.NewMatch(
-		"match-1", "group-1", "Test", "Venue",
-		time.Now().Add(time.Hour), entities.MatchStatusCompleted, nil, time.Now(),
-	)
+	completedMatch, _ := entities.RehydrateMatch(entities.MatchSnapshot{
+		ID:          "match-1",
+		GroupID:     "group-1",
+		Title:       "Test",
+		Venue:       "Venue",
+		ScheduledAt: time.Now().Add(time.Hour),
+		Status:      entities.MatchStatusCompleted,
+		CreatedAt:   time.Now(),
+	})
 	_ = tr.matchRepo.Save(ctx, completedMatch)
 
 	v1, _ := entities.NewVote("v-1", "match-1", "p-a", "p-b", 5, time.Now())

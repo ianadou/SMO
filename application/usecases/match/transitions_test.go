@@ -15,10 +15,15 @@ import (
 func seedMatchInStatus(t *testing.T, repo *fakeMatchRepository, status entities.MatchStatus) *entities.Match {
 	t.Helper()
 
-	match, err := entities.NewMatch(
-		"match-1", "group-1", "Test match", "Venue",
-		time.Now().Add(24*time.Hour), status, nil, time.Now(),
-	)
+	match, err := entities.RehydrateMatch(entities.MatchSnapshot{
+		ID:          "match-1",
+		GroupID:     "group-1",
+		Title:       "Test match",
+		Venue:       "Venue",
+		ScheduledAt: time.Now().Add(24 * time.Hour),
+		Status:      status,
+		CreatedAt:   time.Now(),
+	})
 	if err != nil {
 		t.Fatalf("seed: NewMatch failed: %v", err)
 	}
