@@ -13,10 +13,15 @@ func TestMatchResponseFromEntity_MapsAllFields(t *testing.T) {
 	scheduledAt := time.Date(2026, 5, 1, 18, 0, 0, 0, time.UTC)
 	createdAt := time.Date(2026, 4, 12, 10, 30, 0, 0, time.UTC)
 
-	match, err := entities.NewMatch(
-		"match-1", "group-1", "Friday football", "Stadium A",
-		scheduledAt, entities.MatchStatusOpen, nil, createdAt,
-	)
+	match, err := entities.RehydrateMatch(entities.MatchSnapshot{
+		ID:          "match-1",
+		GroupID:     "group-1",
+		Title:       "Friday football",
+		Venue:       "Stadium A",
+		ScheduledAt: scheduledAt,
+		Status:      entities.MatchStatusOpen,
+		CreatedAt:   createdAt,
+	})
 	if err != nil {
 		t.Fatalf("test setup failed: %v", err)
 	}

@@ -21,8 +21,6 @@ func TestListMatchesByGroupUseCase_Execute_ReturnsAllMatchesInGroup(t *testing.T
 			"Match",
 			"Venue",
 			time.Now().Add(time.Duration(i)*time.Hour),
-			entities.MatchStatusDraft,
-			nil,
 			time.Now(),
 		)
 		_ = repo.Save(ctx, m)
@@ -60,8 +58,8 @@ func TestListMatchesByGroupUseCase_Execute_OnlyReturnsMatchesFromRequestedGroup(
 	repo := newFakeMatchRepository()
 	ctx := context.Background()
 
-	m1, _ := entities.NewMatch("m-1", "group-A", "Match A", "V", time.Now().Add(time.Hour), entities.MatchStatusDraft, nil, time.Now())
-	m2, _ := entities.NewMatch("m-2", "group-B", "Match B", "V", time.Now().Add(time.Hour), entities.MatchStatusDraft, nil, time.Now())
+	m1, _ := entities.NewMatch("m-1", "group-A", "Match A", "V", time.Now().Add(time.Hour), time.Now())
+	m2, _ := entities.NewMatch("m-2", "group-B", "Match B", "V", time.Now().Add(time.Hour), time.Now())
 	_ = repo.Save(ctx, m1)
 	_ = repo.Save(ctx, m2)
 

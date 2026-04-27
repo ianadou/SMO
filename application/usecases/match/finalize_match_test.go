@@ -106,8 +106,15 @@ func newFinalizeUseCase(t *testing.T) (*FinalizeMatchUseCase, *fakeMatchReposito
 
 func seedCompletedMatch(t *testing.T, repo *fakeMatchRepository, id entities.MatchID) *entities.Match {
 	t.Helper()
-	m, err := entities.NewMatch(id, "g-1", "Test", "Venue", time.Now().Add(time.Hour),
-		entities.MatchStatusCompleted, nil, time.Now())
+	m, err := entities.RehydrateMatch(entities.MatchSnapshot{
+		ID:          id,
+		GroupID:     "g-1",
+		Title:       "Test",
+		Venue:       "Venue",
+		ScheduledAt: time.Now().Add(time.Hour),
+		Status:      entities.MatchStatusCompleted,
+		CreatedAt:   time.Now(),
+	})
 	if err != nil {
 		t.Fatalf("seed: NewMatch: %v", err)
 	}
@@ -173,7 +180,7 @@ func TestFinalizeMatchUseCase_RejectsTransition_WhenMatchIsNotCompleted(t *testi
 
 	// Match is in Draft status; finalize must be rejected.
 	m, _ := entities.NewMatch("match-1", "g-1", "Test", "Venue",
-		time.Now().Add(time.Hour), entities.MatchStatusDraft, nil, time.Now())
+		time.Now().Add(time.Hour), time.Now())
 	_ = matchRepo.Save(context.Background(), m)
 
 	_, err := uc.Execute(context.Background(), "match-1")

@@ -21,8 +21,6 @@ func TestNewMatch_ReturnsMatch_WhenInputsAreValid(t *testing.T) {
 		"Foot du jeudi soir",
 		"Stade de Gerland, Lyon",
 		scheduledAt,
-		MatchStatusDraft,
-		nil,
 		createdAt,
 	)
 	if err != nil {
@@ -54,16 +52,15 @@ func TestNewMatch_ReturnsMatch_WhenInputsAreValid(t *testing.T) {
 func TestNewMatch_TrimsTitleAndVenue(t *testing.T) {
 	t.Parallel()
 
-	match, err := NewMatch(
-		"m-1",
-		"g-1",
-		"  Tournoi  ",
-		"  Lyon  ",
-		time.Now().Add(time.Hour),
-		MatchStatusOpen,
-		nil,
-		time.Now(),
-	)
+	match, err := RehydrateMatch(MatchSnapshot{
+		ID:          "m-1",
+		GroupID:     "g-1",
+		Title:       "  Tournoi  ",
+		Venue:       "  Lyon  ",
+		ScheduledAt: time.Now().Add(time.Hour),
+		Status:      MatchStatusOpen,
+		CreatedAt:   time.Now(),
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -78,16 +75,15 @@ func TestNewMatch_TrimsTitleAndVenue(t *testing.T) {
 func TestNewMatch_RejectsInvalidStatusString(t *testing.T) {
 	t.Parallel()
 
-	match, err := NewMatch(
-		"m-1",
-		"g-1",
-		"Title",
-		"Venue",
-		time.Now().Add(time.Hour),
-		MatchStatus("not-a-real-status"),
-		nil,
-		time.Now(),
-	)
+	match, err := RehydrateMatch(MatchSnapshot{
+		ID:          "m-1",
+		GroupID:     "g-1",
+		Title:       "Title",
+		Venue:       "Venue",
+		ScheduledAt: time.Now().Add(time.Hour),
+		Status:      MatchStatus("not-a-real-status"),
+		CreatedAt:   time.Now(),
+	})
 
 	if match != nil {
 		t.Errorf("expected nil match, got %+v", match)
@@ -129,16 +125,15 @@ func TestNewMatch_ReturnsError_WhenInputsAreInvalid(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			match, err := NewMatch(
-				testCase.id,
-				testCase.groupID,
-				testCase.title,
-				testCase.venue,
-				testCase.scheduledAt,
-				testCase.status,
-				nil,
-				testCase.createdAt,
-			)
+			match, err := RehydrateMatch(MatchSnapshot{
+				ID:          testCase.id,
+				GroupID:     testCase.groupID,
+				Title:       testCase.title,
+				Venue:       testCase.venue,
+				ScheduledAt: testCase.scheduledAt,
+				Status:      testCase.status,
+				CreatedAt:   testCase.createdAt,
+			})
 
 			if match != nil {
 				t.Errorf("expected nil match, got %+v", match)

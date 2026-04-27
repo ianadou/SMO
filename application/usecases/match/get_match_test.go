@@ -16,7 +16,7 @@ func TestGetMatchUseCase_Execute_ReturnsMatch_WhenItExists(t *testing.T) {
 	repo := newFakeMatchRepository()
 	existing, _ := entities.NewMatch(
 		"match-1", "group-1", "Existing", "Venue",
-		time.Now().Add(24*time.Hour), entities.MatchStatusDraft, nil, time.Now(),
+		time.Now().Add(24*time.Hour), time.Now(),
 	)
 	_ = repo.Save(context.Background(), existing)
 

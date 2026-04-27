@@ -23,16 +23,16 @@ func MatchToDomain(row generated.Matches) (*entities.Match, error) {
 		mvp = &id
 	}
 
-	return entities.NewMatch(
-		entities.MatchID(row.ID),
-		entities.GroupID(row.GroupID),
-		row.Title,
-		row.Venue,
-		row.ScheduledAt.Time,
-		status,
-		mvp,
-		row.CreatedAt.Time,
-	)
+	return entities.RehydrateMatch(entities.MatchSnapshot{
+		ID:          entities.MatchID(row.ID),
+		GroupID:     entities.GroupID(row.GroupID),
+		Title:       row.Title,
+		Venue:       row.Venue,
+		ScheduledAt: row.ScheduledAt.Time,
+		Status:      status,
+		MVPPlayerID: mvp,
+		CreatedAt:   row.CreatedAt.Time,
+	})
 }
 
 // MatchToCreateParams converts a domain Match entity into the parameter
