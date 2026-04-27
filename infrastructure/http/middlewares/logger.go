@@ -7,11 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// healthEndpointPath is excluded from request logging because it is
-// hit roughly every 10 seconds by Docker's HEALTHCHECK and Dockhand.
-// Logging those requests would drown the log stream in noise without
-// providing value.
-const healthEndpointPath = "/health"
+// healthLivePath and healthReadyPath are excluded from request logging
+// because they are hit roughly every 10 seconds by Docker's HEALTHCHECK
+// and Dockhand. Logging those requests would drown the log stream in
+// noise without providing value.
+const (
+	healthLivePath  = "/health/live"
+	healthReadyPath = "/health/ready"
+)
 
 // SLogLogger returns a Gin middleware that logs each completed request
 // as a single structured slog entry. The level is mapped from the
@@ -23,7 +26,7 @@ func SLogLogger(logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		if path == healthEndpointPath {
+		if path == healthLivePath || path == healthReadyPath {
 			c.Next()
 			return
 		}

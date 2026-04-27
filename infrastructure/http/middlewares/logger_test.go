@@ -21,7 +21,8 @@ func newRouterWithLogger(buf *bytes.Buffer) *gin.Engine {
 	router.Use(middlewares.SLogLogger(logger))
 	router.GET("/ok", func(c *gin.Context) { c.Status(http.StatusOK) })
 	router.GET("/boom", func(c *gin.Context) { c.Status(http.StatusInternalServerError) })
-	router.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
+	router.GET("/health/live", func(c *gin.Context) { c.Status(http.StatusOK) })
+	router.GET("/health/ready", func(c *gin.Context) { c.Status(http.StatusOK) })
 	return router
 }
 
@@ -85,17 +86,23 @@ func TestSLogLogger_UsesErrorLevel_For5xx(t *testing.T) {
 	}
 }
 
-func TestSLogLogger_SkipsHealthEndpoint(t *testing.T) {
+func TestSLogLogger_SkipsHealthEndpoints(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	router := newRouterWithLogger(&buf)
+	for _, path := range []string{"/health/live", "/health/ready"} {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
 
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
+			var buf bytes.Buffer
+			router := newRouterWithLogger(&buf)
 
-	if buf.Len() != 0 {
-		t.Errorf("expected no log line for /health, got %q", buf.String())
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+
+			if buf.Len() != 0 {
+				t.Errorf("expected no log line for %s, got %q", path, buf.String())
+			}
+		})
 	}
 }
