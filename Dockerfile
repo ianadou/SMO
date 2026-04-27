@@ -38,10 +38,23 @@ RUN go build \
     -o /out/smo-server \
     ./cmd/server
 
+# Build the healthcheck probe as a separate static binary. Distroless has no
+# shell, so the Dockerfile HEALTHCHECK directive below invokes this binary
+# directly instead of relying on curl/wget.
+RUN go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /out/healthcheck \
+    ./cmd/healthcheck
+
 # -----------------------------------------------------------------------------
 # Stage 2 — runtime
 # -----------------------------------------------------------------------------
-FROM gcr.io/distroless/static-debian12:nonroot
+# The base image is pinned to an immutable SHA256 digest (not just the
+# :nonroot tag) so that builds are reproducible across machines and time.
+# To bump: `docker pull gcr.io/distroless/static-debian12:nonroot` and copy
+# the new digest from the pull output.
+FROM gcr.io/distroless/static-debian12@sha256:a9329520abc449e3b14d5bc3a6ffae065bdde0f02667fa10880c49b35c109fd1
 
 # Metadata.
 LABEL org.opencontainers.image.title="SMO server"
@@ -49,14 +62,23 @@ LABEL org.opencontainers.image.description="Sports Match Organizer HTTP server"
 LABEL org.opencontainers.image.source="https://github.com/ianadou/SMO"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# Copy the binary from the builder stage.
+# Copy the server and healthcheck binaries from the builder stage.
 COPY --from=builder /out/smo-server /smo-server
+COPY --from=builder /out/healthcheck /healthcheck
 
 # Run as the non-root user provided by the distroless image (UID 65532).
 USER nonroot:nonroot
 
 # Document the default port (actual port is controlled by the PORT env var).
 EXPOSE 8081
+
+# Liveness probe. The healthcheck binary reads the PORT env var (default
+# 8081) and GETs /health. Tuning rationale: a 10s interval keeps Dockhand
+# responsive without flooding the app, the 3s timeout covers cold-start
+# latency on a constrained VPS, start-period gives the server room to
+# connect to Postgres and run migrations on boot.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+    CMD ["/healthcheck"]
 
 # The binary is the entrypoint; no shell is available in distroless.
 ENTRYPOINT ["/smo-server"]
