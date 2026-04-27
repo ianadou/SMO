@@ -12,6 +12,22 @@ on:
   push:
     branches:
       - main
+    # Skip CD when a merge to main only touches paths that cannot
+    # affect the produced image (docs, ADRs, test files not embedded
+    # in the binary, CI workflow definitions, dependency manifests
+    # for tooling like Renovate). The cd.yml itself is intentionally
+    # NOT excluded: a change to it must re-run the CD to validate.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '**/*_test.go'
+      - 'renovate.json'
+      - '.github/workflows/ci.yml'
+      - '.gitignore'
+      - '.dockerignore'
+      - '.pre-commit-config.yaml'
+      - '.golangci.yml'
+      - 'LICENSE'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
