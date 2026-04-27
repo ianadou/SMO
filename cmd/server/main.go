@@ -27,6 +27,7 @@ import (
 	"github.com/ianadou/smo/domain/ranking"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
+	"github.com/ianadou/smo/infrastructure/http/middlewares"
 	"github.com/ianadou/smo/infrastructure/idgen"
 	"github.com/ianadou/smo/infrastructure/persistence"
 	"github.com/ianadou/smo/infrastructure/persistence/postgres"
@@ -166,7 +167,17 @@ func buildRouter(pool *pgxpool.Pool) *gin.Engine {
 	)
 
 	// Router configuration.
+	//
+	// Middleware chain (outer → inner):
+	//   1. RequestID — assigns/propagates X-Request-ID, exposes it via
+	//      context.Context for downstream use cases.
+	//   2. SLogLogger — emits one structured JSON log per completed
+	//      request, with the request_id field for correlation.
+	//   3. Recovery — catches panics from handlers and turns them into
+	//      500 responses; sits innermost so SLogLogger above logs them.
 	router := gin.New()
+	router.Use(middlewares.RequestID())
+	router.Use(middlewares.SLogLogger(slog.Default()))
 	router.Use(gin.Recovery())
 
 	router.GET("/health", func(context *gin.Context) {
