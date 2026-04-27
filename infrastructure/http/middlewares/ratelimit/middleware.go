@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -28,10 +28,18 @@ const warnThrottle = time.Minute
 // handler. Holding state on the limiter (rather than capturing it in
 // a closure) makes the throttled WARN logic and any future metrics
 // straightforward to test.
+//
+// warnMu protects lastWarnAt. A mutex was chosen over an atomic CAS
+// because Redis-down is a cold path (rare): the few-nanosecond cost
+// of a mutex acquisition is invisible compared to the readability
+// gain. lastWarnAt is a time.Time so time.Since() can use the
+// monotonic clock — immune to NTP wall-clock jumps that would break
+// a unix-nanos comparison.
 type Limiter struct {
 	client     *rdb.Client
 	config     Config
-	lastWarnAt atomic.Int64 // unix nano of last Redis-down WARN log
+	warnMu     sync.Mutex
+	lastWarnAt time.Time // zero value means we have never warned yet
 }
 
 // New constructs a Limiter. When client is nil (cache disabled state
@@ -104,17 +112,15 @@ func (l *Limiter) incr(ctx context.Context, key string, window time.Duration) (i
 
 // maybeWarnRedisDown logs at most once per warnThrottle interval so a
 // Redis outage that affects many requests does not flood the logs.
-// Uses an atomic compare-and-swap on a unix-nano timestamp so the
-// throttle is correct under concurrent goroutines.
+// Uses time.Since(lastWarnAt) which reads the monotonic clock, so the
+// throttle is unaffected by wall-clock NTP corrections.
 func (l *Limiter) maybeWarnRedisDown(ctx context.Context, err error) {
-	now := time.Now().UnixNano()
-	last := l.lastWarnAt.Load()
-	if now-last < int64(warnThrottle) {
+	l.warnMu.Lock()
+	defer l.warnMu.Unlock()
+	if !l.lastWarnAt.IsZero() && time.Since(l.lastWarnAt) < warnThrottle {
 		return
 	}
-	if !l.lastWarnAt.CompareAndSwap(last, now) {
-		return // another goroutine just logged; skip.
-	}
+	l.lastWarnAt = time.Now()
 	slog.WarnContext(ctx, "rate limit redis unavailable, allowing requests",
 		slog.String("error", redactRedisError(err)))
 }
