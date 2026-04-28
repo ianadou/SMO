@@ -14,7 +14,7 @@ func TestGetGroupUseCase_Execute_ReturnsGroup_WhenItExists(t *testing.T) {
 	t.Parallel()
 
 	repo := newFakeGroupRepository()
-	existingGroup, _ := entities.NewGroup("group-1", "Existing", "org-1", time.Now())
+	existingGroup, _ := entities.NewGroup("group-1", "Existing", "org-1", "", time.Now())
 	_ = repo.Save(context.Background(), existingGroup)
 
 	useCase := NewGetGroupUseCase(repo)

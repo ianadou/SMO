@@ -10,10 +10,17 @@ import (
 // for Redis storage. JSON tags live HERE, never on the domain entity
 // (CLAUDE.md architecture rule 1: the domain has no infrastructure
 // concerns, including serialization).
+// cachedGroup mirrors the persisted Group fields, including the
+// webhook URL. The URL is cached because the notifier (PR #53b) will
+// read it through the same repository port and must see the real
+// value, not an empty placeholder. The Redis instance shares the
+// trust boundary with Postgres (same compose network, same operator
+// access) — caching does not widen the secret's threat surface.
 type cachedGroup struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	OrganizerID string    `json:"organizer_id"`
+	WebhookURL  string    `json:"webhook_url"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -22,6 +29,7 @@ func cachedGroupFromDomain(g *entities.Group) cachedGroup {
 		ID:          string(g.ID()),
 		Name:        g.Name(),
 		OrganizerID: string(g.OrganizerID()),
+		WebhookURL:  g.WebhookURL(),
 		CreatedAt:   g.CreatedAt(),
 	}
 }
@@ -31,6 +39,7 @@ func cachedGroupToDomain(c cachedGroup) (*entities.Group, error) {
 		entities.GroupID(c.ID),
 		c.Name,
 		entities.OrganizerID(c.OrganizerID),
+		c.WebhookURL,
 		c.CreatedAt,
 	)
 }

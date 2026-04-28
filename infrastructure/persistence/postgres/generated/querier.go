@@ -21,6 +21,10 @@ type Querier interface {
 	//   :many     → returns zero or more rows as a slice
 	//   :exec     → executes the query and returns only an error
 	//   :execrows → executes and returns the number of affected rows
+	//
+	// Column order matches the table's physical order (id, organizer_id,
+	// name, created_at, discord_webhook_url) so sqlc reuses the Groups
+	// struct rather than generating per-query row types.
 	// ============================================================================
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (Groups, error)
 	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitations, error)
