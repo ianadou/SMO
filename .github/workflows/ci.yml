@@ -150,7 +150,11 @@ jobs:
         #   - .../generated            → sqlc-generated code
         #   - infrastructure/clock     → trivial wrapper around time.Now()
         #   - infrastructure/idgen     → trivial wrapper around uuid.NewString()
-        #   - .../inmemory             → temporary repo for local dev
+        #   - infrastructure/persistence/inmemory → in-memory repo for local dev
+        #
+        # NOTE: do NOT exclude /inmemory globally — that would also drop
+        # infrastructure/events/inmemory, which holds real production code
+        # (the in-process domain event publisher).
         #
         # The -tags=integration flag includes the testcontainers-based
         # integration tests for the Postgres repository. These tests spin
@@ -164,7 +168,7 @@ jobs:
             | grep -v '/generated' \
             | grep -v '/infrastructure/clock' \
             | grep -v '/infrastructure/idgen' \
-            | grep -v '/inmemory' \
+            | grep -v '/infrastructure/persistence/inmemory' \
             | paste -sd ',' -)
           echo "Coverage measured on: $coverpkg"
           go test -tags=integration -race -coverprofile=coverage.out -covermode=atomic -coverpkg="$coverpkg" ./...
