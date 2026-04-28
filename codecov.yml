@@ -1,0 +1,51 @@
+# Codecov configuration for SMO.
+# Reference: https://docs.codecov.com/docs/codecovyml-reference
+#
+# Aligns Codecov's measurement and presentation with the CI gate
+# (.github/workflows/ci.yml step "Enforce minimum coverage threshold",
+# currently 80%) so the two numbers stay coherent.
+
+coverage:
+  # Badge / dashboard color ramp.
+  # red below 70, yellow 70-80, green at 80+ — matches the CI gate.
+  range: 70..80
+  precision: 1
+  round: down
+
+  status:
+    project:
+      default:
+        # Project-wide gate. Identical to the CI threshold so a drop
+        # below 80% surfaces both as a failed CI step AND a failed
+        # Codecov check.
+        target: 80%
+        threshold: 0%
+    patch:
+      default:
+        # New code in a PR must itself be covered at >= 80%. Allows
+        # 1% noise so a single-line refactor doesn't trip the check.
+        target: 80%
+        threshold: 1%
+
+# Exclude the same paths the CI excludes from -coverpkg, so Codecov
+# and `go tool cover` measure the same scope.
+ignore:
+  - "cmd/**"                  # composition root, smoke-tested
+  - "**/generated/**"         # sqlc-generated, no logic of ours
+  - "domain/errors/**"        # sentinel error declarations
+  - "domain/ports/**"         # interface declarations only
+  - "infrastructure/clock/**" # tiny adapter, no logic to cover
+  - "infrastructure/idgen/**" # tiny adapter, no logic to cover
+  - "**/inmemory/**"          # in-memory test fakes for unit tests
+
+comment:
+  # Compact PR comment focused on the diff. No tree, no project totals
+  # repeated each comment — those live in the dashboard.
+  layout: "header, diff, files, footer"
+  require_changes: true
+  behavior: default
+
+# GitHub PR check status mirrors the project gate; rendered next to
+# the existing CI checks.
+github_checks:
+  annotations: true
