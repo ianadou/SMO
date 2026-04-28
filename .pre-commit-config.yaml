@@ -49,6 +49,20 @@ repos:
       # Refuse to commit private keys (SSH, GPG, etc.).
       - id: detect-private-key
 
+  # --- Project-specific secret guards --------------------------------------
+  - repo: local
+    hooks:
+      # Refuse a real-looking Discord webhook URL (token >= 50 chars). Test
+      # fixtures use short fake tokens and pass cleanly. GitGuardian
+      # catches this server-side; this hook stops the leak BEFORE push.
+      - id: no-real-discord-webhook
+        name: no real discord webhook
+        description: Refuse to commit a real Discord webhook URL.
+        entry: scripts/check-discord-webhook.sh
+        language: system
+        pass_filenames: true
+        types: [text]
+
   # --- Go formatting and linting (local — uses our installed binaries) ------
   - repo: local
     hooks:
