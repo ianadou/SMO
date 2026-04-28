@@ -8,6 +8,7 @@ import (
 
 	"github.com/ianadou/smo/domain/entities"
 	domainerrors "github.com/ianadou/smo/domain/errors"
+	"github.com/ianadou/smo/domain/events"
 )
 
 // seedMatchInStatus helper: creates and saves a match with the given status.
@@ -54,7 +55,7 @@ func TestMarkTeamsReadyUseCase_Execute_TransitionsOpenToTeamsReady(t *testing.T)
 
 	repo := newFakeMatchRepository()
 	seedMatchInStatus(t, repo, entities.MatchStatusOpen)
-	useCase := NewMarkTeamsReadyUseCase(repo)
+	useCase := NewMarkTeamsReadyUseCase(repo, newFakePublisher(), newFakeClock(time.Now()))
 
 	match, err := useCase.Execute(context.Background(), "match-1")
 	if err != nil {
@@ -62,6 +63,51 @@ func TestMarkTeamsReadyUseCase_Execute_TransitionsOpenToTeamsReady(t *testing.T)
 	}
 	if match.Status() != entities.MatchStatusTeamsReady {
 		t.Errorf("expected status teams_ready, got %q", match.Status())
+	}
+}
+
+func TestMarkTeamsReadyUseCase_Execute_PublishesMatchTeamsReadyEvent(t *testing.T) {
+	t.Parallel()
+
+	repo := newFakeMatchRepository()
+	seedMatchInStatus(t, repo, entities.MatchStatusOpen)
+	publisher := newFakePublisher()
+	occurredAt := time.Date(2026, 4, 28, 14, 0, 0, 0, time.UTC)
+	useCase := NewMarkTeamsReadyUseCase(repo, publisher, newFakeClock(occurredAt))
+
+	if _, err := useCase.Execute(context.Background(), "match-1"); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if len(publisher.published) != 1 {
+		t.Fatalf("expected 1 event published, got %d", len(publisher.published))
+	}
+	got, ok := publisher.published[0].(events.MatchTeamsReady)
+	if !ok {
+		t.Fatalf("expected MatchTeamsReady event, got %T", publisher.published[0])
+	}
+	if got.MatchID != "match-1" || got.GroupID != "group-1" {
+		t.Errorf("event ids mismatch: %+v", got)
+	}
+	if !got.OccurredAt.Equal(occurredAt) {
+		t.Errorf("event timestamp mismatch: got %v want %v", got.OccurredAt, occurredAt)
+	}
+}
+
+func TestMarkTeamsReadyUseCase_Execute_DoesNotPublish_WhenTransitionFails(t *testing.T) {
+	t.Parallel()
+
+	repo := newFakeMatchRepository()
+	// Seed in Draft so MarkTeamsReady fails (Open is required).
+	seedMatchInStatus(t, repo, entities.MatchStatusDraft)
+	publisher := newFakePublisher()
+	useCase := NewMarkTeamsReadyUseCase(repo, publisher, newFakeClock(time.Now()))
+
+	if _, err := useCase.Execute(context.Background(), "match-1"); err == nil {
+		t.Fatalf("expected error from invalid transition, got nil")
+	}
+	if len(publisher.published) != 0 {
+		t.Errorf("publisher must not be called when transition fails, got %d events", len(publisher.published))
 	}
 }
 

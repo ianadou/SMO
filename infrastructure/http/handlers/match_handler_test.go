@@ -193,7 +193,7 @@ func buildTestRouter(t *testing.T) *testRouter {
 		match.NewGetMatchUseCase(matchRepo),
 		match.NewListMatchesByGroupUseCase(matchRepo),
 		match.NewOpenMatchUseCase(matchRepo),
-		match.NewMarkTeamsReadyUseCase(matchRepo),
+		match.NewMarkTeamsReadyUseCase(matchRepo, noopPublisher{}, clock),
 		match.NewStartMatchUseCase(matchRepo),
 		match.NewCompleteMatchUseCase(matchRepo),
 		match.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, calculator),

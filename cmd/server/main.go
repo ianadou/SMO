@@ -39,6 +39,7 @@ import (
 	"github.com/ianadou/smo/infrastructure/http/middlewares"
 	"github.com/ianadou/smo/infrastructure/http/middlewares/ratelimit"
 	"github.com/ianadou/smo/infrastructure/idgen"
+	"github.com/ianadou/smo/infrastructure/notifications/discord"
 	"github.com/ianadou/smo/infrastructure/persistence"
 	"github.com/ianadou/smo/infrastructure/persistence/postgres"
 	"github.com/ianadou/smo/infrastructure/persistence/postgres/repositories"
@@ -59,6 +60,12 @@ const (
 	maxPort            = 65535
 	connectTimeout     = 30 * time.Second
 	jwtLifetime        = 24 * time.Hour
+
+	// Hard cap on a single Discord webhook POST. A subscriber must
+	// not stall the use case that emitted the event; if Discord is
+	// slow, the notification is dropped (logged at WARN by the
+	// publisher) rather than blocking team-ready transitions.
+	discordHTTPTimeout = 5 * time.Second
 
 	// HTTP server timeouts. Aligned with conservative production
 	// defaults: header read fast (10s) to drop slowloris, write
@@ -219,14 +226,18 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	passwordHasher := bcryptauth.New(bcrypt.DefaultCost)
 	jwtSigner := jwtauth.New(jwtSecret, jwtLifetime)
 
-	// Domain event publisher. Instantiated before use cases so future
-	// use cases (e.g. MarkTeamsReady in PR #55) can take it as a
-	// dependency without reordering this block. The LoggingSubscriber
-	// is wired here as a permanent audit trail for every domain event;
-	// future subscribers (Discord, Prometheus, account lockout) plug in
-	// via the same Subscribe call. See ADR 0004.
+	// Domain event publisher. Instantiated before use cases so they
+	// can take it as a dependency. Subscribers register here at boot;
+	// new cross-cutting concerns (Prometheus, account lockout, audit)
+	// plug in via additional Subscribe calls without changing the
+	// emitting use cases. See ADR 0004.
 	eventPublisher := inmemory.NewPublisher(slog.Default())
 	eventPublisher.Subscribe(events.MatchTeamsReadyEventName, inmemory.NewLoggingSubscriber(slog.Default()))
+	discordNotifier := discord.NewHTTPNotifier(&http.Client{Timeout: discordHTTPTimeout})
+	eventPublisher.Subscribe(
+		events.MatchTeamsReadyEventName,
+		discord.NewSubscriber(discordNotifier, groupRepo, matchRepo, slog.Default()),
+	)
 
 	// Group use cases.
 	createGroupUC := groupusecase.NewCreateGroupUseCase(groupRepo, idGenerator, systemClock)
@@ -247,7 +258,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	getMatchUC := matchusecase.NewGetMatchUseCase(matchRepo)
 	listMatchesByGroupUC := matchusecase.NewListMatchesByGroupUseCase(matchRepo)
 	openMatchUC := matchusecase.NewOpenMatchUseCase(matchRepo)
-	markTeamsReadyUC := matchusecase.NewMarkTeamsReadyUseCase(matchRepo)
+	markTeamsReadyUC := matchusecase.NewMarkTeamsReadyUseCase(matchRepo, eventPublisher, systemClock)
 	startMatchUC := matchusecase.NewStartMatchUseCase(matchRepo)
 	completeMatchUC := matchusecase.NewCompleteMatchUseCase(matchRepo)
 	finalizeMatchUC := matchusecase.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, rankingCalculator)
