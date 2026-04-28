@@ -28,11 +28,13 @@ import (
 	matchusecase "github.com/ianadou/smo/application/usecases/match"
 	playerusecase "github.com/ianadou/smo/application/usecases/player"
 	voteusecase "github.com/ianadou/smo/application/usecases/vote"
+	"github.com/ianadou/smo/domain/events"
 	"github.com/ianadou/smo/domain/ranking"
 	bcryptauth "github.com/ianadou/smo/infrastructure/auth/bcrypt"
 	jwtauth "github.com/ianadou/smo/infrastructure/auth/jwt"
 	cacheredis "github.com/ianadou/smo/infrastructure/cache/redis"
 	"github.com/ianadou/smo/infrastructure/clock"
+	"github.com/ianadou/smo/infrastructure/events/inmemory"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/http/middlewares"
 	"github.com/ianadou/smo/infrastructure/http/middlewares/ratelimit"
@@ -216,6 +218,15 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	systemClock := clock.New()
 	passwordHasher := bcryptauth.New(bcrypt.DefaultCost)
 	jwtSigner := jwtauth.New(jwtSecret, jwtLifetime)
+
+	// Domain event publisher. Instantiated before use cases so future
+	// use cases (e.g. MarkTeamsReady in PR #55) can take it as a
+	// dependency without reordering this block. The LoggingSubscriber
+	// is wired here as a permanent audit trail for every domain event;
+	// future subscribers (Discord, Prometheus, account lockout) plug in
+	// via the same Subscribe call. See ADR 0004.
+	eventPublisher := inmemory.NewPublisher(slog.Default())
+	eventPublisher.Subscribe(events.MatchTeamsReadyEventName, inmemory.NewLoggingSubscriber(slog.Default()))
 
 	// Group use cases.
 	createGroupUC := groupusecase.NewCreateGroupUseCase(groupRepo, idGenerator, systemClock)
