@@ -154,11 +154,18 @@ func (c *apiClient) do(t *testing.T, method, path, token string, body any) (*htt
 
 	var reader io.Reader
 	if body != nil {
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal %s %s: %v", method, path, err)
+		// rawBody (defined in flow_errors_integration_test.go) is sent
+		// verbatim so tests can submit intentionally malformed JSON.
+		// Anything else is JSON-marshalled.
+		if raw, ok := body.(rawBody); ok {
+			reader = bytes.NewReader([]byte(raw))
+		} else {
+			marshalled, err := json.Marshal(body)
+			if err != nil {
+				t.Fatalf("marshal %s %s: %v", method, path, err)
+			}
+			reader = bytes.NewReader(marshalled)
 		}
-		reader = bytes.NewReader(raw)
 	}
 
 	req, err := http.NewRequest(method, c.baseURL+path, reader)
