@@ -67,3 +67,38 @@ func TestSigner_Verify_RejectsMalformedToken(t *testing.T) {
 		t.Errorf("expected ErrInvalidToken, got %v", err)
 	}
 }
+
+func TestSigner_Verify_RejectsTokenWithEmptySubject(t *testing.T) {
+	t.Parallel()
+	signer := jwt.New(testSecret, time.Hour)
+
+	// An empty OrganizerID produces a token whose `sub` claim is the
+	// empty string. Verify must refuse to authenticate such a token.
+	token, err := signer.Sign("")
+	if err != nil {
+		t.Fatalf("Sign with empty id: %v", err)
+	}
+
+	_, err = signer.Verify(token)
+	if !errors.Is(err, domainerrors.ErrInvalidToken) {
+		t.Errorf("expected ErrInvalidToken for empty subject, got %v", err)
+	}
+}
+
+func TestSigner_Verify_RejectsTokenWithUnexpectedAlgorithm(t *testing.T) {
+	t.Parallel()
+	signer := jwt.New(testSecret, time.Hour)
+
+	// A token forged with the "none" algorithm — a classic JWT
+	// substitution attack. keyFunc must reject anything that isn't
+	// HMAC, regardless of the secret.
+	//
+	// Header: {"alg":"none","typ":"JWT"}, payload: {"sub":"org-42"},
+	// no signature.
+	const noneToken = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJvcmctNDIifQ."
+
+	_, err := signer.Verify(noneToken)
+	if !errors.Is(err, domainerrors.ErrInvalidToken) {
+		t.Errorf("expected ErrInvalidToken for none-algorithm token, got %v", err)
+	}
+}

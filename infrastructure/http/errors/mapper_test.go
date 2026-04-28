@@ -12,13 +12,30 @@ import (
 func TestMapError_NotFoundErrors(t *testing.T) {
 	t.Parallel()
 
-	status, message := MapError(domainerrors.ErrGroupNotFound)
-
-	if status != http.StatusNotFound {
-		t.Errorf("expected status 404, got %d", status)
+	cases := []struct {
+		name        string
+		err         error
+		wantMessage string
+	}{
+		{name: "group", err: domainerrors.ErrGroupNotFound, wantMessage: "group not found"},
+		{name: "match", err: domainerrors.ErrMatchNotFound, wantMessage: "match not found"},
+		{name: "player", err: domainerrors.ErrPlayerNotFound, wantMessage: "player not found"},
+		{name: "invitation", err: domainerrors.ErrInvitationNotFound, wantMessage: "invitation not found"},
+		{name: "vote", err: domainerrors.ErrVoteNotFound, wantMessage: "vote not found"},
+		{name: "organizer", err: domainerrors.ErrOrganizerNotFound, wantMessage: "organizer not found"},
 	}
-	if message != "group not found" {
-		t.Errorf("expected message 'group not found', got %q", message)
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			status, message := MapError(testCase.err)
+			if status != http.StatusNotFound {
+				t.Errorf("expected status 404, got %d", status)
+			}
+			if message != testCase.wantMessage {
+				t.Errorf("expected message %q, got %q", testCase.wantMessage, message)
+			}
+		})
 	}
 }
 
@@ -38,6 +55,9 @@ func TestMapError_ValidationErrors(t *testing.T) {
 		{name: "invalid status", err: domainerrors.ErrInvalidStatus, wantStatus: http.StatusBadRequest, wantMessage: "invalid status"},
 		{name: "invalid parameter", err: domainerrors.ErrInvalidParameter, wantStatus: http.StatusBadRequest, wantMessage: "invalid parameter"},
 		{name: "referenced entity not found", err: domainerrors.ErrReferencedEntityNotFound, wantStatus: http.StatusBadRequest, wantMessage: "referenced entity does not exist"},
+		{name: "invalid email", err: domainerrors.ErrInvalidEmail, wantStatus: http.StatusBadRequest, wantMessage: "invalid email"},
+		{name: "invalid password", err: domainerrors.ErrInvalidPassword, wantStatus: http.StatusBadRequest, wantMessage: "invalid password"},
+		{name: "invalid webhook url", err: domainerrors.ErrInvalidWebhookURL, wantStatus: http.StatusBadRequest, wantMessage: "invalid webhook url"},
 	}
 
 	for _, testCase := range cases {
@@ -71,6 +91,11 @@ func TestMapError_BusinessRuleErrors(t *testing.T) {
 		{name: "match full", err: domainerrors.ErrMatchFull, wantStatus: http.StatusConflict, wantMessage: "match is full"},
 		{name: "team full", err: domainerrors.ErrTeamFull, wantStatus: http.StatusConflict, wantMessage: "team is full"},
 		{name: "player not in match", err: domainerrors.ErrPlayerNotInMatch, wantStatus: http.StatusBadRequest, wantMessage: "player is not in this match"},
+		{name: "invitation expired", err: domainerrors.ErrInvitationExpired, wantStatus: http.StatusGone, wantMessage: "invitation expired"},
+		{name: "invitation already used", err: domainerrors.ErrInvitationAlreadyUsed, wantStatus: http.StatusConflict, wantMessage: "invitation already used"},
+		{name: "already voted", err: domainerrors.ErrAlreadyVoted, wantStatus: http.StatusConflict, wantMessage: "already voted for this player in this match"},
+		{name: "match not completed", err: domainerrors.ErrMatchNotCompleted, wantStatus: http.StatusConflict, wantMessage: "match is not completed"},
+		{name: "email already exists", err: domainerrors.ErrEmailAlreadyExists, wantStatus: http.StatusConflict, wantMessage: "email already exists"},
 	}
 
 	for _, testCase := range cases {
@@ -81,6 +106,32 @@ func TestMapError_BusinessRuleErrors(t *testing.T) {
 
 			if status != testCase.wantStatus {
 				t.Errorf("expected status %d, got %d", testCase.wantStatus, status)
+			}
+			if message != testCase.wantMessage {
+				t.Errorf("expected message %q, got %q", testCase.wantMessage, message)
+			}
+		})
+	}
+}
+
+func TestMapError_AuthErrors(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		err         error
+		wantMessage string
+	}{
+		{name: "invalid credentials", err: domainerrors.ErrInvalidCredentials, wantMessage: "invalid credentials"},
+		{name: "invalid token", err: domainerrors.ErrInvalidToken, wantMessage: "invalid token"},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			status, message := MapError(testCase.err)
+			if status != http.StatusUnauthorized {
+				t.Errorf("expected status 401, got %d", status)
 			}
 			if message != testCase.wantMessage {
 				t.Errorf("expected message %q, got %q", testCase.wantMessage, message)

@@ -38,3 +38,17 @@ func TestCreatePlayerUseCase_Execute_ReturnsError_WhenNameIsEmpty(t *testing.T) 
 		t.Errorf("expected ErrInvalidName, got %v", err)
 	}
 }
+
+func TestCreatePlayerUseCase_Execute_ReturnsError_WhenSaveFails(t *testing.T) {
+	t.Parallel()
+	repoErr := errors.New("disk full")
+	repo := newFakePlayerRepository()
+	repo.saveErr = repoErr
+	uc := NewCreatePlayerUseCase(repo, newFakeIDGenerator("p-1"))
+
+	_, err := uc.Execute(context.Background(), CreatePlayerInput{GroupID: "g-1", Name: "Alice"})
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped repo error, got %v", err)
+	}
+}
