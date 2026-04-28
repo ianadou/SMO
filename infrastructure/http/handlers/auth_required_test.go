@@ -17,6 +17,7 @@ import (
 	"github.com/ianadou/smo/application/usecases/vote"
 	"github.com/ianadou/smo/domain/entities"
 	domainerrors "github.com/ianadou/smo/domain/errors"
+	"github.com/ianadou/smo/domain/events"
 	"github.com/ianadou/smo/domain/ranking"
 	bcryptauth "github.com/ianadou/smo/infrastructure/auth/bcrypt"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
@@ -158,6 +159,12 @@ type noopTokenService struct{}
 func (noopTokenService) GenerateToken() (string, error) { return "stub-token", nil }
 func (noopTokenService) HashToken(string) string        { return "stub-hash" }
 
+// noopPublisher discards every Publish call. Handler middleware tests
+// only care about HTTP wiring, not domain event delivery.
+type noopPublisher struct{}
+
+func (noopPublisher) Publish(context.Context, events.Event) {}
+
 // authRequiredStubSigner is a minimal JWTSigner stub: it accepts any
 // token whose value is "valid-token" and rejects everything else.
 // Used to test the JWTAuth wiring without depending on real JWT logic.
@@ -199,7 +206,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 		match.NewGetMatchUseCase(repo),
 		match.NewListMatchesByGroupUseCase(repo),
 		match.NewOpenMatchUseCase(repo),
-		match.NewMarkTeamsReadyUseCase(repo),
+		match.NewMarkTeamsReadyUseCase(repo, noopPublisher{}, clock),
 		match.NewStartMatchUseCase(repo),
 		match.NewCompleteMatchUseCase(repo),
 		match.NewFinalizeMatchUseCase(repo, voteRepo, playerRepo, calculator),

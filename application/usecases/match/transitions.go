@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ianadou/smo/domain/entities"
+	"github.com/ianadou/smo/domain/events"
 	"github.com/ianadou/smo/domain/ports"
 )
 
@@ -44,20 +45,42 @@ func (uc *OpenMatchUseCase) Execute(ctx context.Context, id entities.MatchID) (*
 
 // MarkTeamsReadyUseCase transitions a match from Open to TeamsReady,
 // signaling that team assignment is complete.
+//
+// In addition to the persistence step shared with the other
+// transitions, this use case publishes a MatchTeamsReady domain event
+// after the status has been written. Subscribers (Discord
+// notifications, Prometheus, audit) react asynchronously to this
+// signal — see ADR 0004.
 type MarkTeamsReadyUseCase struct {
 	matchRepo ports.MatchRepository
+	publisher ports.EventPublisher
+	clock     ports.Clock
 }
 
 // NewMarkTeamsReadyUseCase builds a MarkTeamsReadyUseCase.
-func NewMarkTeamsReadyUseCase(matchRepo ports.MatchRepository) *MarkTeamsReadyUseCase {
-	return &MarkTeamsReadyUseCase{matchRepo: matchRepo}
+func NewMarkTeamsReadyUseCase(matchRepo ports.MatchRepository, publisher ports.EventPublisher, clock ports.Clock) *MarkTeamsReadyUseCase {
+	return &MarkTeamsReadyUseCase{matchRepo: matchRepo, publisher: publisher, clock: clock}
 }
 
-// Execute marks the teams as ready for the match with the given ID.
+// Execute marks the teams as ready for the match with the given ID
+// and emits a MatchTeamsReady event on success. The publisher is
+// invoked synchronously: subscriber failures are not propagated to
+// the caller — they are logged inside the publisher.
 func (uc *MarkTeamsReadyUseCase) Execute(ctx context.Context, id entities.MatchID) (*entities.Match, error) {
-	return runTransition(ctx, uc.matchRepo, id, "mark teams ready", func(m *entities.Match) error {
+	match, err := runTransition(ctx, uc.matchRepo, id, "mark teams ready", func(m *entities.Match) error {
 		return m.MarkTeamsReady()
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	uc.publisher.Publish(ctx, events.MatchTeamsReady{
+		GroupID:    match.GroupID(),
+		MatchID:    match.ID(),
+		OccurredAt: uc.clock.Now(),
+	})
+
+	return match, nil
 }
 
 // StartMatchUseCase transitions a match from TeamsReady to InProgress,
