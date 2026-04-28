@@ -178,3 +178,12 @@ jobs:
             echo "::error::Coverage ${coverage}% is below the required ${threshold}% threshold."
             exit 1
           }
+      # Upload coverage to Codecov for the PR delta comment and the
+      # public README badge. Tokenless mode works on public repos —
+      # see https://docs.codecov.com/docs/codecov-tokens. Failing the
+      # upload must NOT fail the CI (Codecov outage is not our problem).
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.out
+          fail_ci_if_error: false

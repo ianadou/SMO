@@ -1,5 +1,8 @@
 # SMO — Sports Match Organizer
 
+[![CI](https://github.com/ianadou/SMO/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ianadou/SMO/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/ianadou/SMO/branch/main/graph/badge.svg)](https://codecov.io/gh/ianadou/SMO)
+
 A platform to organize sports matches, assign teams dynamically based on player ranking, and manage post-match peer voting.
 
 ## Status
