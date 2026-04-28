@@ -142,37 +142,36 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run tests with race detector and coverage
-        # Coverage is measured only on packages that are meant to be tested.
-        # Excluded:
-        #   - cmd/...                  → main, tested via integration smoke
-        #   - domain/errors            → only sentinel errors, no logic
-        #   - domain/ports             → interface declarations only
-        #   - .../generated            → sqlc-generated code
-        #   - infrastructure/clock     → trivial wrapper around time.Now()
-        #   - infrastructure/idgen     → trivial wrapper around uuid.NewString()
-        #   - infrastructure/persistence/inmemory → in-memory repo for local dev
+        # Coverage scope: every package EXCEPT paths with no coverable
+        # code OR untestable composition-root paths:
+        #   - domain/errors  → sentinel error declarations only, zero functions
+        #   - domain/ports   → interface declarations only, zero statements
+        #   - .../generated  → sqlc-generated code, not ours to cover
+        #   - cmd/server     → composition root; tests + smoke arrive in
+        #                      a follow-up PR (honest-coverage-server),
+        #                      where this exclusion will be removed.
         #
-        # NOTE: do NOT exclude /inmemory globally — that would also drop
-        # infrastructure/events/inmemory, which holds real production code
-        # (the in-process domain event publisher).
+        # Everything else (cmd/healthcheck, trivial adapters like clock
+        # and idgen, the in-memory repo) is now in scope. If a path has
+        # poor coverage, the answer is to test it — never to hide it
+        # from the denominator.
         #
         # The -tags=integration flag includes the testcontainers-based
-        # integration tests for the Postgres repository. These tests spin
-        # up a real Postgres container per test package, so they require
-        # Docker to be available on the runner (ubuntu-latest provides it).
+        # integration tests. Docker must be available on the runner;
+        # ubuntu-latest provides it by default.
         run: |
           coverpkg=$(go list ./... \
-            | grep -v '/cmd/' \
+            | grep -v '/cmd/server' \
             | grep -v '/domain/errors' \
             | grep -v '/domain/ports' \
             | grep -v '/generated' \
-            | grep -v '/infrastructure/clock' \
-            | grep -v '/infrastructure/idgen' \
-            | grep -v '/infrastructure/persistence/inmemory' \
             | paste -sd ',' -)
           echo "Coverage measured on: $coverpkg"
           go test -tags=integration -race -coverprofile=coverage.out -covermode=atomic -coverpkg="$coverpkg" ./...
       - name: Enforce minimum coverage threshold
+        # The threshold tracks REAL coverage, never an aspirational
+        # target. Raise it only after writing more tests; never lower
+        # it to make a regression pass.
         run: |
           threshold=80.0
           coverage=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | tr -d '%')
