@@ -5,6 +5,7 @@ package redis_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -16,6 +17,22 @@ import (
 	domainerrors "github.com/ianadou/smo/domain/errors"
 	cacheredis "github.com/ianadou/smo/infrastructure/cache/redis"
 )
+
+// init disables the Ryuk reaper container before any test in this
+// package starts.
+//
+// Ryuk fails to start on Fedora 43 + Docker 29 (known upstream bug),
+// causing every testcontainers Run() call to error with "container
+// is not running". Disabling Ryuk works around the local issue; the
+// per-test t.Cleanup(_ = container.Terminate(ctx)) handles the
+// cleanup that Ryuk would otherwise have done.
+//
+// Mirrors the same workaround used in
+// infrastructure/persistence/postgres/repositories/integration_helpers_test.go
+// and cmd/server/main_integration_test.go.
+func init() {
+	_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+}
 
 // fakeGroupRepo is a controllable in-memory GroupRepository used as
 // the inner repo behind the caching decorator. It records call counts
