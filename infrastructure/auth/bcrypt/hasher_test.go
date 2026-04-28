@@ -41,3 +41,38 @@ func TestHasher_Compare_ReturnsErrInvalidCredentials_WhenPasswordIsWrong(t *test
 		t.Errorf("expected ErrInvalidCredentials, got %v", err)
 	}
 }
+
+func TestHasher_Hash_ReturnsError_WhenCostIsOutOfRange(t *testing.T) {
+	t.Parallel()
+	// bcrypt.GenerateFromPassword rejects costs above MaxCost (31).
+	// Hasher must wrap that error rather than panic or silently
+	// accept a degraded password hash.
+	hasher := bcrypt.New(xbcrypt.MaxCost + 1)
+
+	hash, err := hasher.Hash("anything")
+
+	if err == nil {
+		t.Fatalf("expected error for out-of-range cost, got nil")
+	}
+	if hash != "" {
+		t.Errorf("expected empty hash on error, got %q", hash)
+	}
+}
+
+func TestHasher_Compare_ReturnsWrappedError_OnMalformedHash(t *testing.T) {
+	t.Parallel()
+	// A non-bcrypt string is neither a valid hash nor "wrong password".
+	// bcrypt returns a parse error; the hasher must surface it (NOT
+	// wrap it as ErrInvalidCredentials) so a corrupted DB row is
+	// distinguishable from a wrong password in logs.
+	hasher := bcrypt.New(xbcrypt.MinCost)
+
+	err := hasher.Compare("not-a-bcrypt-hash", "any password")
+
+	if err == nil {
+		t.Fatalf("expected error for malformed hash, got nil")
+	}
+	if errors.Is(err, domainerrors.ErrInvalidCredentials) {
+		t.Errorf("malformed hash must NOT be wrapped as ErrInvalidCredentials, got %v", err)
+	}
+}

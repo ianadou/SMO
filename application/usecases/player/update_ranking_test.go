@@ -38,3 +38,18 @@ func TestUpdatePlayerRankingUseCase_Execute_ReturnsError_WhenMissing(t *testing.
 		t.Errorf("expected ErrPlayerNotFound, got %v", err)
 	}
 }
+
+func TestUpdatePlayerRankingUseCase_Execute_ReturnsError_WhenPersistFails(t *testing.T) {
+	t.Parallel()
+	repoErr := errors.New("disk full")
+	repo := newFakePlayerRepository()
+	existing, _ := entities.NewPlayer("p-1", "g-1", "Alice", 1000)
+	_ = repo.Save(context.Background(), existing)
+	repo.updateRankingErr = repoErr
+
+	_, err := NewUpdatePlayerRankingUseCase(repo).Execute(context.Background(), "p-1", 1500)
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped persist error, got %v", err)
+	}
+}
