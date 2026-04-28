@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,9 +17,17 @@ import (
 
 // fakeWebhook is a minimal stand-in for the Discord webhook endpoint.
 // It records the payload it received so tests can assert on it.
+//
+// The handler runs in the http.Server's goroutine while tests read
+// the recorded fields from the test goroutine. Although the network
+// round-trip provides ordering in practice, Go's memory model does
+// not establish happens-before through I/O — so the mutex is required
+// to keep `-race` honest and avoid CI flakiness.
 type fakeWebhook struct {
-	server      *httptest.Server
-	statusCode  int
+	server     *httptest.Server
+	statusCode int
+
+	mu          sync.Mutex
 	lastBody    []byte
 	receivedReq bool
 }
@@ -27,13 +36,27 @@ func newFakeWebhook(t *testing.T, statusCode int) *fakeWebhook {
 	t.Helper()
 	w := &fakeWebhook{statusCode: statusCode}
 	w.server = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		w.receivedReq = true
 		body, _ := io.ReadAll(r.Body)
+		w.mu.Lock()
+		w.receivedReq = true
 		w.lastBody = body
+		w.mu.Unlock()
 		rw.WriteHeader(w.statusCode)
 	}))
 	t.Cleanup(w.server.Close)
 	return w
+}
+
+func (w *fakeWebhook) body() []byte {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.lastBody
+}
+
+func (w *fakeWebhook) received() bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.receivedReq
 }
 
 func newNotifier() *discord.HTTPNotifier {
@@ -53,7 +76,7 @@ func TestHTTPNotifier_Send_PostsPayloadAsJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Send returned error: %v", err)
 	}
-	if !hook.receivedReq {
+	if !hook.received() {
 		t.Fatalf("webhook never received the request")
 	}
 
@@ -68,7 +91,7 @@ func TestHTTPNotifier_Send_PostsPayloadAsJSON(t *testing.T) {
 			} `json:"fields"`
 		} `json:"embeds"`
 	}
-	if err := json.Unmarshal(hook.lastBody, &got); err != nil {
+	if err := json.Unmarshal(hook.body(), &got); err != nil {
 		t.Fatalf("response body is not valid JSON: %v", err)
 	}
 	if len(got.Embeds) != 1 {
@@ -101,7 +124,7 @@ func TestHTTPNotifier_Send_TruncatesOverlengthTitle(t *testing.T) {
 			Title string `json:"title"`
 		} `json:"embeds"`
 	}
-	_ = json.Unmarshal(hook.lastBody, &got)
+	_ = json.Unmarshal(hook.body(), &got)
 	if length := len(got.Embeds[0].Title); length != 256 {
 		t.Errorf("expected title truncated to 256, got %d chars", length)
 	}
@@ -127,7 +150,7 @@ func TestHTTPNotifier_Send_TruncatesOverlengthFieldValue(t *testing.T) {
 			} `json:"fields"`
 		} `json:"embeds"`
 	}
-	_ = json.Unmarshal(hook.lastBody, &got)
+	_ = json.Unmarshal(hook.body(), &got)
 	if length := len(got.Embeds[0].Fields[0].Value); length != 1024 {
 		t.Errorf("expected field value truncated to 1024, got %d chars", length)
 	}
