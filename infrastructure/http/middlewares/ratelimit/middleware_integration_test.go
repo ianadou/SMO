@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -19,6 +20,21 @@ import (
 	cacheredis "github.com/ianadou/smo/infrastructure/cache/redis"
 	"github.com/ianadou/smo/infrastructure/http/middlewares/ratelimit"
 )
+
+// init disables the Ryuk reaper container before any test in this
+// package starts.
+//
+// Ryuk fails to start on Fedora 43 + Docker 29 (known upstream bug),
+// causing every testcontainers Run() call to error with "container
+// is not running". Disabling Ryuk works around the local issue; the
+// per-test t.Cleanup(_ = container.Terminate(ctx)) handles the
+// cleanup that Ryuk would otherwise have done.
+//
+// Mirrors the same workaround used in the postgres repository, redis
+// cache and cmd/server integration tests.
+func init() {
+	_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+}
 
 // startRedis spins a fresh Redis testcontainer for the calling test.
 // Each test gets its own container so test 7 (Redis-down runtime) can
