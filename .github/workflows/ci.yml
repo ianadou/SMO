@@ -143,25 +143,24 @@ jobs:
           go-version-file: go.mod
       - name: Run tests with race detector and coverage
         # Coverage scope: every package EXCEPT paths with no coverable
-        # code OR untestable composition-root paths:
+        # code:
         #   - domain/errors  → sentinel error declarations only, zero functions
         #   - domain/ports   → interface declarations only, zero statements
         #   - .../generated  → sqlc-generated code, not ours to cover
-        #   - cmd/server     → composition root; tests + smoke arrive in
-        #                      a follow-up PR (honest-coverage-server),
-        #                      where this exclusion will be removed.
         #
-        # Everything else (cmd/healthcheck, trivial adapters like clock
-        # and idgen, the in-memory repo) is now in scope. If a path has
-        # poor coverage, the answer is to test it — never to hide it
-        # from the denominator.
+        # Everything else, including cmd/server (the composition root),
+        # is now in scope. cmd/server is partially covered by a smoke
+        # test in main_integration_test.go — the parts main(), run()
+        # and runServer() that handle process boot and signal handling
+        # remain uncovered, which is reflected honestly in the total.
+        # If a path has poor coverage, the answer is to test it, never
+        # to hide it from the denominator.
         #
         # The -tags=integration flag includes the testcontainers-based
         # integration tests. Docker must be available on the runner;
         # ubuntu-latest provides it by default.
         run: |
           coverpkg=$(go list ./... \
-            | grep -v '/cmd/server' \
             | grep -v '/domain/errors' \
             | grep -v '/domain/ports' \
             | grep -v '/generated' \
@@ -171,9 +170,12 @@ jobs:
       - name: Enforce minimum coverage threshold
         # The threshold tracks REAL coverage, never an aspirational
         # target. Raise it only after writing more tests; never lower
-        # it to make a regression pass.
+        # it to make a regression pass. Including cmd/server in scope
+        # in this PR drops the measured number from 83.5% to ~75-78%
+        # because main(), run(), and runServer() are not covered —
+        # that drop is the truth showing through, not a regression.
         run: |
-          threshold=80.0
+          threshold=75.0
           coverage=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | tr -d '%')
           echo "Total coverage: ${coverage}%"
           echo "Minimum required: ${threshold}%"

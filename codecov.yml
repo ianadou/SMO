@@ -26,20 +26,16 @@ coverage:
         target: 80%
         threshold: 1%
 
-# Exclude only paths with no coverable code OR the composition root
-# while it has no smoke test yet:
+# Exclude only paths that genuinely have NO coverable code:
 #   - sentinel error declarations (no functions)
 #   - port interface declarations (no statements)
 #   - sqlc-generated code (not our code)
-#   - cmd/server: composition root; the smoke test that covers
-#     buildRouter lives in the follow-up honest-coverage-server PR,
-#     and this exclusion is removed there.
 #
-# Everything else (cmd/healthcheck, trivial adapters, in-memory repo)
-# is now in scope. If a path has poor coverage, the answer is to
-# test it, not to hide it.
+# Everything else, including cmd/server (the composition root),
+# stays in scope. cmd/server is partially covered by a smoke test;
+# the uncovered parts (main, run, runServer for signal handling)
+# are reflected honestly in the project number.
 ignore:
-  - "cmd/server/**"
   - "**/generated/**"
   - "domain/errors/**"
   - "domain/ports/**"
