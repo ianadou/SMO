@@ -18,6 +18,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -27,7 +29,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
+	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 
+	cacheredis "github.com/ianadou/smo/infrastructure/cache/redis"
 	"github.com/ianadou/smo/infrastructure/persistence"
 	"github.com/ianadou/smo/infrastructure/persistence/postgres"
 )
@@ -137,5 +141,57 @@ func TestBuildRouter_HealthLive_Returns200(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
+// TestBuildRouter_HealthReady_ReportsCacheOK_WhenRedisIsWired covers
+// the second branch of the cache-pinger wiring in main.go (the
+// non-nil branch). Without this test, the branch where buildRouter
+// receives a real *redis.Client is unexercised by the smoke suite —
+// even though the production binary always takes that path when
+// REDIS_URL is set.
+func TestBuildRouter_HealthReady_ReportsCacheOK_WhenRedisIsWired(t *testing.T) {
+	if sharedPool == nil {
+		t.Fatal("sharedPool is nil; TestMain did not run setupBootContainer")
+	}
+
+	ctx := context.Background()
+	redisContainer, err := tcredis.Run(ctx, "redis:7-alpine")
+	if err != nil {
+		t.Fatalf("start redis container: %v", err)
+	}
+	t.Cleanup(func() { _ = redisContainer.Terminate(ctx) })
+
+	url, err := redisContainer.ConnectionString(ctx)
+	if err != nil {
+		t.Fatalf("redis connection string: %v", err)
+	}
+	redisClient, err := cacheredis.Connect(ctx, url)
+	if err != nil {
+		t.Fatalf("connect redis: %v", err)
+	}
+	t.Cleanup(func() { _ = redisClient.Close() })
+
+	router := buildRouter(sharedPool, redisClient, "test-jwt-secret-for-boot-smoke")
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/health/ready") //nolint:gosec // test target
+	if err != nil {
+		t.Fatalf("GET /health/ready: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	var parsed map[string]any
+	if jsonErr := json.Unmarshal(body, &parsed); jsonErr != nil {
+		t.Fatalf("response is not JSON: %v. body=%s", jsonErr, string(body))
+	}
+	if parsed["cache"] != "ok" {
+		t.Errorf("expected cache 'ok' when Redis is wired and reachable, got %v. body=%s",
+			parsed["cache"], string(body))
 	}
 }
