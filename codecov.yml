@@ -6,37 +6,43 @@
 # currently 80%) so the two numbers stay coherent.
 
 coverage:
-  # Badge / dashboard color ramp.
-  # red below 70, yellow 70-80, green at 80+ — matches the CI gate.
-  range: 70..80
+  # Badge color uses Codecov's default range (red <70, yellow 70-90,
+  # green >=90). Not narrowed: the visible color must reflect real
+  # coverage, not be tuned to the CI gate just to look green.
   precision: 1
   round: down
 
   status:
     project:
       default:
-        # Project-wide gate. Identical to the CI threshold so a drop
-        # below 80% surfaces both as a failed CI step AND a failed
-        # Codecov check.
-        target: 80%
-        threshold: 0%
+        # Project-wide gate. Set to the honest measured number — see
+        # the matching CI threshold in .github/workflows/ci.yml.
+        target: auto
+        threshold: 0.5%
     patch:
       default:
-        # New code in a PR must itself be covered at >= 80%. Allows
-        # 1% noise so a single-line refactor doesn't trip the check.
+        # New code in a PR must itself be covered. 80% target keeps
+        # the bar high without blocking a one-line refactor.
         target: 80%
         threshold: 1%
 
-# Exclude the same paths the CI excludes from -coverpkg, so Codecov
-# and `go tool cover` measure the same scope.
+# Exclude only paths with no coverable code OR the composition root
+# while it has no smoke test yet:
+#   - sentinel error declarations (no functions)
+#   - port interface declarations (no statements)
+#   - sqlc-generated code (not our code)
+#   - cmd/server: composition root; the smoke test that covers
+#     buildRouter lives in the follow-up honest-coverage-server PR,
+#     and this exclusion is removed there.
+#
+# Everything else (cmd/healthcheck, trivial adapters, in-memory repo)
+# is now in scope. If a path has poor coverage, the answer is to
+# test it, not to hide it.
 ignore:
-  - "cmd/**"                  # composition root, smoke-tested
-  - "**/generated/**"         # sqlc-generated, no logic of ours
-  - "domain/errors/**"        # sentinel error declarations
-  - "domain/ports/**"         # interface declarations only
-  - "infrastructure/clock/**"               # tiny adapter, no logic to cover
-  - "infrastructure/idgen/**"               # tiny adapter, no logic to cover
-  - "infrastructure/persistence/inmemory/**" # in-memory test fakes for unit tests
+  - "cmd/server/**"
+  - "**/generated/**"
+  - "domain/errors/**"
+  - "domain/ports/**"
 
 comment:
   # Compact PR comment focused on the diff. No tree, no project totals
