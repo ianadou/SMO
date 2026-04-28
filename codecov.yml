@@ -34,9 +34,9 @@ ignore:
   - "**/generated/**"         # sqlc-generated, no logic of ours
   - "domain/errors/**"        # sentinel error declarations
   - "domain/ports/**"         # interface declarations only
-  - "infrastructure/clock/**" # tiny adapter, no logic to cover
-  - "infrastructure/idgen/**" # tiny adapter, no logic to cover
-  - "**/inmemory/**"          # in-memory test fakes for unit tests
+  - "infrastructure/clock/**"               # tiny adapter, no logic to cover
+  - "infrastructure/idgen/**"               # tiny adapter, no logic to cover
+  - "infrastructure/persistence/inmemory/**" # in-memory test fakes for unit tests
 
 comment:
   # Compact PR comment focused on the diff. No tree, no project totals
