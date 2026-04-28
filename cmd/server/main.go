@@ -318,7 +318,15 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	// Health endpoints sit at the root, outside /api/v1: they belong to
 	// the infrastructure layer (Docker HEALTHCHECK, Dockhand, future
 	// orchestrator probes), not the business contract.
-	handlers.NewHealthHandler(pool).Register(router)
+	//
+	// The cache pinger is nil when Redis is disabled (ADR 0002 state 1),
+	// so /health/ready will report cache="disabled" honestly instead of
+	// pretending the cache is up.
+	var cachePinger handlers.CachePinger
+	if redisClient != nil {
+		cachePinger = cacheredis.NewPinger(redisClient)
+	}
+	handlers.NewHealthHandler(pool, cachePinger).Register(router)
 
 	// All business endpoints live under /api/v1. The /v1 prefix locks
 	// in a versioned contract from day one: future breaking changes can
