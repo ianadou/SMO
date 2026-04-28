@@ -25,9 +25,15 @@ type CreateGroupUseCase struct {
 // Encapsulating parameters in a struct keeps the use case API
 // extensible: new fields can be added without breaking existing
 // callers.
+//
+// WebhookURL is optional — leave empty to create a group without
+// Discord notifications. When non-empty, it must satisfy the strict
+// rules enforced by entities.NewGroup (https only, no embedded creds,
+// length ≤ 2048, parsable). Treated as a secret downstream.
 type CreateGroupInput struct {
 	Name        string
 	OrganizerID entities.OrganizerID
+	WebhookURL  string
 }
 
 // NewCreateGroupUseCase builds a CreateGroupUseCase with the given
@@ -55,7 +61,7 @@ func (uc *CreateGroupUseCase) Execute(ctx context.Context, input CreateGroupInpu
 	id := entities.GroupID(uc.idGen.Generate())
 	now := uc.clock.Now()
 
-	group, err := entities.NewGroup(id, input.Name, input.OrganizerID, now)
+	group, err := entities.NewGroup(id, input.Name, input.OrganizerID, input.WebhookURL, now)
 	if err != nil {
 		return nil, fmt.Errorf("create group use case: build group: %w", err)
 	}

@@ -13,16 +13,17 @@ import (
 
 const createGroup = `-- name: CreateGroup :one
 
-INSERT INTO groups (id, organizer_id, name, created_at)
-VALUES ($1, $2, $3, $4)
-RETURNING id, organizer_id, name, created_at
+INSERT INTO groups (id, organizer_id, name, created_at, discord_webhook_url)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, organizer_id, name, created_at, discord_webhook_url
 `
 
 type CreateGroupParams struct {
-	ID          string
-	OrganizerID string
-	Name        string
-	CreatedAt   pgtype.Timestamptz
+	ID                string
+	OrganizerID       string
+	Name              string
+	CreatedAt         pgtype.Timestamptz
+	DiscordWebhookUrl *string
 }
 
 // ============================================================================
@@ -39,6 +40,9 @@ type CreateGroupParams struct {
 //	:exec     → executes the query and returns only an error
 //	:execrows → executes and returns the number of affected rows
 //
+// Column order matches the table's physical order (id, organizer_id,
+// name, created_at, discord_webhook_url) so sqlc reuses the Groups
+// struct rather than generating per-query row types.
 // ============================================================================
 func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Groups, error) {
 	row := q.db.QueryRow(ctx, createGroup,
@@ -46,6 +50,7 @@ func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Group
 		arg.OrganizerID,
 		arg.Name,
 		arg.CreatedAt,
+		arg.DiscordWebhookUrl,
 	)
 	var i Groups
 	err := row.Scan(
@@ -53,6 +58,7 @@ func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Group
 		&i.OrganizerID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.DiscordWebhookUrl,
 	)
 	return i, err
 }
@@ -68,7 +74,7 @@ func (q *Queries) DeleteGroup(ctx context.Context, id string) error {
 }
 
 const getGroupByID = `-- name: GetGroupByID :one
-SELECT id, organizer_id, name, created_at
+SELECT id, organizer_id, name, created_at, discord_webhook_url
 FROM groups
 WHERE id = $1
 `
@@ -81,12 +87,13 @@ func (q *Queries) GetGroupByID(ctx context.Context, id string) (Groups, error) {
 		&i.OrganizerID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.DiscordWebhookUrl,
 	)
 	return i, err
 }
 
 const listGroupsByOrganizerID = `-- name: ListGroupsByOrganizerID :many
-SELECT id, organizer_id, name, created_at
+SELECT id, organizer_id, name, created_at, discord_webhook_url
 FROM groups
 WHERE organizer_id = $1
 ORDER BY created_at DESC
@@ -106,6 +113,7 @@ func (q *Queries) ListGroupsByOrganizerID(ctx context.Context, organizerID strin
 			&i.OrganizerID,
 			&i.Name,
 			&i.CreatedAt,
+			&i.DiscordWebhookUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -119,24 +127,27 @@ func (q *Queries) ListGroupsByOrganizerID(ctx context.Context, organizerID strin
 
 const updateGroup = `-- name: UpdateGroup :one
 UPDATE groups
-SET name = $2
+SET name                = $2,
+    discord_webhook_url = $3
 WHERE id = $1
-RETURNING id, organizer_id, name, created_at
+RETURNING id, organizer_id, name, created_at, discord_webhook_url
 `
 
 type UpdateGroupParams struct {
-	ID   string
-	Name string
+	ID                string
+	Name              string
+	DiscordWebhookUrl *string
 }
 
 func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Groups, error) {
-	row := q.db.QueryRow(ctx, updateGroup, arg.ID, arg.Name)
+	row := q.db.QueryRow(ctx, updateGroup, arg.ID, arg.Name, arg.DiscordWebhookUrl)
 	var i Groups
 	err := row.Scan(
 		&i.ID,
 		&i.OrganizerID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.DiscordWebhookUrl,
 	)
 	return i, err
 }

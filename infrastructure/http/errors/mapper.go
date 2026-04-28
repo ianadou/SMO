@@ -77,6 +77,8 @@ func mapValidationError(err error) (int, string, bool) {
 		return http.StatusBadRequest, "invalid email", true
 	case errors.Is(err, domainerrors.ErrInvalidPassword):
 		return http.StatusBadRequest, "invalid password", true
+	case errors.Is(err, domainerrors.ErrInvalidWebhookURL):
+		return http.StatusBadRequest, "invalid webhook url", true
 	}
 	return 0, "", false
 }

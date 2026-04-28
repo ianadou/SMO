@@ -83,7 +83,7 @@ func startRedis(t *testing.T) (*rdb.Client, testcontainers.Container) {
 
 func seedGroup(t *testing.T, repo *fakeGroupRepo, id entities.GroupID) {
 	t.Helper()
-	g, err := entities.NewGroup(id, "Test", "org-1", time.Now())
+	g, err := entities.NewGroup(id, "Test", "org-1", "", time.Now())
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestCachingGroupRepository_Save_InvalidatesCachedEntry(t *testing.T) {
 
 	// Save a different group with the same ID — invalidation must drop
 	// the cached value so the next read goes back to the inner repo.
-	updated, _ := entities.NewGroup("g-1", "Renamed", "org-1", time.Now())
+	updated, _ := entities.NewGroup("g-1", "Renamed", "org-1", "", time.Now())
 	if err := caching.Save(ctx, updated); err != nil {
 		t.Fatalf("save: %v", err)
 	}

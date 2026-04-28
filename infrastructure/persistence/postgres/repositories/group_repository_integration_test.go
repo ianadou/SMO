@@ -40,7 +40,7 @@ func TestPostgresGroupRepository_Save_PersistsGroup(t *testing.T) {
 	ctx := context.Background()
 
 	createdAt := time.Date(2026, 4, 11, 10, 0, 0, 0, time.UTC)
-	group, err := entities.NewGroup("group-1", "Test Group", "test-org", createdAt)
+	group, err := entities.NewGroup("group-1", "Test Group", "test-org", "", createdAt)
 	if err != nil {
 		t.Fatalf("test setup failed: %v", err)
 	}
@@ -62,11 +62,34 @@ func TestPostgresGroupRepository_Save_PersistsGroup(t *testing.T) {
 	}
 }
 
+func TestPostgresGroupRepository_Save_PersistsWebhookURL_RoundTrip(t *testing.T) {
+	repo := newTestGroupRepository(t)
+	ctx := context.Background()
+
+	const webhookURL = "https://discord.com/api/webhooks/12345/secret-token-roundtrip"
+	group, err := entities.NewGroup("group-with-webhook", "Group", "test-org", webhookURL, time.Now())
+	if err != nil {
+		t.Fatalf("test setup failed: %v", err)
+	}
+
+	if saveErr := repo.Save(ctx, group); saveErr != nil {
+		t.Fatalf("Save: %v", saveErr)
+	}
+
+	found, findErr := repo.FindByID(ctx, "group-with-webhook")
+	if findErr != nil {
+		t.Fatalf("FindByID: %v", findErr)
+	}
+	if found.WebhookURL() != webhookURL {
+		t.Errorf("webhook URL did not round-trip: got %q want %q", found.WebhookURL(), webhookURL)
+	}
+}
+
 func TestPostgresGroupRepository_Save_ReturnsErrReferencedEntityNotFound_WhenOrganizerMissing(t *testing.T) {
 	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
-	group, _ := entities.NewGroup("group-1", "Orphan Group", "nonexistent-org", time.Now())
+	group, _ := entities.NewGroup("group-1", "Orphan Group", "nonexistent-org", "", time.Now())
 
 	err := repo.Save(ctx, group)
 
@@ -95,6 +118,7 @@ func TestPostgresGroupRepository_ListByOrganizer_ReturnsAllGroupsForOrganizer(t 
 			entities.GroupID([]string{"g-1", "g-2", "g-3"}[i]),
 			name,
 			"test-org",
+			"",
 			time.Now(),
 		)
 		if err := repo.Save(ctx, group); err != nil {
@@ -115,12 +139,12 @@ func TestPostgresGroupRepository_Update_ChangesGroupName(t *testing.T) {
 	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
-	original, _ := entities.NewGroup("group-1", "Old Name", "test-org", time.Now())
+	original, _ := entities.NewGroup("group-1", "Old Name", "test-org", "", time.Now())
 	if err := repo.Save(ctx, original); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
 
-	updated, _ := entities.NewGroup("group-1", "New Name", "test-org", original.CreatedAt())
+	updated, _ := entities.NewGroup("group-1", "New Name", "test-org", "", original.CreatedAt())
 	if err := repo.Update(ctx, updated); err != nil {
 		t.Fatalf("expected Update to succeed, got: %v", err)
 	}
@@ -135,7 +159,7 @@ func TestPostgresGroupRepository_Delete_RemovesGroup(t *testing.T) {
 	repo := newTestGroupRepository(t)
 	ctx := context.Background()
 
-	group, _ := entities.NewGroup("group-1", "To Delete", "test-org", time.Now())
+	group, _ := entities.NewGroup("group-1", "To Delete", "test-org", "", time.Now())
 	if err := repo.Save(ctx, group); err != nil {
 		t.Fatalf("setup: %v", err)
 	}

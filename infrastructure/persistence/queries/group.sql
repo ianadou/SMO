@@ -10,29 +10,34 @@
 --   :many     → returns zero or more rows as a slice
 --   :exec     → executes the query and returns only an error
 --   :execrows → executes and returns the number of affected rows
+--
+-- Column order matches the table's physical order (id, organizer_id,
+-- name, created_at, discord_webhook_url) so sqlc reuses the Groups
+-- struct rather than generating per-query row types.
 -- ============================================================================
 
 -- name: CreateGroup :one
-INSERT INTO groups (id, organizer_id, name, created_at)
-VALUES ($1, $2, $3, $4)
-RETURNING id, organizer_id, name, created_at;
+INSERT INTO groups (id, organizer_id, name, created_at, discord_webhook_url)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, organizer_id, name, created_at, discord_webhook_url;
 
 -- name: GetGroupByID :one
-SELECT id, organizer_id, name, created_at
+SELECT id, organizer_id, name, created_at, discord_webhook_url
 FROM groups
 WHERE id = $1;
 
 -- name: ListGroupsByOrganizerID :many
-SELECT id, organizer_id, name, created_at
+SELECT id, organizer_id, name, created_at, discord_webhook_url
 FROM groups
 WHERE organizer_id = $1
 ORDER BY created_at DESC;
 
 -- name: UpdateGroup :one
 UPDATE groups
-SET name = $2
+SET name                = $2,
+    discord_webhook_url = $3
 WHERE id = $1
-RETURNING id, organizer_id, name, created_at;
+RETURNING id, organizer_id, name, created_at, discord_webhook_url;
 
 -- name: DeleteGroup :exec
 DELETE FROM groups

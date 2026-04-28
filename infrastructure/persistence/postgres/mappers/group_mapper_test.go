@@ -85,7 +85,7 @@ func TestGroupToCreateParams_BuildsParamsFromEntity(t *testing.T) {
 	t.Parallel()
 
 	createdAt := time.Date(2026, 4, 10, 10, 0, 0, 0, time.UTC)
-	group, err := entities.NewGroup("group-1", "Foot du jeudi", "org-1", createdAt)
+	group, err := entities.NewGroup("group-1", "Foot du jeudi", "org-1", "", createdAt)
 	if err != nil {
 		t.Fatalf("test setup failed: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestGroupToCreateParams_BuildsParamsFromEntity(t *testing.T) {
 func TestGroupToUpdateParams_BuildsParamsFromEntity(t *testing.T) {
 	t.Parallel()
 
-	group, err := entities.NewGroup("group-1", "New name", "org-1", time.Now())
+	group, err := entities.NewGroup("group-1", "New name", "org-1", "", time.Now())
 	if err != nil {
 		t.Fatalf("test setup failed: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestGroupRoundTrip_DomainToParamsToDomain(t *testing.T) {
 	t.Parallel()
 
 	createdAt := time.Date(2026, 4, 10, 10, 0, 0, 0, time.UTC)
-	original, _ := entities.NewGroup("group-1", "Foot du jeudi", "org-1", createdAt)
+	original, _ := entities.NewGroup("group-1", "Foot du jeudi", "org-1", "https://discord.com/api/webhooks/round/trip", createdAt)
 
 	// Domain → CreateParams → Groups (via direct conversion since both
 	// structs have identical fields) → Domain. The round trip must
@@ -155,5 +155,8 @@ func TestGroupRoundTrip_DomainToParamsToDomain(t *testing.T) {
 	}
 	if !roundTripped.CreatedAt().Equal(original.CreatedAt()) {
 		t.Errorf("CreatedAt changed: %v → %v", original.CreatedAt(), roundTripped.CreatedAt())
+	}
+	if roundTripped.WebhookURL() != original.WebhookURL() {
+		t.Errorf("WebhookURL changed: %q → %q", original.WebhookURL(), roundTripped.WebhookURL())
 	}
 }

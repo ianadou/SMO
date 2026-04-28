@@ -9,10 +9,11 @@ import (
 )
 
 type Groups struct {
-	ID          string
-	OrganizerID string
-	Name        string
-	CreatedAt   pgtype.Timestamptz
+	ID                string
+	OrganizerID       string
+	Name              string
+	CreatedAt         pgtype.Timestamptz
+	DiscordWebhookUrl *string
 }
 
 type Invitations struct {

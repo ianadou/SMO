@@ -39,6 +39,13 @@ var (
 	// so the registration endpoint can return a useful 400 while login keeps
 	// a uniform 401.
 	ErrInvalidPassword = errors.New("invalid password")
+
+	// ErrInvalidWebhookURL is returned when a Discord webhook URL fails
+	// the strict validation rules (https-only, no embedded credentials,
+	// length ≤ 2048, parsable). Empty values are accepted as valid
+	// (groups without a Discord channel), so this error only fires on
+	// non-empty malformed inputs.
+	ErrInvalidWebhookURL = errors.New("invalid webhook url")
 )
 
 // Business rule errors — returned when a domain operation is not allowed

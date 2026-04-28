@@ -53,6 +53,7 @@ func (h *GroupHandler) Create(ctx *gin.Context) {
 	createdGroup, err := h.createGroup.Execute(ctx.Request.Context(), group.CreateGroupInput{
 		Name:        request.Name,
 		OrganizerID: entities.OrganizerID(request.OrganizerID),
+		WebhookURL:  request.DiscordWebhookURL,
 	})
 	if err != nil {
 		status, message := httperrors.MapError(err)
