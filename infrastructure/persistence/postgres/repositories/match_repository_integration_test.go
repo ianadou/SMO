@@ -173,6 +173,76 @@ func TestPostgresMatchRepository_Finalize_PersistsMVPAndStatus(t *testing.T) {
 	}
 }
 
+// TestPostgresMatchRepository_Finalize_PersistsNonNilMVP covers the
+// other half of the Finalize path: the FK matches.mvp_player_id →
+// players.id is exercised with a real player row, so a non-nil MVP
+// round-trips through the database.
+//
+// Tracked in issue #34: previously the only test for Finalize used
+// MVP=nil because seeding a player required FK plumbing.
+func TestPostgresMatchRepository_Finalize_PersistsNonNilMVP(t *testing.T) {
+	repo := newTestMatchRepository(t)
+	ctx := context.Background()
+
+	// Seed a player whose ID we can hand to Finalize. test-group is
+	// re-seeded by newTestMatchRepository, so the FK
+	// players.group_id → groups.id is also satisfied.
+	const mvpID = "player-mvp"
+	if _, err := sharedPool.Exec(ctx, `
+		INSERT INTO players (id, group_id, name, ranking)
+		VALUES ($1, 'test-group', 'MVP Player', 1500)
+		ON CONFLICT (id) DO NOTHING
+	`, mvpID); err != nil {
+		t.Fatalf("setup: insert player: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = sharedPool.Exec(context.Background(), `DELETE FROM players WHERE id = $1`, mvpID)
+	})
+
+	match, _ := entities.NewMatch(
+		"match-mvp", "test-group", "Title", "Venue",
+		time.Now().Add(time.Hour), time.Now(),
+	)
+	if err := repo.Save(ctx, match); err != nil {
+		t.Fatalf("setup: save match: %v", err)
+	}
+
+	// Walk the state machine to Completed, then Finalize with the
+	// real player as MVP.
+	for i, step := range []func() error{
+		match.Open, match.MarkTeamsReady, match.Start, match.Complete,
+	} {
+		if err := step(); err != nil {
+			t.Fatalf("setup: transition %d: %v", i, err)
+		}
+	}
+	if err := repo.UpdateStatus(ctx, match); err != nil {
+		t.Fatalf("setup: persist completed: %v", err)
+	}
+
+	mvpPlayerID := entities.PlayerID(mvpID)
+	if err := match.Finalize(&mvpPlayerID); err != nil {
+		t.Fatalf("Finalize: %v", err)
+	}
+	if err := repo.Finalize(ctx, match); err != nil {
+		t.Fatalf("repo.Finalize: %v", err)
+	}
+
+	found, err := repo.FindByID(ctx, "match-mvp")
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if found.Status() != entities.MatchStatusClosed {
+		t.Errorf("expected status closed, got %q", found.Status())
+	}
+	if found.MVP() == nil {
+		t.Fatalf("expected non-nil MVP, got nil")
+	}
+	if *found.MVP() != mvpPlayerID {
+		t.Errorf("expected MVP %q, got %q", mvpPlayerID, *found.MVP())
+	}
+}
+
 func TestPostgresMatchRepository_Delete_RemovesMatch(t *testing.T) {
 	repo := newTestMatchRepository(t)
 	ctx := context.Background()
