@@ -41,3 +41,30 @@ func Connect(ctx context.Context, url string) (*rdb.Client, error) {
 
 	return client, nil
 }
+
+// Pinger adapts a *redis.Client into a small Ping(ctx) error contract,
+// so callers (e.g. the health handler) don't need to know about
+// *redis.StatusCmd or the go-redis package shape.
+//
+// Callers should pass nil instead of a Pinger when the cache is
+// disabled by configuration (ADR 0002 state 1, REDIS_URL unset). The
+// health handler treats a nil pinger as "cache disabled", which is a
+// distinct state from "cache configured but unreachable".
+type Pinger struct {
+	client *rdb.Client
+}
+
+// NewPinger wraps a non-nil *redis.Client into a context-only pinger.
+// Passing a nil client is a programming error; the caller should pass
+// nil to the health handler instead of constructing a Pinger.
+func NewPinger(client *rdb.Client) *Pinger {
+	return &Pinger{client: client}
+}
+
+// Ping reports whether Redis answers a PING within the deadline of ctx.
+func (p *Pinger) Ping(ctx context.Context) error {
+	if err := p.client.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis ping: %w", err)
+	}
+	return nil
+}
