@@ -29,7 +29,12 @@ export default defineNuxtConfig({
   // Self-hosted fonts via @nuxt/fonts. Inter for UI/display,
   // JetBrains Mono for tabular numerics. NOT Google Fonts CDN —
   // see ADR 0005 (RGPD risk on .fr).
-  modules: ['@nuxt/fonts'],
+  modules: ['@nuxt/fonts', '@pinia/nuxt'],
+  runtimeConfig: {
+    public: {
+      apiBaseUrl: 'http://localhost:8081/api/v1',
+    },
+  },
   fonts: {
     families: [
       {

@@ -3,10 +3,13 @@ import { Eye, EyeOff } from 'lucide-vue-next'
 import TextField from '~/components/login/TextField.vue'
 import PrimaryButton from '~/components/login/PrimaryButton.vue'
 import InlineError from '~/components/login/InlineError.vue'
+import { ApiError } from '~/composables/useApi'
 
 definePageMeta({ layout: false })
 
 useHead({ title: 'Connexion organisateur — SMO' })
+
+const auth = useAuthStore()
 
 const email = ref('')
 const password = ref('')
@@ -14,15 +17,18 @@ const showPassword = ref(false)
 const loading = ref(false)
 const error = ref('')
 
-const STUB_RESPONSE_DELAY_MS = 1400
-
 async function submit() {
   if (!email.value || !password.value) return
   error.value = ''
   loading.value = true
-  await new Promise((resolve) => setTimeout(resolve, STUB_RESPONSE_DELAY_MS))
-  loading.value = false
-  error.value = 'Identifiants incorrects.'
+  try {
+    await auth.login({ email: email.value, password: password.value })
+    await navigateTo('/groups')
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.publicMessage : 'Une erreur est survenue.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
