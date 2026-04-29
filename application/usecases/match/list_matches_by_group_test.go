@@ -2,6 +2,7 @@ package match
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -71,5 +72,21 @@ func TestListMatchesByGroupUseCase_Execute_OnlyReturnsMatchesFromRequestedGroup(
 	}
 	if len(matches) > 0 && matches[0].Title() != "Match A" {
 		t.Errorf("expected match 'Match A', got %q", matches[0].Title())
+	}
+}
+
+func TestListMatchesByGroupUseCase_Execute_PropagatesRepoError(t *testing.T) {
+	t.Parallel()
+	repoErr := errors.New("db unreachable")
+	repo := newFakeMatchRepository()
+	repo.listByGroupErr = repoErr
+
+	matches, err := NewListMatchesByGroupUseCase(repo).Execute(context.Background(), "group-1")
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped repo error, got %v", err)
+	}
+	if matches != nil {
+		t.Errorf("expected nil matches on error, got %v", matches)
 	}
 }

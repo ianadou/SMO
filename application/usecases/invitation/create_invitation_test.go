@@ -2,6 +2,7 @@ package invitation
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -67,5 +68,24 @@ func TestCreateInvitationUseCase_Execute_UsesProvidedExpiresAt(t *testing.T) {
 	}
 	if !result.Invitation.ExpiresAt().Equal(customExpires) {
 		t.Errorf("expected expiresAt %v, got %v", customExpires, result.Invitation.ExpiresAt())
+	}
+}
+
+func TestCreateInvitationUseCase_Execute_PropagatesSaveError(t *testing.T) {
+	t.Parallel()
+	repoErr := errors.New("disk full")
+	repo := newFakeInvitationRepository()
+	repo.saveErr = repoErr
+	uc := NewCreateInvitationUseCase(
+		repo,
+		newFakeTokenService("tok"),
+		newFakeIDGenerator("inv-1"),
+		newFakeClock(time.Now()),
+	)
+
+	_, err := uc.Execute(context.Background(), CreateInvitationInput{MatchID: "match-1"})
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped repo error, got %v", err)
 	}
 }

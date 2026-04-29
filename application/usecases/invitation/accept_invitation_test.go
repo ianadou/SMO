@@ -80,3 +80,28 @@ func TestAcceptInvitationUseCase_Execute_ReturnsErrInvitationAlreadyUsed(t *test
 		t.Errorf("expected ErrInvitationAlreadyUsed, got %v", err)
 	}
 }
+
+func TestAcceptInvitationUseCase_Execute_PropagatesPersistError(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+	persistErr := errors.New("disk full")
+
+	tokens := newFakeTokenService()
+	hash := tokens.HashToken("plain-token")
+	createdAt := expires.Add(-2 * time.Hour)
+	inv, err := entities.NewInvitation("inv-1", "match-1", hash, expires, nil, createdAt)
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	repo := newFakeInvitationRepository()
+	_ = repo.Save(context.Background(), inv)
+	repo.markAsUsedErr = persistErr
+
+	_, execErr := NewAcceptInvitationUseCase(repo, tokens, newFakeClock(now)).
+		Execute(context.Background(), "plain-token")
+
+	if !errors.Is(execErr, persistErr) {
+		t.Errorf("expected wrapped persist error, got %v", execErr)
+	}
+}

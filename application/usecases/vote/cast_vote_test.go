@@ -121,3 +121,22 @@ func TestCastVoteUseCase_Execute_ReturnsErrAlreadyVoted_WhenDuplicate(t *testing
 		t.Errorf("expected ErrAlreadyVoted, got %v", err)
 	}
 }
+
+func TestCastVoteUseCase_Execute_PropagatesGenericSaveError(t *testing.T) {
+	t.Parallel()
+	saveErr := errors.New("disk full")
+	voteRepo := newFakeVoteRepository()
+	voteRepo.saveErr = saveErr
+	matchRepo := newFakeMatchRepository()
+	seedCompletedMatch(t, matchRepo)
+	uc := NewCastVoteUseCase(voteRepo, matchRepo,
+		newFakeIDGenerator("v-1"), newFakeClock(time.Now()))
+
+	_, err := uc.Execute(context.Background(), CastVoteInput{
+		MatchID: "test-match", VoterID: "p-1", VotedID: "p-2", Score: 4,
+	})
+
+	if !errors.Is(err, saveErr) {
+		t.Errorf("expected wrapped save error, got %v", err)
+	}
+}

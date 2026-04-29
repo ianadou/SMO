@@ -2,6 +2,7 @@ package invitation
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -35,5 +36,21 @@ func TestListInvitationsByMatchUseCase_Execute_ReturnsInvitationsForMatch(t *tes
 	}
 	if len(invitations) != 2 {
 		t.Errorf("expected 2 invitations for match-1, got %d", len(invitations))
+	}
+}
+
+func TestListInvitationsByMatchUseCase_Execute_PropagatesRepoError(t *testing.T) {
+	t.Parallel()
+	repoErr := errors.New("db unreachable")
+	repo := newFakeInvitationRepository()
+	repo.listByMatchErr = repoErr
+
+	invitations, err := NewListInvitationsByMatchUseCase(repo).Execute(context.Background(), "match-1")
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped repo error, got %v", err)
+	}
+	if invitations != nil {
+		t.Errorf("expected nil invitations on error, got %v", invitations)
 	}
 }
