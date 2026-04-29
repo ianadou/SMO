@@ -176,3 +176,30 @@ func TestStartMatchUseCase_Execute_ReturnsErrInvalidTransition_WhenMatchIsDraft(
 		t.Errorf("expected ErrInvalidTransition, got %v", err)
 	}
 }
+
+func TestOpenMatchUseCase_Execute_PropagatesUpdateStatusError(t *testing.T) {
+	t.Parallel()
+	persistErr := errors.New("disk full")
+	repo := newFakeMatchRepository()
+	seedMatchInStatus(t, repo, entities.MatchStatusDraft)
+	repo.updateStatusErr = persistErr
+
+	_, err := NewOpenMatchUseCase(repo).Execute(context.Background(), "match-1")
+
+	if !errors.Is(err, persistErr) {
+		t.Errorf("expected wrapped persist error, got %v", err)
+	}
+}
+
+func TestOpenMatchUseCase_Execute_PropagatesFindByIDError(t *testing.T) {
+	t.Parallel()
+	repoErr := errors.New("db unreachable")
+	repo := newFakeMatchRepository()
+	repo.findByIDErr = repoErr
+
+	_, err := NewOpenMatchUseCase(repo).Execute(context.Background(), "match-1")
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped find error, got %v", err)
+	}
+}

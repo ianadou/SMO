@@ -11,6 +11,15 @@ import (
 type fakeInvitationRepository struct {
 	mu          sync.Mutex
 	invitations map[entities.InvitationID]*entities.Invitation
+
+	// Optional per-method error injectors for use case error-branch
+	// tests. nil = method behaves normally; non-nil = method returns
+	// the configured error verbatim.
+	saveErr            error
+	findByIDErr        error
+	findByTokenHashErr error
+	listByMatchErr     error
+	markAsUsedErr      error
 }
 
 func newFakeInvitationRepository() *fakeInvitationRepository {
@@ -20,6 +29,9 @@ func newFakeInvitationRepository() *fakeInvitationRepository {
 func (r *fakeInvitationRepository) Save(_ context.Context, inv *entities.Invitation) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.saveErr != nil {
+		return r.saveErr
+	}
 	r.invitations[inv.ID()] = inv
 	return nil
 }
@@ -27,6 +39,9 @@ func (r *fakeInvitationRepository) Save(_ context.Context, inv *entities.Invitat
 func (r *fakeInvitationRepository) FindByID(_ context.Context, id entities.InvitationID) (*entities.Invitation, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.findByIDErr != nil {
+		return nil, r.findByIDErr
+	}
 	inv, ok := r.invitations[id]
 	if !ok {
 		return nil, domainerrors.ErrInvitationNotFound
@@ -37,6 +52,9 @@ func (r *fakeInvitationRepository) FindByID(_ context.Context, id entities.Invit
 func (r *fakeInvitationRepository) FindByTokenHash(_ context.Context, hash string) (*entities.Invitation, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.findByTokenHashErr != nil {
+		return nil, r.findByTokenHashErr
+	}
 	for _, inv := range r.invitations {
 		if inv.TokenHash() == hash {
 			return inv, nil
@@ -48,6 +66,9 @@ func (r *fakeInvitationRepository) FindByTokenHash(_ context.Context, hash strin
 func (r *fakeInvitationRepository) ListByMatch(_ context.Context, matchID entities.MatchID) ([]*entities.Invitation, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.listByMatchErr != nil {
+		return nil, r.listByMatchErr
+	}
 	result := make([]*entities.Invitation, 0)
 	for _, inv := range r.invitations {
 		if inv.MatchID() == matchID {
@@ -60,6 +81,9 @@ func (r *fakeInvitationRepository) ListByMatch(_ context.Context, matchID entiti
 func (r *fakeInvitationRepository) MarkAsUsed(_ context.Context, inv *entities.Invitation) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.markAsUsedErr != nil {
+		return r.markAsUsedErr
+	}
 	if _, ok := r.invitations[inv.ID()]; !ok {
 		return domainerrors.ErrInvitationNotFound
 	}

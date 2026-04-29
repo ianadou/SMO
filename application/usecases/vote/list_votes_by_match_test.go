@@ -2,6 +2,7 @@ package vote
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -28,5 +29,21 @@ func TestListVotesByMatchUseCase_Execute_ReturnsAllVotesForMatch(t *testing.T) {
 	}
 	if len(votes) != 2 {
 		t.Errorf("expected 2 votes for match-1, got %d", len(votes))
+	}
+}
+
+func TestListVotesByMatchUseCase_Execute_PropagatesRepoError(t *testing.T) {
+	t.Parallel()
+	repoErr := errors.New("db unreachable")
+	repo := newFakeVoteRepository()
+	repo.listByMatchErr = repoErr
+
+	votes, err := NewListVotesByMatchUseCase(repo).Execute(context.Background(), "match-1")
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped repo error, got %v", err)
+	}
+	if votes != nil {
+		t.Errorf("expected nil votes on error, got %v", votes)
 	}
 }

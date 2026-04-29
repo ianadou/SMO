@@ -11,6 +11,13 @@ import (
 type fakeVoteRepository struct {
 	mu    sync.Mutex
 	votes map[entities.VoteID]*entities.Vote
+
+	// Optional per-method error injectors for use case error-branch
+	// tests. nil = method behaves normally; non-nil = method returns
+	// the configured error verbatim.
+	saveErr        error
+	findByIDErr    error
+	listByMatchErr error
 }
 
 func newFakeVoteRepository() *fakeVoteRepository {
@@ -20,6 +27,9 @@ func newFakeVoteRepository() *fakeVoteRepository {
 func (r *fakeVoteRepository) Save(_ context.Context, v *entities.Vote) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.saveErr != nil {
+		return r.saveErr
+	}
 	for _, existing := range r.votes {
 		if existing.MatchID() == v.MatchID() &&
 			existing.VoterID() == v.VoterID() &&
@@ -34,6 +44,9 @@ func (r *fakeVoteRepository) Save(_ context.Context, v *entities.Vote) error {
 func (r *fakeVoteRepository) FindByID(_ context.Context, id entities.VoteID) (*entities.Vote, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.findByIDErr != nil {
+		return nil, r.findByIDErr
+	}
 	v, ok := r.votes[id]
 	if !ok {
 		return nil, domainerrors.ErrVoteNotFound
@@ -44,6 +57,9 @@ func (r *fakeVoteRepository) FindByID(_ context.Context, id entities.VoteID) (*e
 func (r *fakeVoteRepository) ListByMatch(_ context.Context, matchID entities.MatchID) ([]*entities.Vote, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.listByMatchErr != nil {
+		return nil, r.listByMatchErr
+	}
 	result := make([]*entities.Vote, 0)
 	for _, v := range r.votes {
 		if v.MatchID() == matchID {
