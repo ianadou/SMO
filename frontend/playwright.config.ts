@@ -30,9 +30,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm dev --port ${E2E_PORT} --host ${E2E_HOST}`,
+    command: `pnpm build && node .output/server/index.mjs`,
     url: `http://${E2E_HOST}:${E2E_PORT}`,
+    env: { HOST: E2E_HOST, PORT: String(E2E_PORT), NITRO_PORT: String(E2E_PORT) },
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
   },
 })
