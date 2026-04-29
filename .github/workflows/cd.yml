@@ -5,8 +5,11 @@
 #   - <short-sha> for traceability per commit
 #   - latest as a moving pointer to the tip of main
 #
-# This minimal pipeline does not yet include vulnerability scanning, build
-# cache, or image signing — those land in dedicated follow-up PRs.
+# GitHub Actions cache (type=gha) is wired on the build step so
+# incremental pushes reuse module-download and build layers across
+# runs. Vulnerability scanning runs on the CI side (Trivy fs+image,
+# blocking on CRITICAL/HIGH); image signing is not yet in this
+# pipeline and lands in a dedicated follow-up PR.
 name: CD
 on:
   push:
@@ -67,3 +70,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions cache. mode=max keeps intermediate layers
+          # (not just the final image), which is what makes the
+          # multi-stage Go build benefit from cache hits on go mod
+          # download and incremental builds. The 10 GB per-repo
+          # cap is enforced by GHA with LRU eviction.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
