@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SMO — Détail groupe</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <link rel="stylesheet" href="../login/login.css">
+  <link rel="stylesheet" href="match_card.css">
+  <link rel="stylesheet" href="group_detail.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Icons.jsx"></script>
+  <script type="text/babel" src="Jersey.jsx"></script>
+  <script type="text/babel" src="MatchCardVs.jsx"></script>
+  <script type="text/babel" src="Overview.jsx"></script>
+  <script type="text/babel" src="Players.jsx"></script>
+  <script type="text/babel" src="Matches.jsx"></script>
+
+  <script type="text/babel">
+    const Screen = ({ tab, children }) => (
+      <div className="gd-screen">
+        <Header groupName="Foot du jeudi" />
+        <Tabs active={tab} />
+        {children}
+      </div>
+    );
+
+    const GalleryCard = ({ name, sub, children }) => (
+      <div className="gallery-card" data-screen-label={name}>
+        <div className="gd-frame"><div className="gd-frame-scroll">{children}</div></div>
+        <div className="gallery-card-meta">
+          <div className="gallery-card-name">{name}</div>
+          <div className="gallery-card-sub">{sub}</div>
+        </div>
+      </div>
+    );
+
+    const App = () => (
+      <>
+        <main data-screen-label="01 Detail — Live (Overview)">
+          <Screen tab="overview"><OverviewTab/></Screen>
+        </main>
+
+        <section className="gallery" data-screen-label="02 Tabs & states">
+          <header className="gallery-header">
+            <div className="gallery-eyebrow">Onglets · états · mobile</div>
+            <div className="gallery-title">Détail groupe — vues empilées</div>
+          </header>
+          <div className="gallery-grid">
+            <GalleryCard name="Onglet 1 — Vue d'ensemble" sub="prochain match · stats · top 3">
+              <Screen tab="overview"><OverviewTab/></Screen>
+            </GalleryCard>
+            <GalleryCard name="Onglet 2 — Joueurs" sub="12 joueurs · tri ranking décroissant">
+              <Screen tab="players"><PlayersTab/></Screen>
+            </GalleryCard>
+            <GalleryCard name="Onglet 3 — Matchs" sub="historique 5 matchs · tri date desc">
+              <Screen tab="matches"><MatchesTab/></Screen>
+            </GalleryCard>
+            <GalleryCard name="Onglet 3 — État vide" sub="aucun match créé">
+              <Screen tab="matches"><MatchesTab empty/></Screen>
+            </GalleryCard>
+          </div>
+        </section>
+      </>
+    );
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

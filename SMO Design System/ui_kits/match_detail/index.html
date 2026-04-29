@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SMO — Détail match</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <link rel="stylesheet" href="match_card.css">
+  <link rel="stylesheet" href="match_detail.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Icons.jsx"></script>
+  <script type="text/babel" src="Jersey.jsx"></script>
+  <script type="text/babel" src="MatchCardVs.jsx"></script>
+  <script type="text/babel" src="Pion.jsx"></script>
+  <script type="text/babel" src="Field.jsx"></script>
+  <script type="text/babel" src="PresentList.jsx"></script>
+  <script type="text/babel" src="MatchDetail.jsx"></script>
+
+  <script type="text/babel">
+    const upcomingMatch = { status: 'upcoming', dateLabel: 'Jeu 7 mai', timeLabel: '19h30' };
+    const finishedMatch = { status: 'finished', dateLabel: 'Jeu 30 avril', winner: 'red' };
+    const closedMatch   = { status: 'closed',   dateLabel: 'Jeu 17 avril', winner: 'green', votesLabel: '12 votes enregistrés' };
+
+    const App = () => (
+      <>
+        {/* Live demo: Vue 1 — Mode Composition (état initial, drag-and-drop fonctionnel) */}
+        <main data-screen-label="01 Composition (live)" className="md-live">
+          <MatchDetailPage
+            variant="composition"
+            matchProps={upcomingMatch}
+            showBottomBar
+          />
+        </main>
+
+        {/* Gallery: 4 views stacked */}
+        <section className="md-gallery" data-screen-label="02 Toutes les vues">
+          <header className="md-gallery-head">
+            <span className="md-gallery-eyebrow">Détail match · 4 vues</span>
+            <h2 className="md-gallery-title">Tous les états de la page</h2>
+            <p className="md-gallery-sub">
+              Composition (interactif) → Drag en cours → Match terminé → Match clôturé après votes.
+              Le terrain pivote automatiquement portrait/paysage selon la largeur disponible.
+            </p>
+          </header>
+
+          <div className="md-view" data-screen-label="03 Vue 1 — Composition (initial)">
+            <span className="md-view-label">Vue 1 · Mode Composition</span>
+            <h3 className="md-view-title">État initial — drag-and-drop activé</h3>
+            <div className="md-view-frame">
+              <MatchDetailPage variant="composition" matchProps={upcomingMatch} showBottomBar/>
+            </div>
+          </div>
+
+          <div className="md-view" data-screen-label="04 Vue 2 — Drag en cours">
+            <span className="md-view-label">Vue 2 · Drag en cours</span>
+            <h3 className="md-view-title">Théo B. en train d'être glissé vers Cédric D.</h3>
+            <div className="md-view-frame">
+              <MatchDetailPage
+                variant="composition-dragging"
+                matchProps={upcomingMatch}
+                showBottomBar
+                staticDragId="tb"
+              />
+            </div>
+          </div>
+
+          <div className="md-view" data-screen-label="05 Vue 3 — Terminé">
+            <span className="md-view-label">Vue 3 · Affichage</span>
+            <h3 className="md-view-title">Match terminé — Équipe rouge a gagné</h3>
+            <div className="md-view-frame">
+              <MatchDetailPage variant="finished" matchProps={finishedMatch}/>
+            </div>
+          </div>
+
+          <div className="md-view" data-screen-label="06 Vue 4 — Clôturé">
+            <span className="md-view-label">Vue 4 · Affichage</span>
+            <h3 className="md-view-title">Match clôturé — scores moyens affichés</h3>
+            <div className="md-view-frame">
+              <MatchDetailPage variant="closed" matchProps={closedMatch} showScores/>
+            </div>
+          </div>
+
+          <div className="md-view" data-screen-label="07 Mobile portrait">
+            <span className="md-view-label">Bonus · Mobile portrait (380 px)</span>
+            <h3 className="md-view-title">Les 4 vues en portrait — terrain pivoté à la verticale</h3>
+            <div className="md-mobile-row">
+              <div className="md-mobile-frame" data-screen-label="07a Mobile — Composition">
+                <MatchDetailPage variant="composition" matchProps={upcomingMatch} showBottomBar/>
+              </div>
+              <div className="md-mobile-frame" data-screen-label="07b Mobile — Drag">
+                <MatchDetailPage variant="composition-dragging" matchProps={upcomingMatch} showBottomBar staticDragId="tb"/>
+              </div>
+              <div className="md-mobile-frame" data-screen-label="07c Mobile — Terminé">
+                <MatchDetailPage variant="finished" matchProps={finishedMatch}/>
+              </div>
+              <div className="md-mobile-frame" data-screen-label="07d Mobile — Clôturé">
+                <MatchDetailPage variant="closed" matchProps={closedMatch} showScores/>
+              </div>
+            </div>
+          </div>
+        </section>
+      </>
+    );
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

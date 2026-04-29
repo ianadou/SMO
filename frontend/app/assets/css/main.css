@@ -1,0 +1,81 @@
+/* SMO global stylesheet
+ *
+ * Imports Tailwind v4 and declares the design system tokens via the
+ * @theme directive. Tokens mirror the source of truth in
+ * SMO Design System/colors_and_type.css; that file documents the
+ * intent (palette, voice, scale), this file ships the values to the
+ * production bundle.
+ *
+ * The Google Fonts @import line in the design system file is NOT
+ * carried over: fonts are loaded at build time via @nuxt/fonts
+ * (see nuxt.config.ts and ADR 0005).
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ============ COLORS ============ */
+  /* Neutrals — the page lives here */
+  --color-bg-base: #0e1014;
+  --color-bg-elevated: #1a1f26;
+  --color-bg-subtle: #141821;
+  --color-border-default: #222831;
+
+  --color-fg-default: #f5f6f8;
+  --color-fg-muted: #4a5560;
+  --color-fg-subtle: #6b7682;
+  --color-fg-emphasis: #ffffff;
+
+  /* Actions */
+  --color-action-primary: #2080ff;
+  --color-action-primary-hover: #1452c9;
+  --color-action-primary-pressed: #0f3fa0;
+
+  /* Teams (red doubles as error, green doubles as success) */
+  --color-team-red: #dc2a3b;
+  --color-team-green: #30d158;
+
+  /* Semantic */
+  --color-warn: #f5c518;
+  --color-danger: #dc2a3b;
+  --color-success: #30d158;
+
+  /* ============ TYPOGRAPHY ============ */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ============ SPACING (4px base) ============ */
+  /* Tailwind v4 default spacing scale already maps 1=4px, 2=8px, etc.
+   * No override needed unless we want named tokens — kept implicit. */
+
+  /* ============ RADII ============ */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 9999px;
+
+  /* ============ SHADOWS ============ */
+  /* Almost none on dark UI. Drop shadows look like grime; we only
+   * use the focus ring and a single elevated shadow for popovers. */
+  --shadow-focus: 0 0 0 2px rgba(32, 128, 255, 0.45);
+  --shadow-elevated: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* Inter loaded via @nuxt/fonts: enable the geometric variants
+ * (cv11 single-storey a, ss01, slashed 0, tabular numerals) so it
+ * doesn't look like a default Inter install. */
+:root {
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+}
+
+/* Body sits on the deep base color and never reverts. The product
+ * is dark-only at MVP — no light mode toggle. */
+html,
+body,
+#__nuxt {
+  background-color: var(--color-bg-base);
+  color: var(--color-fg-default);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

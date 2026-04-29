@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin: 0; padding: 32px; }
+  .stack { display: flex; gap: 48px; align-items: flex-end; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .name { font-family: var(--font-sans); font-size: 80px; font-weight: 600; color: var(--fg-default); letter-spacing: -0.02em; line-height: 1; }
+  .name-mono { font-family: var(--font-mono); font-size: 80px; font-weight: 500; color: var(--fg-default); letter-spacing: -0.02em; line-height: 1; }
+  .meta { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .label { font-family: var(--font-mono); font-size: 10px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .desc { font-size: 12px; color: var(--fg-muted); }
+</style>
+</head>
+<body>
+  <div class="stack">
+    <div class="col">
+      <div class="name">Aa</div>
+      <div class="meta">
+        <div class="label">Geist Sans</div>
+        <div class="desc">UI · text · titles</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="name-mono">12<span style="color:#2080FF">·</span>8</div>
+      <div class="meta">
+        <div class="label">Geist Mono</div>
+        <div class="desc">scores · jersey numbers</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

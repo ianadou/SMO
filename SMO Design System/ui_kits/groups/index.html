@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SMO — Mes groupes</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <link rel="stylesheet" href="../login/login.css">
+  <link rel="stylesheet" href="groups.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="../login/Wordmark.jsx"></script>
+  <script type="text/babel" src="Icons.jsx"></script>
+  <script type="text/babel" src="AvatarCluster.jsx"></script>
+  <script type="text/babel" src="GroupCard.jsx"></script>
+  <script type="text/babel" src="GroupsParts.jsx"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ---------- Realistic data ----------
+    const allGroups = [
+      {
+        id: 'jeudi',
+        name: 'Foot du jeudi',
+        players: 12,
+        members: ['AL', 'JR', 'MK', 'TB', 'PS', 'YN', 'CD', 'SF', 'MR', 'GP', 'NL', 'OB'],
+        nextMatch: { day: 'Jeudi 7 mai', time: '19h30', venue: 'Salle Pierre Mendès', sortKey: 1 },
+        lastResult: { kind: 'red' },
+      },
+      {
+        id: 'lundi',
+        name: 'Lundi entre collègues',
+        players: 8,
+        members: ['CV', 'EM', 'JD', 'KL', 'RS', 'TF', 'VW', 'XZ'],
+        nextMatch: null,
+        lastResult: { kind: 'green' },
+      },
+      {
+        id: 'vets',
+        name: 'Les Vétérans',
+        players: 15,
+        members: ['BD', 'FH', 'GI', 'HK', 'IM', 'JN', 'LP', 'OQ', 'RT', 'SU', 'VX', 'WY', 'ZA', 'BC', 'DE'],
+        nextMatch: { day: 'Samedi 10 mai', time: '14h00', venue: 'Stade municipal', sortKey: 2 },
+        lastResult: null,
+      },
+    ];
+
+    // ---------- Reusable screen ----------
+    const GroupsScreen = ({ groups, mode = 'normal' }) => {
+      const sorted = sortGroups(groups);
+      const isEmpty = mode === 'empty';
+      const isLoading = mode === 'loading';
+
+      const onCard = () => {/* tap → group detail (out of scope) */};
+      const onCreate = () => {/* tap → create group modal (out of scope) */};
+      const onProfile = () => {/* tap → profile menu (out of scope) */};
+
+      return (
+        <div className="g-screen">
+          <GroupsHeader onProfile={onProfile} />
+
+          {!isEmpty && (
+            <PageTitle count={isLoading ? 0 : sorted.length} />
+          )}
+
+          {isLoading && (
+            <div className="g-list">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          )}
+
+          {!isLoading && !isEmpty && (
+            <div className="g-list">
+              {sorted.map((g) => (
+                <GroupCard key={g.id} group={g} onClick={onCard} />
+              ))}
+            </div>
+          )}
+
+          {isEmpty && <EmptyState onCreate={onCreate} />}
+
+          {/* FAB always present except in empty state where the secondary CTA replaces it */}
+          {!isEmpty && <Fab onClick={onCreate} />}
+        </div>
+      );
+    };
+
+    // ---------- Gallery card wrapper ----------
+    const GalleryCard = ({ name, sub, children }) => (
+      <div className="gallery-card" data-screen-label={name}>
+        <div className="g-frame">
+          <div className="g-frame-scroll">{children}</div>
+        </div>
+        <div className="gallery-card-meta">
+          <div className="gallery-card-name">{name}</div>
+          <div className="gallery-card-sub">{sub}</div>
+        </div>
+      </div>
+    );
+
+    // ---------- App ----------
+    const App = () => (
+      <>
+        <main className="live-screen" data-screen-label="01 Groups — Live">
+          <GroupsScreen groups={allGroups} mode="normal" />
+        </main>
+
+        <section className="gallery" data-screen-label="02 States">
+          <header className="gallery-header">
+            <div className="gallery-eyebrow">États · mobile</div>
+            <div className="gallery-title">Tous les états dans une vue</div>
+          </header>
+          <div className="gallery-grid">
+            <GalleryCard name="Plusieurs groupes" sub="3 groupes · tri par prochain match">
+              <GroupsScreen groups={allGroups} mode="normal" />
+            </GalleryCard>
+            <GalleryCard name="Un seul groupe" sub="page reste structurée, pas vide">
+              <GroupsScreen groups={[allGroups[0]]} mode="normal" />
+            </GalleryCard>
+            <GalleryCard name="État vide" sub="nouveau compte · CTA secondaire centré">
+              <GroupsScreen groups={[]} mode="empty" />
+            </GalleryCard>
+            <GalleryCard name="Chargement" sub="3 skeletons · pulse subtle">
+              <GroupsScreen groups={[]} mode="loading" />
+            </GalleryCard>
+          </div>
+        </section>
+      </>
+    );
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

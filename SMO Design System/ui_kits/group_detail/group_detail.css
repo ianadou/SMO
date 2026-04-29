@@ -1,0 +1,234 @@
+/* SMO Group Detail — styles. Tokens from ../../colors_and_type.css. */
+* { box-sizing: border-box; }
+html, body { margin:0; background:var(--bg-base); color:var(--fg-default); font-family:var(--font-sans); min-height:100%; }
+
+.gd-screen { width:100%; max-width:700px; margin:0 auto; display:flex; flex-direction:column; }
+
+/* ---- Header ---- */
+.gd-header {
+  display:flex; align-items:center; justify-content:space-between; gap:var(--space-3);
+  padding: var(--space-5) var(--space-4) var(--space-3);
+}
+.gd-h1 {
+  font-size:22px; font-weight:600; letter-spacing:-0.01em; color:var(--fg-default);
+  margin:0; flex:1; text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.gd-icon-btn {
+  width:40px; height:40px; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:transparent; border:0; color:var(--fg-default);
+  border-radius:var(--radius-pill); cursor:pointer;
+  transition: background var(--motion-default) var(--motion-easing);
+}
+.gd-icon-btn:hover  { background: rgba(255,255,255,0.06); }
+.gd-icon-btn:active { background: rgba(255,255,255,0.10); }
+
+/* ---- Tabs ---- */
+.gd-tabs {
+  position:relative;
+  display:flex; gap:0;
+  padding: 0 var(--space-4);
+  overflow:hidden;
+}
+.gd-tabs::after {
+  content:""; position:absolute; left:0; right:0; bottom:0;
+  height:1px; background: var(--border-default);
+}
+.gd-tab {
+  position:relative; z-index:1;
+  flex:1; min-width:0;
+  background:transparent; border:0; cursor:pointer;
+  padding: var(--space-3) var(--space-2);
+  font-family: var(--font-sans); font-size:14px; font-weight:500;
+  color: var(--fg-muted);
+  border-bottom: 2px solid transparent;
+  transition: color var(--motion-default), border-color var(--motion-default);
+  white-space:nowrap;
+}
+.gd-tab.is-active { color: var(--fg-default); border-bottom-color: var(--action-primary); }
+
+/* ---- Tab body ---- */
+.gd-tab-body {
+  display:flex; flex-direction:column; gap:var(--space-6);
+  padding: var(--space-6) var(--space-4) var(--space-10);
+}
+
+/* ---- Block ---- */
+.gd-block { display:flex; flex-direction:column; gap:var(--space-3); }
+.gd-block-eyebrow {
+  font-family: var(--font-mono); font-size:11px; letter-spacing:0.08em;
+  text-transform:uppercase; color: var(--fg-muted);
+}
+.gd-stack { display:flex; flex-direction:column; gap:var(--space-3); }
+.gd-stack-tight { gap: var(--space-2); }
+.muted { color: var(--fg-muted); }
+
+/* ---- Generic card surface ---- */
+.gd-card {
+  background: var(--bg-elevated); border-radius: var(--radius-lg);
+  padding: var(--space-4); display:flex; flex-direction:column; gap:var(--space-2);
+}
+
+/* ---- Next match block ---- */
+.gd-next-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-1);
+}
+.gd-next-venue {
+  display:flex; align-items:center; gap:6px;
+  color: var(--fg-muted); font-size:13px;
+}
+.gd-next-conf { font-size:13px; color: var(--fg-muted); }
+.gd-next-conf .num { color: var(--fg-default); }
+
+/* Constrain the embedded MatchCardVs so it sits nicely inside the screen column */
+.gd-block .mc { max-width: none; }
+
+/* ---- Buttons ---- */
+.gd-btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:36px; padding: 0 14px; border:0; border-radius: var(--radius-md);
+  font-family: var(--font-sans); font-size:14px; font-weight:500; cursor:pointer;
+  transition: background var(--motion-default) var(--motion-easing);
+}
+.gd-btn-secondary {
+  background: rgba(255,255,255,0.06); color: var(--fg-default);
+}
+.gd-btn-secondary:hover { background: rgba(255,255,255,0.10); }
+
+/* ---- Stats row ---- */
+.gd-stats {
+  display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2);
+}
+.gd-stat {
+  background: var(--bg-elevated); border-radius: var(--radius-md);
+  padding: var(--space-3); display:flex; align-items:center; gap: var(--space-3);
+}
+.gd-stat-icon { color: var(--fg-muted); flex-shrink:0; }
+.gd-stat-num { font-size:18px; line-height:1.1; color: var(--fg-default); }
+.gd-stat-label { font-size:12px; color: var(--fg-muted); margin-top:2px; }
+@media (max-width: 420px) {
+  .gd-stats { grid-template-columns: 1fr; }
+}
+
+/* ---- Player card / row ---- */
+.gd-pcard {
+  background: var(--bg-elevated); border-radius: var(--radius-md);
+  padding: var(--space-3); display:flex; align-items:center; gap: var(--space-3);
+}
+.gd-pcard-mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.gd-pcard-name { font-size:15px; font-weight:600; color: var(--fg-default); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gd-pcard-meta { font-size:12px; color: var(--fg-muted); }
+.gd-pcard-score { display:flex; flex-direction:column; gap:6px; align-items:flex-end; min-width:90px; }
+.gd-pcard-score-num { font-size:13px; min-width:48px; text-align:right; flex-shrink:0; }
+.gd-bar { width:80px; height:4px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow:hidden; }
+.gd-bar-fill { height:100%; background: var(--action-primary); border-radius:999px; }
+
+.gd-prow { width:100%; }
+.gd-prow-more { width:36px; height:36px; color: var(--fg-muted); }
+
+/* ---- Link row ---- */
+.gd-link-row {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:14px; color: var(--fg-default);
+  text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--fg-muted);
+  align-self:flex-start; padding: var(--space-2) 0;
+  white-space: nowrap;
+}
+.gd-link-row svg { flex-shrink: 0; }
+
+/* ---- Add player form ---- */
+.gd-add { display:flex; flex-direction:column; gap: var(--space-2); }
+.gd-add-label { font-size:13px; font-weight:500; color: var(--fg-default); }
+.gd-add-row { display:flex; gap: var(--space-2); }
+.gd-add-input-wrap { flex:1; }
+.gd-add-btn { width:auto; padding: 0 var(--space-5); height:48px; flex-shrink:0; }
+@media (max-width: 420px) {
+  .gd-add-row { flex-direction: column; }
+  .gd-add-btn { width:100%; height:44px; }
+}
+
+/* ---- Match card ---- */
+.gd-mcard {
+  width:100%; text-align:left; cursor:pointer;
+  background: var(--bg-elevated); border:0; border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display:flex; flex-direction:column; gap: 6px;
+  color: var(--fg-default); font-family: var(--font-sans);
+  transition: background var(--motion-default) var(--motion-easing);
+}
+.gd-mcard:hover { background: #1F252D; }
+.gd-mcard-top {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:var(--space-3); flex-wrap:wrap;
+}
+.gd-mcard-date { font-size:15px; font-weight:500; }
+.gd-mcard-venue {
+  display:flex; align-items:center; gap:6px;
+  font-size:13px; color: var(--fg-muted);
+}
+
+/* ---- Badges ---- */
+.gd-badge {
+  display:inline-flex; align-items:center;
+  padding: 4px 10px; border-radius: 999px;
+  font-size:12px; font-weight:500; line-height:1.2;
+  white-space:nowrap;
+}
+.gd-badge-blue  { background: rgba(32,128,255,0.15);  color:#9CC4FF; }
+.gd-badge-muted { background: rgba(255,255,255,0.06); color: var(--fg-muted); }
+.gd-badge-warn  { background: rgba(245,197,24,0.15);  color: var(--warn); }
+
+/* ---- Result line ---- */
+.gd-result { display:inline-flex; align-items:center; font-size:13px; color:var(--fg-default); }
+.gd-result-dot { width:8px; height:8px; border-radius:999px; margin-right:6px; }
+
+/* ---- Create match button ---- */
+.gd-create-match { width:100%; height:44px; }
+
+/* ---- Empty state inline ---- */
+.gd-empty-inline {
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  padding: var(--space-10) var(--space-4); gap: var(--space-2);
+}
+.gd-empty-icon {
+  width:80px; height:80px; border-radius:999px; background:var(--bg-elevated);
+  color: var(--fg-muted); display:inline-flex; align-items:center; justify-content:center;
+  margin-bottom: var(--space-3);
+}
+.gd-empty-title { font-size:18px; font-weight:600; }
+.gd-empty-sub { font-size:14px; color: var(--fg-muted); max-width:300px; }
+
+/* ---- Gallery ---- */
+.gallery {
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-10) var(--space-5) var(--space-14);
+  margin-top: var(--space-10);
+}
+.gallery-header { max-width:1280px; margin:0 auto var(--space-6); }
+.gallery-eyebrow {
+  font-family: var(--font-mono); font-size:11px; letter-spacing:0.08em;
+  text-transform:uppercase; color: var(--fg-muted); margin-bottom: var(--space-2);
+}
+.gallery-title { font-size:22px; font-weight:600; letter-spacing:-0.01em; }
+.gallery-grid {
+  max-width:1280px; margin:0 auto;
+  display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--space-6);
+}
+.gallery-card {
+  background: var(--bg-base); border:1px solid var(--border-default);
+  border-radius: var(--radius-lg); padding: var(--space-2);
+  display:flex; flex-direction:column;
+}
+.gd-frame {
+  background: var(--bg-base); border-radius: var(--radius-md);
+  height: 700px; overflow:hidden; display:flex;
+}
+.gd-frame > .gd-frame-scroll { flex:1; overflow:auto; }
+.gallery-card-meta { padding: var(--space-3) var(--space-4); display:flex; flex-direction:column; gap:2px; }
+.gallery-card-name { font-size:13px; font-weight:500; color: var(--fg-default); }
+.gallery-card-sub { font-family: var(--font-mono); font-size:11px; color: var(--fg-muted); }
