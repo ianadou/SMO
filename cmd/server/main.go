@@ -312,6 +312,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	}
 	router.Use(middlewares.RequestID())
 	router.Use(middlewares.SLogLogger(slog.Default()))
+	router.Use(middlewares.CORS(parseAllowedOrigins(os.Getenv("ALLOWED_ORIGINS"))))
 	router.Use(ratelimit.New(redisClient, ratelimit.DefaultConfig()).Middleware())
 	router.Use(gin.Recovery())
 
@@ -373,6 +374,30 @@ func parseTrustedProxies(raw string) []string {
 		return []string{
 			"127.0.0.1", "::1",
 			"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+		}
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// parseAllowedOrigins returns the CORS allow-list from a
+// comma-separated env value. An empty/unset value falls back to a
+// localhost dev pair (Nuxt at :3000, Vite preview at :3001) which
+// covers `pnpm dev` and the Playwright e2e flow without extra
+// configuration. Production overrides this via ALLOWED_ORIGINS.
+func parseAllowedOrigins(raw string) []string {
+	if raw == "" {
+		return []string{
+			"http://localhost:3000",
+			"http://127.0.0.1:3000",
+			"http://localhost:3001",
+			"http://127.0.0.1:3001",
 		}
 	}
 	parts := strings.Split(raw, ",")

@@ -6,15 +6,17 @@ import InlineError from '~/components/login/InlineError.vue'
 import StrengthMeter from '~/components/register/StrengthMeter.vue'
 import CguCheckbox from '~/components/register/CguCheckbox.vue'
 import { isEmailFormat, passwordStrength } from '~/utils/password'
+import { ApiError } from '~/composables/useApi'
 
 definePageMeta({ layout: false })
 
 useHead({ title: 'Créer un compte — SMO' })
 
-const STUB_RESPONSE_DELAY_MS = 1400
 const NAME_MIN = 2
 const NAME_MAX = 50
 const PASSWORD_MIN = 8
+
+const auth = useAuthStore()
 
 const name = ref('')
 const email = ref('')
@@ -41,9 +43,18 @@ async function submit() {
   if (!formValid.value) return
   apiError.value = ''
   loading.value = true
-  await new Promise((resolve) => setTimeout(resolve, STUB_RESPONSE_DELAY_MS))
-  loading.value = false
-  apiError.value = 'Un compte existe déjà pour cette adresse.'
+  try {
+    await auth.register({
+      email: email.value,
+      password: password.value,
+      display_name: trimmedName.value,
+    })
+    await navigateTo('/groups')
+  } catch (e) {
+    apiError.value = e instanceof ApiError ? e.publicMessage : 'Une erreur est survenue.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
