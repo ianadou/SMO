@@ -3,7 +3,9 @@
 #
 # Services:
 #   - postgres : PostgreSQL 16 database with a named volume for persistence
-#   - app      : SMO HTTP server, built from the local Dockerfile
+#   - redis    : Cache + rate-limit store
+#   - app      : SMO HTTP backend, built from the root Dockerfile
+#   - frontend : Nuxt 3 SPA, built from frontend/Dockerfile
 #
 # Usage:
 #   cp .env.example .env          create your local .env file (REQUIRED)
@@ -78,6 +80,23 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smo-frontend
+    restart: unless-stopped
+    # The frontend has no runtime dependency on the backend at boot
+    # — it talks to it via HTTP from the browser. We don't gate it on
+    # `app` being healthy so a backend hiccup doesn't take the SPA
+    # down with it.
+    environment:
+      # Nitro listens on this port; the EXPOSE in the Dockerfile
+      # mirrors it. Override only if 3000 is taken on the host.
+      PORT: ${FRONTEND_PORT:-3000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
 
 volumes:
   smo-postgres-data:
