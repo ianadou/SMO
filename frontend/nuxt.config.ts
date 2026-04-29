@@ -56,6 +56,12 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: 'Organise tes matchs de foot 5v5 entre potes.' },
       ],
+      link: [
+        // SVG favicon from the design system. Modern browsers honour
+        // image/svg+xml; we don't ship a .ico fallback because the
+        // organizer pool is desktop+modern-mobile only.
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+      ],
     },
   },
 })

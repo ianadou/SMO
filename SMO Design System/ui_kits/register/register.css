@@ -1,0 +1,273 @@
+/* SMO — Register flow styles. Tokens from ../../colors_and_type.css.
+ * Reuses ../login/login.css for shared form chrome (.smo-input, .smo-btn,
+ * .smo-error, .smo-secondary). This file only adds the Register-specific bits. */
+
+* { box-sizing: border-box; }
+html, body { margin:0; background:var(--bg-base); color:var(--fg-default); font-family:var(--font-sans); min-height:100%; }
+
+/* ============ Outer page chrome (single-column centered) ============ */
+.reg-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-6) 0;
+}
+.reg-form {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  display: flex;
+  flex-direction: column;
+}
+.reg-mark { display: flex; justify-content: center; margin-bottom: var(--space-8); }
+
+.reg-title {
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-lh);
+  font-weight: var(--type-display-weight);
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--space-2);
+}
+.reg-sub {
+  font-size: 14px;
+  color: var(--fg-muted);
+  margin: 0 0 var(--space-6);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.reg-stack {
+  display: flex; flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+/* Field hint text (below input) */
+.reg-hint {
+  font-size: 12px;
+  color: var(--fg-muted);
+  line-height: 1.4;
+  margin-top: -2px; /* tighter coupling with the field above */
+}
+.reg-hint.is-error { color: #FF8B97; }
+
+/* ============ Password strength meter ============ */
+.reg-strength {
+  display: flex;
+  gap: 4px;
+  margin-top: var(--space-2);
+}
+.reg-strength-seg {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  transition: background 250ms var(--motion-easing);
+}
+.reg-strength-seg.is-1 { background: var(--warn); }
+.reg-strength-seg.is-2 { background: var(--warn); }
+.reg-strength-seg.is-3 { background: var(--action-primary); }
+.reg-strength-seg.is-4 { background: var(--team-green); }
+.reg-strength-label {
+  display: flex; justify-content: space-between;
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-top: 6px;
+}
+.reg-strength-label .num { font-family: var(--font-mono); }
+
+/* ============ Custom checkbox (CGU) ============ */
+.reg-check {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  cursor: pointer;
+  user-select: none;
+  padding: var(--space-2) 0;
+}
+.reg-check-box {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+  transition: background 150ms var(--motion-easing), box-shadow 150ms var(--motion-easing);
+  box-shadow: inset 0 0 0 1px var(--border-default);
+}
+.reg-check input { position: absolute; opacity: 0; pointer-events: none; }
+.reg-check input:focus-visible + .reg-check-box {
+  box-shadow: inset 0 0 0 1px var(--border-default), 0 0 0 2px var(--bg-base), 0 0 0 4px var(--ring-color);
+}
+.reg-check input:checked + .reg-check-box {
+  background: var(--action-primary);
+  box-shadow: inset 0 0 0 1px var(--action-primary);
+  color: var(--fg-emphasis);
+}
+.reg-check-label {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg-default);
+}
+.reg-check-label a {
+  color: var(--action-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.reg-check-label a:hover { text-decoration-color: var(--fg-emphasis); }
+
+/* ============ Confirmation screens (Vue 2 / Vue 3) ============ */
+.reg-confirm {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  display: flex; flex-direction: column;
+  align-items: stretch;
+}
+.reg-hero {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+.reg-hero-icon { display: inline-flex; }
+.reg-hero-icon.is-primary { color: var(--action-primary); }
+.reg-hero-icon.is-success { color: var(--team-green); }
+.reg-hero-icon.is-error   { color: var(--team-red); }
+
+.reg-hero-title {
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-lh);
+  font-weight: var(--type-display-weight);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.reg-hero-sub {
+  font-size: 15px;
+  color: var(--fg-muted);
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* Email value display */
+.reg-email-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--fg-default);
+  text-align: center;
+  word-break: break-all;
+  margin-top: var(--space-1);
+}
+
+/* Numbered steps list */
+.reg-steps {
+  list-style: none;
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  display: flex; flex-direction: column;
+  gap: var(--space-3);
+}
+.reg-step {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+}
+.reg-step-num {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  border-radius: 999px;
+  background: var(--bg-base);
+  color: var(--fg-default);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.reg-step-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg-default);
+}
+
+/* Resend button (secondary, smaller, neutral) */
+.reg-resend {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--space-2);
+  height: 44px;
+  padding: 0 var(--space-5);
+  background: var(--bg-elevated);
+  color: var(--fg-default);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  align-self: center;
+  transition: background 150ms var(--motion-easing);
+}
+.reg-resend:hover { background: var(--bg-subtle); }
+.reg-resend:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Spinner under "connection en cours" */
+.reg-spin-wrap {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-top: var(--space-3);
+  color: var(--fg-muted);
+}
+
+/* Tertiary link */
+.reg-tertiary {
+  text-align: center;
+  font-size: 13px;
+  color: var(--fg-muted);
+  margin-top: var(--space-4);
+}
+.reg-tertiary a { color: var(--fg-default); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--fg-muted); }
+.reg-tertiary a:hover { text-decoration-color: var(--fg-emphasis); }
+
+/* ============ Gallery (the 3 screens stacked + variants) ============ */
+.gallery {
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-10) var(--space-5) var(--space-14);
+  margin-top: var(--space-10);
+}
+.gallery-header { max-width:1280px; margin:0 auto var(--space-6); }
+.gallery-eyebrow {
+  font-family: var(--font-mono); font-size:11px; letter-spacing:0.08em;
+  text-transform:uppercase; color: var(--fg-muted); margin-bottom: var(--space-2);
+}
+.gallery-title { font-size:22px; font-weight:600; letter-spacing:-0.01em; }
+.gallery-grid {
+  max-width:1280px; margin:0 auto;
+  display:grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: var(--space-6);
+}
+.gallery-card {
+  background: var(--bg-base); border:1px solid var(--border-default);
+  border-radius: var(--radius-lg); padding: var(--space-2);
+  display:flex; flex-direction:column;
+}
+.reg-frame {
+  background: var(--bg-base);
+  border-radius: var(--radius-md);
+  height: 720px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+}
+.reg-frame > .reg-frame-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; padding: var(--space-4) 0; }
+.gallery-card-meta { padding: var(--space-3) var(--space-4); display:flex; flex-direction:column; gap:2px; }
+.gallery-card-name { font-size:13px; font-weight:500; color: var(--fg-default); }
+.gallery-card-sub { font-family: var(--font-mono); font-size:11px; color: var(--fg-muted); }
+
+/* Section title between gallery and live demo */
+.section-divider {
+  border-top: 1px solid var(--border-default);
+  margin: var(--space-14) 0 var(--space-10);
+}

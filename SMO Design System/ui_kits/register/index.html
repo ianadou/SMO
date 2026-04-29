@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SMO — Inscription organisateur</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <link rel="stylesheet" href="../login/login.css">
+  <link rel="stylesheet" href="register.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="../login/Wordmark.jsx"></script>
+  <script type="text/babel" src="../login/Icons.jsx"></script>
+  <script type="text/babel" src="../login/TextField.jsx"></script>
+  <script type="text/babel" src="../login/PrimaryButton.jsx"></script>
+  <script type="text/babel" src="../login/InlineError.jsx"></script>
+  <script type="text/babel" src="Icons.jsx"></script>
+  <script type="text/babel" src="RegisterPage.jsx"></script>
+
+  <script type="text/babel">
+    const GalleryCard = ({ name, sub, children }) => (
+      <div className="gallery-card" data-screen-label={name}>
+        <div className="reg-frame"><div className="reg-frame-scroll">{children}</div></div>
+        <div className="gallery-card-meta">
+          <div className="gallery-card-name">{name}</div>
+          <div className="gallery-card-sub">{sub}</div>
+        </div>
+      </div>
+    );
+
+    const App = () => (
+      <>
+        <main data-screen-label="01 Register — Live (interactif)" className="reg-page">
+          <RegisterForm/>
+        </main>
+
+        <section className="gallery" data-screen-label="02 Écran 1 — Register · 4 états">
+          <header className="gallery-header">
+            <div className="gallery-eyebrow">Écran 1 · 4 états</div>
+            <div className="gallery-title">Register — états du formulaire</div>
+          </header>
+          <div className="gallery-grid">
+            <GalleryCard name="État 1 — Par défaut" sub="champs vides · CTA disabled">
+              <RegisterForm frozen/>
+            </GalleryCard>
+            <GalleryCard name="État 2 — Saisie (focus email)" sub="utilisateur en train de remplir">
+              <RegisterForm frozen forcedFocus="email" initial={{ name: 'Alex L.', email: 'alex@', pwd: '' }}/>
+            </GalleryCard>
+            <GalleryCard name="État 3 — Erreurs" sub="email déjà existant + format pwd">
+              <RegisterForm frozen forcedError="email-exists"
+                initial={{ name: 'Alex L.', email: 'alex@exemple.fr', pwd: 'azerty12', cgu: true }}/>
+            </GalleryCard>
+            <GalleryCard name="État 4 — Chargement" sub="POST /register en cours">
+              <RegisterForm frozen forcedLoading
+                initial={{ name: 'Alex L.', email: 'alex@exemple.fr', pwd: 'AzertyUiop1!', cgu: true }}/>
+            </GalleryCard>
+          </div>
+        </section>
+
+        <section className="gallery" data-screen-label="03 Écran 2 — Vérifiez votre boîte mail">
+          <header className="gallery-header">
+            <div className="gallery-eyebrow">Écran 2 · post-submit</div>
+            <div className="gallery-title">Vérifiez votre boîte mail</div>
+          </header>
+          <div className="gallery-grid">
+            <GalleryCard name="Compte à rebours actif" sub="renvoi disabled · 45s">
+              <CheckEmailScreen email="alex@exemple.fr" initialCountdown={45} frozen/>
+            </GalleryCard>
+            <GalleryCard name="Renvoi disponible" sub="renvoi enabled · 0s">
+              <CheckEmailScreen email="alex@exemple.fr" initialCountdown={0} frozen/>
+            </GalleryCard>
+          </div>
+        </section>
+
+        <section className="gallery" data-screen-label="04 Écran 3 — Email vérifié">
+          <header className="gallery-header">
+            <div className="gallery-eyebrow">Écran 3 · transition</div>
+            <div className="gallery-title">Lien magique cliqué</div>
+          </header>
+          <div className="gallery-grid">
+            <GalleryCard name="Succès — connexion en cours" sub="redirection auto vers /groups">
+              <VerifyingScreen status="success"/>
+            </GalleryCard>
+            <GalleryCard name="Erreur — token expiré" sub="lien invalide ou expiré">
+              <VerifyingScreen status="error"/>
+            </GalleryCard>
+          </div>
+        </section>
+      </>
+    );
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
