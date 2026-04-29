@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 32" width="64" height="32">
+  <rect width="64" height="32" rx="6" fill="#0E1014"></rect>
+  <text x="6" y="23" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="800" font-size="22" letter-spacing="-0.06em" fill="#F5F6F8">SMO</text>
+  <circle cx="55" cy="22" r="2.5" fill="#2080FF"></circle>
+</svg>
