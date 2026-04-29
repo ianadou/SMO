@@ -1,0 +1,385 @@
+/* SMO — Vote page styles. Tokens from ../../colors_and_type.css. */
+* { box-sizing: border-box; }
+html, body { margin:0; background:var(--bg-base); color:var(--fg-default); font-family:var(--font-sans); min-height:100%; }
+
+/* ============ Frame ============ */
+.vote-screen {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: var(--space-6) var(--space-5) 120px; /* room for sticky CTA */
+  position: relative;
+}
+.vote-screen.is-resolved {
+  padding-bottom: var(--space-10);
+}
+
+/* ============ Header ============ */
+.vote-header {
+  display: flex; justify-content: center; align-items: center;
+  padding: var(--space-2) 0 var(--space-5);
+}
+
+/* ============ Team banner ============ */
+.vote-team-banner {
+  display: flex; align-items: center; gap: var(--space-2);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-4) 0 var(--space-6);
+  font-size: 14px;
+  color: var(--fg-default);
+}
+.vote-team-dot {
+  width: 12px; height: 12px; border-radius: 999px;
+  flex-shrink: 0;
+}
+.vote-team-dot.is-red { background: var(--team-red); }
+.vote-team-dot.is-green { background: var(--team-green); }
+
+/* ============ Section ============ */
+.vote-section { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-5); }
+.vote-section-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--fg-default);
+}
+.vote-section-sub {
+  font-size: 14px;
+  color: var(--fg-muted);
+  line-height: 1.4;
+  margin: 0 0 var(--space-3);
+  text-wrap: pretty;
+}
+
+/* ============ Player row ============ */
+.vote-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.vote-prow {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.vote-prow-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vote-prow-name { font-size: 15px; font-weight: 600; color: var(--fg-default); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vote-prow-meta { font-size: 12px; color: var(--fg-muted); }
+
+/* Layout shifts on narrow screens: stars wrap below name */
+@media (max-width: 419px) {
+  .vote-prow { flex-wrap: wrap; row-gap: var(--space-2); }
+  .vote-prow-mid { flex-basis: calc(100% - 60px); }
+  .vote-stars { flex-basis: 100%; justify-content: flex-start; padding-left: 60px; }
+}
+
+/* ============ Stars ============ */
+.vote-stars {
+  display: inline-flex; align-items: center;
+  gap: 2px;
+}
+.vote-star-btn {
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--fg-muted);
+  padding: 0;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: color 150ms var(--motion-easing), transform 150ms var(--motion-easing);
+}
+.vote-star-btn:hover { color: rgba(245, 197, 24, 0.6); }
+.vote-star-btn.is-active { color: var(--warn); }
+.vote-star-btn.is-active:active { transform: scale(0.85); }
+
+/* ============ Counter ============ */
+.vote-counter {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3) 0;
+  margin-top: var(--space-2);
+}
+.vote-counter-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+.vote-counter-row .num { color: var(--fg-default); font-family: var(--font-mono); }
+.vote-progress {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.vote-progress-fill {
+  height: 100%;
+  background: var(--action-primary);
+  border-radius: 999px;
+  transition: width 200ms var(--motion-easing);
+}
+
+/* ============ Sticky submit ============ */
+.vote-sticky {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: var(--space-3) var(--space-5) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(14,16,20,0) 0%, var(--bg-base) 30%);
+  z-index: 5;
+}
+.vote-sticky-inner {
+  max-width: 600px;
+  margin: 0 auto;
+}
+.vote-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  width: 100%; height: 52px;
+  border: 0; border-radius: var(--radius-md);
+  font-family: var(--font-sans); font-size: 16px; font-weight: 500;
+  cursor: pointer;
+  transition: background var(--motion-default) var(--motion-easing), transform 100ms;
+  -webkit-tap-highlight-color: transparent;
+}
+.vote-btn:active { transform: translateY(1px); }
+.vote-btn-primary { background: var(--action-primary); color: var(--fg-emphasis); }
+.vote-btn-primary:hover { background: var(--action-primary-hover); }
+.vote-btn-primary:active { background: var(--action-primary-pressed); }
+.vote-btn-primary:disabled,
+.vote-btn[disabled] {
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+.vote-btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--fg-default);
+  border: 1px solid var(--border-default);
+}
+.vote-btn-secondary:hover { background: var(--bg-subtle); }
+.vote-btn-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.vote-btn-link {
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--fg-muted); font-size: 14px; font-family: var(--font-sans);
+  padding: var(--space-3) var(--space-4);
+  text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--fg-muted);
+}
+.vote-btn-link:hover { color: var(--fg-default); }
+
+/* ============ Legal ============ */
+.vote-legal {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-muted);
+  text-align: center;
+  text-wrap: pretty;
+  margin-top: var(--space-5);
+}
+
+/* ============ Result hero (Vue C) ============ */
+.vote-result-hero {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  padding: var(--space-6) 0 var(--space-2);
+  margin-bottom: var(--space-5);
+  text-align: center;
+}
+.vote-result-icon { color: var(--team-green); display: inline-flex; }
+.vote-result-title {
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-lh);
+  font-weight: var(--type-display-weight);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.vote-result-sub { font-size: 15px; color: var(--fg-muted); margin: 0; }
+
+/* ============ Status card (Vue C) ============ */
+.vote-status-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex; flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+.vote-status-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-size: 14px;
+}
+.vote-status-title { font-weight: 600; color: var(--fg-default); }
+.vote-status-count { font-family: var(--font-mono); color: var(--fg-default); font-size: 13px; }
+.vote-status-count .muted { color: var(--fg-muted); }
+.vote-status-sub { font-size: 13px; color: var(--fg-muted); line-height: 1.5; margin: 0; text-wrap: pretty; }
+
+/* ============ Modal (Vue B) ============ */
+.vote-modal-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-5);
+  z-index: 10;
+  animation: vote-fade 200ms var(--motion-easing);
+}
+@keyframes vote-fade { from { opacity: 0; } to { opacity: 1; } }
+.vote-modal {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-5) var(--space-4);
+  box-shadow: var(--shadow-elevated);
+  display: flex; flex-direction: column;
+  gap: var(--space-4);
+  animation: vote-pop 220ms var(--motion-easing);
+  max-height: 90%;
+  overflow-y: auto;
+}
+@keyframes vote-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.vote-modal-icon {
+  align-self: center;
+  color: var(--warn);
+  display: inline-flex;
+}
+.vote-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: center;
+  margin: 0;
+}
+.vote-modal-sub {
+  font-size: 14px;
+  color: var(--fg-muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.vote-modal-summary {
+  display: flex; flex-direction: column;
+  gap: var(--space-2);
+  background: var(--bg-base);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.vote-summary-row {
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.vote-summary-name {
+  flex: 1; font-size: 14px; color: var(--fg-default);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vote-summary-stars {
+  display: inline-flex; gap: 1px;
+  color: var(--warn);
+}
+.vote-modal-actions {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  align-items: center;
+}
+
+/* ============ Vue D — Results blocks ============ */
+.vote-results-section { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
+.vote-results-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg-default);
+  margin: 0 0 var(--space-2);
+}
+.vote-result-row {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.vote-result-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vote-result-name { font-size: 15px; font-weight: 600; color: var(--fg-default); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vote-result-meta { font-size: 12px; color: var(--fg-muted); }
+.vote-result-score-num {
+  min-width: 56px; text-align: right;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  color: var(--fg-default);
+}
+.vote-result-score-num .muted { color: var(--fg-muted); }
+.vote-delta {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.vote-delta.is-up   { color: var(--team-green); }
+.vote-delta.is-down { color: var(--team-red); }
+
+/* "Votre score" block: highlighted card with the player's own ring */
+.vote-self-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-4);
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+.vote-self-meta {
+  font-size: 13px; color: var(--fg-muted);
+}
+.vote-self-meta .num { color: var(--fg-default); font-family: var(--font-mono); }
+.vote-self-score-big {
+  font-size: 24px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--fg-default);
+}
+.vote-self-score-big .muted { color: var(--fg-muted); font-weight: 400; font-size: 16px; }
+
+/* ============ Match card wrapper inside this kit ============ */
+.vote-mc-wrap { margin-bottom: var(--space-2); }
+/* Override the MatchCardVs default max-width to fit our 600px column */
+.vote-screen .mc { max-width: none; width: 100%; }
+
+/* ============ Gallery wrapper ============ */
+.gallery {
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-10) var(--space-5) var(--space-14);
+  margin-top: var(--space-10);
+}
+.gallery-header { max-width:1280px; margin:0 auto var(--space-6); }
+.gallery-eyebrow {
+  font-family: var(--font-mono); font-size:11px; letter-spacing:0.08em;
+  text-transform:uppercase; color: var(--fg-muted); margin-bottom: var(--space-2);
+}
+.gallery-title { font-size:22px; font-weight:600; letter-spacing:-0.01em; }
+.gallery-grid {
+  max-width:1280px; margin:0 auto;
+  display:grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: var(--space-6);
+}
+.gallery-card {
+  background: var(--bg-base); border:1px solid var(--border-default);
+  border-radius: var(--radius-lg); padding: var(--space-2);
+  display:flex; flex-direction:column;
+}
+.vote-frame {
+  background: var(--bg-base);
+  border-radius: var(--radius-md);
+  height: 820px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+}
+.vote-frame > .vote-frame-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
+/* In a frame, sticky CTA is absolute and modal/overlay are absolute too */
+.vote-frame .vote-sticky { position: absolute; }
+.vote-frame .vote-modal-overlay { position: absolute; }
+.gallery-card-meta { padding: var(--space-3) var(--space-4); display:flex; flex-direction:column; gap:2px; }
+.gallery-card-name { font-size:13px; font-weight:500; color: var(--fg-default); }
+.gallery-card-sub { font-family: var(--font-mono); font-size:11px; color: var(--fg-muted); }

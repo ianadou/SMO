@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SMO — Connexion organisateur</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <link rel="stylesheet" href="login.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Icons.jsx"></script>
+  <script type="text/babel" src="Wordmark.jsx"></script>
+  <script type="text/babel" src="TextField.jsx"></script>
+  <script type="text/babel" src="PrimaryButton.jsx"></script>
+  <script type="text/babel" src="InlineError.jsx"></script>
+  <script type="text/babel" src="LoginForm.jsx"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const GalleryCard = ({ name, sub, children }) => (
+      <div className="gallery-card" data-screen-label={name}>
+        <div className="gallery-card-frame">{children}</div>
+        <div className="gallery-card-meta">
+          <div className="gallery-card-name">{name}</div>
+          <div className="gallery-card-sub">{sub}</div>
+        </div>
+      </div>
+    );
+
+    const App = () => (
+      <div className="page">
+        {/* ---- Live, interactive login (mobile-first, vertically centered) ---- */}
+        <main className="live-stage" data-screen-label="01 Login — Live">
+          <LoginForm />
+        </main>
+
+        {/* ---- States gallery ---- */}
+        <section className="gallery" data-screen-label="02 States">
+          <header className="gallery-header">
+            <div className="gallery-eyebrow">États · mobile</div>
+            <div className="gallery-title">Tous les états dans une vue</div>
+          </header>
+          <div className="gallery-grid">
+            <GalleryCard name="Par défaut" sub="champs vides · email focus initial">
+              <LoginForm forcedState="default" compact />
+            </GalleryCard>
+            <GalleryCard name="Saisie · focus" sub="ring 2px sur le champ actif">
+              <LoginForm forcedState="focus" compact />
+            </GalleryCard>
+            <GalleryCard name="Erreur" sub="message inline · pas de toast">
+              <LoginForm forcedState="error" compact />
+            </GalleryCard>
+            <GalleryCard name="Chargement" sub="bouton désactivé · spinner">
+              <LoginForm forcedState="loading" compact />
+            </GalleryCard>
+          </div>
+        </section>
+      </div>
+    );
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

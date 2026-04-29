@@ -1,0 +1,255 @@
+/* SMO — Invitation page styles. Tokens from ../../colors_and_type.css. */
+* { box-sizing: border-box; }
+html, body { margin:0; background:var(--bg-base); color:var(--fg-default); font-family:var(--font-sans); min-height:100%; }
+
+/* ============ Frame ============ */
+/* Mobile-first single-column layout. Centered card on desktop. */
+.inv-screen {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: var(--space-6) var(--space-5) var(--space-10);
+  position: relative;
+}
+
+/* ============ Header ============ */
+.inv-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-2) 0 var(--space-8);
+}
+
+/* ============ Hero block ============ */
+.inv-hero { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-6); text-align: left; }
+.inv-hero-title {
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-lh);
+  font-weight: var(--type-display-weight);
+  letter-spacing: -0.01em;
+  color: var(--fg-default);
+  margin: 0;
+  text-wrap: pretty;
+}
+.inv-hero-sub {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--fg-muted);
+  margin: 0;
+  text-wrap: pretty;
+}
+.inv-hero-sub strong { color: var(--fg-default); font-weight: 500; }
+
+/* ============ Result hero (Vue C) ============ */
+.inv-result-hero {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  padding: var(--space-4) 0 var(--space-2);
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+.inv-result-icon { display: inline-flex; }
+.inv-result-icon.is-yes { color: var(--team-green); }
+.inv-result-icon.is-no  { color: var(--team-red); }
+.inv-result-title {
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-lh);
+  font-weight: var(--type-display-weight);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.inv-result-sub { font-size: 15px; color: var(--fg-muted); margin: 0; }
+
+/* ============ Details card ============ */
+.inv-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-4);
+  display: flex; flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+.inv-card.is-compact { padding: var(--space-3) var(--space-4); gap: var(--space-2); }
+
+.inv-row {
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.inv-row-icon {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  color: var(--fg-muted);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.inv-row-text { font-size: 15px; line-height: 1.4; color: var(--fg-default); flex: 1; min-width: 0; }
+.inv-row-text .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.inv-row-text .muted { color: var(--fg-muted); }
+
+/* ============ Confirmed block ============ */
+.inv-confirmed { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-8); }
+.inv-confirmed-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-size: 13px; color: var(--fg-muted);
+}
+.inv-confirmed-head .num { color: var(--fg-default); }
+.inv-avatars {
+  display: flex;
+  align-items: center;
+}
+.inv-avatar {
+  width: 36px; height: 36px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--fg-default);
+  font-size: 12px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg-base);
+  margin-left: -8px;
+  flex-shrink: 0;
+}
+.inv-avatar:first-child { margin-left: 0; }
+.inv-avatar.is-more {
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ============ Buttons ============ */
+.inv-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  width: 100%; height: 52px;
+  border: 0; border-radius: var(--radius-md);
+  font-family: var(--font-sans); font-size: 16px; font-weight: 500;
+  cursor: pointer;
+  transition: background var(--motion-default) var(--motion-easing), transform 100ms;
+  -webkit-tap-highlight-color: transparent;
+}
+.inv-btn:active { transform: translateY(1px); }
+.inv-btn-primary { background: var(--action-primary); color: var(--fg-emphasis); }
+.inv-btn-primary:hover { background: var(--action-primary-hover); }
+.inv-btn-primary:active { background: var(--action-primary-pressed); }
+
+.inv-btn-yes { background: var(--team-green); color: #0E1014; }
+.inv-btn-yes:hover { background: #4FE078; }
+.inv-btn-no  { background: var(--team-red); color: var(--fg-emphasis); }
+.inv-btn-no:hover { background: #E84654; }
+
+.inv-btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--fg-default);
+  border: 1px solid var(--border-default);
+}
+.inv-btn-secondary:hover { background: var(--bg-subtle); }
+
+.inv-btn-link {
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--fg-muted); font-size: 14px; font-family: var(--font-sans);
+  padding: var(--space-3) var(--space-4);
+  text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--fg-muted);
+}
+.inv-btn-link:hover { color: var(--fg-default); }
+
+/* ============ Locked notice (TeamsReady) ============ */
+.inv-locked {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex; align-items: center; gap: var(--space-3);
+  font-size: 13px; color: var(--fg-muted);
+  line-height: 1.4;
+}
+
+/* ============ Legal mention ============ */
+.inv-legal {
+  margin-top: auto;
+  padding-top: var(--space-8);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-muted);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+/* ============ Modal ============ */
+.inv-modal-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-5);
+  z-index: 10;
+  animation: inv-fade 200ms var(--motion-easing);
+}
+@keyframes inv-fade { from { opacity: 0; } to { opacity: 1; } }
+.inv-modal {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-5) var(--space-4);
+  box-shadow: var(--shadow-elevated);
+  display: flex; flex-direction: column;
+  gap: var(--space-5);
+  animation: inv-pop 220ms var(--motion-easing);
+}
+@keyframes inv-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.inv-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: center;
+  margin: 0;
+}
+.inv-modal-actions {
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+@media (min-width: 480px) {
+  .inv-modal-actions.is-row { flex-direction: row; }
+  .inv-modal-actions.is-row .inv-btn { flex: 1; }
+}
+.inv-modal-cancel {
+  align-self: center;
+}
+
+/* ============ Gallery wrapper (for variants) ============ */
+.gallery {
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-10) var(--space-5) var(--space-14);
+  margin-top: var(--space-10);
+}
+.gallery-header { max-width:1280px; margin:0 auto var(--space-6); }
+.gallery-eyebrow {
+  font-family: var(--font-mono); font-size:11px; letter-spacing:0.08em;
+  text-transform:uppercase; color: var(--fg-muted); margin-bottom: var(--space-2);
+}
+.gallery-title { font-size:22px; font-weight:600; letter-spacing:-0.01em; }
+.gallery-grid {
+  max-width:1280px; margin:0 auto;
+  display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--space-6);
+}
+.gallery-card {
+  background: var(--bg-base); border:1px solid var(--border-default);
+  border-radius: var(--radius-lg); padding: var(--space-2);
+  display:flex; flex-direction:column;
+}
+.inv-frame {
+  background: var(--bg-base);
+  border-radius: var(--radius-md);
+  height: 760px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+}
+.inv-frame > .inv-frame-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
+/* Inside a frame, the modal must be absolute (not fixed) so it stays inside the tile. */
+.inv-frame .inv-modal-overlay { position: absolute; }
+.gallery-card-meta { padding: var(--space-3) var(--space-4); display:flex; flex-direction:column; gap:2px; }
+.gallery-card-name { font-size:13px; font-weight:500; color: var(--fg-default); }
+.gallery-card-sub { font-family: var(--font-mono); font-size:11px; color: var(--fg-muted); }

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SMO — Match Card vs</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <link rel="stylesheet" href="match_card.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Jersey.jsx"></script>
+  <script type="text/babel" src="MatchCard.jsx"></script>
+
+  <script type="text/babel">
+    const App = () => (
+      <div className="page">
+        {/* ---------- Live demo: upcoming match (most representative state) ---------- */}
+        <section className="live-stage" data-screen-label="01 Match Card — Live (Upcoming)">
+          <div className="live-stage-eyebrow">SMO · UI Kit · Match Card vs</div>
+          <div className="live-stage-frame">
+            <MatchCard
+              status="upcoming"
+              dateLabel="Jeu 7 mai"
+              timeLabel="19h30"
+              onClick={() => {}}
+            />
+          </div>
+        </section>
+
+        {/* ---------- Gallery: all 6 states ---------- */}
+        <section className="gallery" data-screen-label="02 États">
+          <header className="gallery-header">
+            <div className="gallery-eyebrow">Composant · 6 états</div>
+            <div className="gallery-title">Match Card vs — tous les états</div>
+            <div className="gallery-sub">
+              Carte horizontale 3 colonnes — Équipe rouge / centre contextuel / Équipe verte.
+              Réutilisée dans Liste des groupes (prochain match), Détail groupe (vue d'ensemble + onglet matchs),
+              et en header de Détail match.
+            </div>
+          </header>
+
+          <div className="gallery-grid">
+            <div className="gallery-card">
+              <div className="gallery-card-frame">
+                <MatchCard status="upcoming" dateLabel="Jeu 7 mai" timeLabel="19h30" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">1 — À venir</div>
+                <div className="gallery-card-sub">status="upcoming" · date + heure</div>
+              </div>
+            </div>
+
+            <div className="gallery-card">
+              <div className="gallery-card-frame">
+                <MatchCard status="live" dateLabel="Jeu 7 mai" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">2 — En cours</div>
+                <div className="gallery-card-sub">status="live" · pill bleue + dot pulsant</div>
+              </div>
+            </div>
+
+            <div className="gallery-card">
+              <div className="gallery-card-frame">
+                <MatchCard status="finished" dateLabel="Jeu 30 avril" winner="red" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">3 — Terminé · Équipe rouge gagne</div>
+                <div className="gallery-card-sub">status="finished" winner="red"</div>
+              </div>
+            </div>
+
+            <div className="gallery-card">
+              <div className="gallery-card-frame">
+                <MatchCard status="finished" dateLabel="Jeu 24 avril" winner="green" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">4 — Terminé · Équipe verte gagne</div>
+                <div className="gallery-card-sub">status="finished" winner="green"</div>
+              </div>
+            </div>
+
+            <div className="gallery-card">
+              <div className="gallery-card-frame">
+                <MatchCard status="closed" dateLabel="Jeu 17 avril" winner="red" votesLabel="12 votes enregistrés" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">5 — Clôturé après vote</div>
+                <div className="gallery-card-sub">status="closed" · sous-titre votes</div>
+              </div>
+            </div>
+
+            <div className="gallery-card">
+              <div className="gallery-card-frame">
+                <MatchCard status="cancelled" dateLabel="Jeu 10 avril" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">6 — Annulé</div>
+                <div className="gallery-card-sub">status="cancelled" · maillots dim 40%</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ---------- Width tests: 320 / 480 / 600 ---------- */}
+        <section className="width-tests" data-screen-label="03 Tests de largeur">
+          <header className="gallery-header">
+            <div className="gallery-eyebrow">Responsive · 3 largeurs</div>
+            <div className="gallery-title">Tenue à 320 / 480 / 600 px</div>
+            <div className="gallery-sub">
+              La carte doit rester lisible à 320px (petit mobile). À cette largeur,
+              le VS et les libellés sont réduits via un breakpoint à 380px.
+            </div>
+          </header>
+          <div className="width-tests-grid">
+            <div className="width-test">
+              <div className="width-test-frame" style={{ maxWidth: 320 }}>
+                <MatchCard status="upcoming" dateLabel="Jeu 7 mai" timeLabel="19h30" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">320 px — small phone</div>
+                <div className="gallery-card-sub">VS réduit, labels 12px</div>
+              </div>
+            </div>
+            <div className="width-test">
+              <div className="width-test-frame" style={{ maxWidth: 480 }}>
+                <MatchCard status="finished" dateLabel="Jeu 30 avril" winner="red" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">480 px — medium phone</div>
+                <div className="gallery-card-sub">défaut</div>
+              </div>
+            </div>
+            <div className="width-test">
+              <div className="width-test-frame" style={{ maxWidth: 600 }}>
+                <MatchCard status="closed" dateLabel="Jeu 17 avril" winner="green" votesLabel="12 votes enregistrés" onClick={()=>{}}/>
+              </div>
+              <div className="gallery-card-meta">
+                <div className="gallery-card-name">600 px — tablet / desktop max</div>
+                <div className="gallery-card-sub">la carte ne s'étale pas plus loin</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

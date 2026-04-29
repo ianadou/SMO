@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-base); }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .swatch {
+    border-radius: var(--radius-md);
+    padding: 16px;
+    height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: #FFFFFF;
+  }
+  .name { font-family: var(--font-sans); font-weight: 500; font-size: 13px; }
+  .hex  { font-family: var(--font-mono); font-size: 11px; opacity: 0.9; }
+  .role { font-family: var(--font-sans); font-size: 11px; opacity: 0.85; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="swatch" style="background:#2080FF;">
+      <div><div class="name">Bleu vif</div><div class="role">Bouton primaire, focus ring, lien actif</div></div>
+      <div class="hex">#2080FF · action-primary</div>
+    </div>
+    <div class="swatch" style="background:#1452C9;">
+      <div><div class="name">Bleu sombre</div><div class="role">Hover du bouton primaire</div></div>
+      <div class="hex">#1452C9 · action-primary-hover</div>
+    </div>
+  </div>
+</body></html>

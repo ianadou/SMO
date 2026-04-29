@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-base); }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .swatch {
+    border-radius: var(--radius-md);
+    padding: 16px;
+    height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .name { font-family: var(--font-sans); font-weight: 500; font-size: 13px; }
+  .hex  { font-family: var(--font-mono); font-size: 11px; opacity: 0.85; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="swatch" style="background:#F5F6F8; color:#0E1014;">
+      <div class="name">Blanc cassé</div><div class="hex">#F5F6F8 · fg-default</div>
+    </div>
+    <div class="swatch" style="background:#FFFFFF; color:#0E1014;">
+      <div class="name">Blanc pur</div><div class="hex">#FFFFFF · fg-emphasis (rare)</div>
+    </div>
+  </div>
+</body></html>

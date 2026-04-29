@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-base); }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .swatch {
+    border-radius: var(--radius-md);
+    padding: 16px;
+    height: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 11px;
+    font-family: var(--font-mono);
+  }
+  .name { font-family: var(--font-sans); font-weight: 500; font-size: 12px; color: var(--fg-default); }
+  .hex  { color: var(--fg-muted); font-size: 11px; }
+  .on-dark .name { color: var(--fg-default); }
+  .on-dark .hex  { color: var(--fg-muted); }
+  .on-light .name { color: #0E1014; }
+  .on-light .hex  { color: #4A5560; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="swatch on-dark" style="background:#0E1014; outline:1px solid #222831; outline-offset:-1px;">
+      <div class="name">Noir profond</div><div class="hex">#0E1014 · bg-base</div>
+    </div>
+    <div class="swatch on-dark" style="background:#1A1F26;">
+      <div class="name">Gris ardoise</div><div class="hex">#1A1F26 · bg-elevated</div>
+    </div>
+    <div class="swatch on-dark" style="background:#141821;">
+      <div class="name">Surface subtile</div><div class="hex">#141821 · bg-subtle</div>
+    </div>
+    <div class="swatch on-dark" style="background:#222831;">
+      <div class="name">Bordure</div><div class="hex">#222831 · border</div>
+    </div>
+    <div class="swatch on-dark" style="background:#4A5560;">
+      <div class="name" style="color:#F5F6F8">Gris moyen</div><div class="hex" style="color:rgba(245,246,248,.7)">#4A5560 · fg-muted</div>
+    </div>
+  </div>
+</body></html>

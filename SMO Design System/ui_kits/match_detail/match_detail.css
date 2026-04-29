@@ -1,0 +1,385 @@
+/* SMO — Match Detail page styles
+ * Tokens come from ../../colors_and_type.css. Do not hardcode hex here. */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg-base); color: var(--fg-default); font-family: var(--font-sans); min-height: 100%; }
+
+/* =====================================================
+   Page chrome
+   ===================================================== */
+
+.md-screen {
+  display: flex; flex-direction: column;
+  width: 100%; max-width: 800px; margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+}
+
+/* ---- Header (back / kebab + match card) ---- */
+.md-header {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+}
+.md-header-mid { flex: 1; min-width: 0; }
+.md-icon-btn {
+  width: 40px; height: 40px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; color: var(--fg-default);
+  border-radius: var(--radius-pill); cursor: pointer;
+  transition: background var(--motion-default) var(--motion-easing);
+}
+.md-icon-btn:hover  { background: rgba(255,255,255,0.06); }
+.md-icon-btn:active { background: rgba(255,255,255,0.10); }
+
+/* Compact MatchCard variant for the header — overrides the standard kit */
+.md-match-card .mc {
+  padding: var(--space-3);
+  gap: var(--space-2);
+}
+.md-match-card .mc-jersey {
+  width: 36px !important; height: 36px !important;
+}
+.md-match-card .mc-team-label { font-size: 12px; }
+.md-match-card .mc-center-vs { font-size: 22px; }
+.md-match-card .mc-center-trophy { width: 28px !important; height: 28px !important; }
+
+/* =====================================================
+   Field
+   ===================================================== */
+
+.md-field-wrap {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+.md-field-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-muted);
+  padding: 0 var(--space-1) var(--space-2);
+}
+.md-field-meta-state {
+  color: var(--fg-default);
+}
+
+/* The field itself: a rectangle with painted lines.
+   Mobile = portrait (taller than wide). Desktop = landscape. */
+.md-field {
+  --field-bg: #144229;        /* dark cool green, contrasts with #30D158 */
+  --field-line: rgba(245, 246, 248, 0.55);
+  --field-line-thick: 2px;
+
+  position: relative;
+  width: 100%;
+  background: var(--field-bg);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;       /* allow pointermove without scroll-jitter */
+
+  /* Default: portrait — height taller than width.
+     We use aspect-ratio so the field scales fluidly. */
+  aspect-ratio: 2 / 3;
+  max-width: 480px;
+  margin: 0 auto;
+}
+@media (min-width: 720px) {
+  .md-field {
+    aspect-ratio: 3 / 2;
+    max-width: 720px;
+  }
+}
+
+/* Field lines as absolutely-positioned siblings — easier to flip on rotation */
+.md-field-line {
+  position: absolute;
+  background: transparent;
+  border: var(--field-line-thick) solid var(--field-line);
+  pointer-events: none;
+}
+
+/* === Mobile (portrait) === */
+/* Halfway line (horizontal) */
+.md-field-line.is-halfway {
+  left: 0; right: 0; top: 50%;
+  height: 0; border-width: 0; border-top-width: var(--field-line-thick);
+  transform: translateY(-1px);
+}
+/* Center circle */
+.md-field-line.is-circle {
+  left: 50%; top: 50%;
+  width: 22%; aspect-ratio: 1; border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+/* Center spot */
+.md-field-line.is-center-spot {
+  left: 50%; top: 50%;
+  width: 4px; height: 4px; border-radius: 999px;
+  background: var(--field-line); border: 0;
+  transform: translate(-50%, -50%);
+}
+/* Penalty box top + bottom (portrait: at top and bottom of field) */
+.md-field-line.is-pbox-top {
+  left: 22%; right: 22%; top: 0;
+  height: 14%;
+  border-top-width: 0;
+}
+.md-field-line.is-pbox-bottom {
+  left: 22%; right: 22%; bottom: 0;
+  height: 14%;
+  border-bottom-width: 0;
+}
+/* Penalty spots */
+.md-field-line.is-pspot-top {
+  left: 50%; top: 9%;
+  width: 4px; height: 4px; border-radius: 999px;
+  background: var(--field-line); border: 0;
+  transform: translateX(-50%);
+}
+.md-field-line.is-pspot-bottom {
+  left: 50%; bottom: 9%;
+  width: 4px; height: 4px; border-radius: 999px;
+  background: var(--field-line); border: 0;
+  transform: translateX(-50%);
+}
+
+/* === Desktop (landscape) — flip orientation === */
+@media (min-width: 720px) {
+  .md-field-line.is-halfway {
+    top: 0; bottom: 0; left: 50%; right: auto;
+    height: auto; width: 0;
+    border-top-width: 0; border-left-width: var(--field-line-thick);
+    transform: translateX(-1px);
+  }
+  /* Penalty boxes flip to left + right ends */
+  .md-field-line.is-pbox-top {
+    left: 0; right: auto; top: 22%; bottom: 22%;
+    width: 14%; height: auto;
+    border-top-width: var(--field-line-thick);
+    border-left-width: 0;
+  }
+  .md-field-line.is-pbox-bottom {
+    right: 0; left: auto; top: 22%; bottom: 22%;
+    width: 14%; height: auto;
+    border-bottom-width: var(--field-line-thick);
+    border-right-width: 0;
+  }
+  .md-field-line.is-pspot-top {
+    left: 9%; top: 50%; transform: translateY(-50%);
+  }
+  .md-field-line.is-pspot-bottom {
+    left: auto; right: 9%; bottom: auto; top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+/* =====================================================
+   Pion (player token)
+   ===================================================== */
+
+.md-pion {
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px;
+  /* Coords anchored to center of pion */
+  transform: translate(-50%, -50%);
+  transition: left var(--motion-slow) var(--motion-easing),
+              top  var(--motion-slow) var(--motion-easing),
+              opacity var(--motion-default) var(--motion-easing),
+              transform var(--motion-fast) var(--motion-easing);
+  z-index: 1;
+}
+.md-pion-disc {
+  width: 44px; height: 44px;
+  border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
+  color: var(--fg-emphasis);
+  border: 2px solid var(--fg-emphasis);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+.md-pion-red   .md-pion-disc { background: var(--team-red);   }
+.md-pion-green .md-pion-disc { background: var(--team-green); }
+.md-pion-name {
+  font-size: 10px; font-weight: 600; line-height: 1.2;
+  color: var(--fg-emphasis);
+  background: rgba(0,0,0,0.55);
+  padding: 1px 6px; border-radius: 999px;
+  white-space: nowrap; max-width: 96px;
+  overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: 0.005em;
+}
+.md-pion-name .num { font-size: 10px; color: inherit; }
+@media (min-width: 720px) {
+  .md-pion-disc { width: 52px; height: 52px; font-size: 16px; }
+  .md-pion-name { font-size: 11px; }
+}
+
+/* Interactive states (Mode 1 only) */
+.md-pion.is-interactive { cursor: grab; touch-action: none; }
+.md-pion.is-interactive:hover { transform: translate(-50%, -50%) scale(1.08); z-index: 5; }
+.md-pion.is-interactive:hover .md-pion-disc { box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
+.md-pion.is-dragging {
+  cursor: grabbing;
+  z-index: 50;
+  transition: none;             /* follow pointer 1:1 */
+  opacity: 0.85;
+}
+.md-pion.is-dragging .md-pion-disc {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+.md-pion.is-drop-target {
+  z-index: 10;
+}
+.md-pion.is-drop-target .md-pion-disc {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.6), 0 6px 18px rgba(0,0,0,0.5);
+}
+
+/* Score line under pion (Mode 2 closed only) */
+.md-pion-score {
+  font-size: 10px;
+  color: var(--fg-emphasis);
+  background: rgba(0,0,0,0.55);
+  padding: 0 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* =====================================================
+   Présents section
+   ===================================================== */
+
+.md-presents {
+  padding: var(--space-5) var(--space-4) var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.md-presents-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-2);
+}
+.md-presents-title {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-muted);
+}
+.md-presents-count .num { color: var(--fg-default); }
+.md-chips {
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+}
+.md-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 6px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  font-size: 13px; color: var(--fg-default);
+  border: 0; cursor: default;
+  font-family: var(--font-sans);
+}
+.md-chip-avatar {
+  width: 24px; height: 24px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--fg-emphasis);
+  flex-shrink: 0;
+  background: #2A323D;
+}
+.md-chip.is-red    .md-chip-avatar { background: var(--team-red); }
+.md-chip.is-green  .md-chip-avatar { background: var(--team-green); }
+.md-chip.is-bench {
+  opacity: 0.55;
+}
+.md-chip-bench-tag {
+  font-size: 11px; color: var(--fg-subtle);
+  margin-left: 2px;
+}
+.md-chip.is-actionable { cursor: pointer; transition: background var(--motion-default) var(--motion-easing); }
+.md-chip.is-actionable:hover { background: #1F252D; }
+
+/* =====================================================
+   Sticky bottom bar (Mode 1 only)
+   ===================================================== */
+
+.md-bottombar {
+  position: sticky; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, var(--bg-base) 70%, rgba(14,16,20,0));
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  z-index: 20;
+}
+.md-bottombar-inner { max-width: 600px; margin: 0 auto; }
+.md-bottombar-btn {
+  width: 100%; height: 56px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--action-primary); color: var(--fg-emphasis);
+  border: 0; border-radius: var(--radius-md);
+  font-family: var(--font-sans); font-size: 16px; font-weight: 600;
+  cursor: pointer;
+  transition: background var(--motion-default) var(--motion-easing), transform var(--motion-fast);
+}
+.md-bottombar-btn:hover  { background: var(--action-primary-hover); }
+.md-bottombar-btn:active { background: var(--action-primary-pressed); transform: scale(0.99); }
+.md-bottombar-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--ring-color);
+}
+
+/* Reserve scroll-room so the last pions aren't hidden under the bar */
+.md-screen.has-bottombar .md-presents { padding-bottom: calc(var(--space-6) + 80px); }
+
+/* =====================================================
+   Gallery (page is a single live demo, but we expose the 4 views stacked)
+   ===================================================== */
+
+.md-gallery {
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-10) var(--space-4) var(--space-14);
+  background: var(--bg-base);
+  display: flex; flex-direction: column; gap: var(--space-10);
+  max-width: 1280px; margin: 0 auto;
+}
+.md-gallery-head {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.md-gallery-eyebrow {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-muted);
+}
+.md-gallery-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.md-gallery-sub { font-size: 14px; color: var(--fg-muted); margin-top: 4px; max-width: 600px; }
+.md-view {
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.md-view-label {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-muted);
+  padding: 0 var(--space-3);
+}
+.md-view-title { font-size: 16px; font-weight: 600; padding: 0 var(--space-3); }
+.md-view-frame {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+/* Mobile portrait frames — fixed 380px width regardless of viewport,
+   to force the field into portrait orientation in the gallery. */
+.md-mobile-row {
+  display: flex; flex-wrap: wrap; gap: var(--space-4);
+  padding: 0 var(--space-3);
+}
+.md-mobile-frame {
+  width: 380px; max-width: 100%;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-base);
+  flex-shrink: 0;
+}
+.md-mobile-frame .md-screen { max-width: 100%; min-height: 0; }
+
+/* Live demo (Vue 1) gets pride of place */
+.md-live {
+  padding: var(--space-4) var(--space-3) 0;
+}

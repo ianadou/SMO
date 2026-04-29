@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<link rel="stylesheet" href="../colors_and_type.css"/>
+<style>
+  body { margin: 0; padding: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .swatch { display: flex; flex-direction: column; gap: 8px; }
+  .chip {
+    height: 76px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 8px;
+  }
+  .meta { display: flex; flex-direction: column; gap: 2px; }
+  .name { font-size: 12px; font-weight: 500; color: var(--fg-default); }
+  .role { font-size: 11px; color: var(--fg-muted); }
+  .hex  { font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="swatch">
+      <div class="chip" style="background:#F5F6F8"></div>
+      <div class="meta"><span class="name">Off-white</span><span class="role">Primary text</span><span class="hex">#F5F6F8</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#2080FF"></div>
+      <div class="meta"><span class="name">Action</span><span class="role">Primary CTA</span><span class="hex">#2080FF</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#1452C9"></div>
+      <div class="meta"><span class="name">Action hover</span><span class="role">Hover/pressed</span><span class="hex">#1452C9</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#DC2A3B"></div>
+      <div class="meta"><span class="name">Team red</span><span class="role">Errors</span><span class="hex">#DC2A3B</span></div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#30D158"></div>
+      <div class="meta"><span class="name">Team green</span><span class="role">Success</span><span class="hex">#30D158</span></div>
+    </div>
+  </div>
+</body>
+</html>
