@@ -92,6 +92,16 @@ func (r *PostgresInvitationRepository) ListByMatch(ctx context.Context, matchID 
 	return invitations, nil
 }
 
+// CountConfirmedByMatch returns the count of used (used_at IS NOT NULL)
+// invitations for the given match.
+func (r *PostgresInvitationRepository) CountConfirmedByMatch(ctx context.Context, matchID entities.MatchID) (int, error) {
+	count, err := r.queries.CountConfirmedInvitationsByMatchID(ctx, string(matchID))
+	if err != nil {
+		return 0, fmt.Errorf("postgres invitation repository: count confirmed for %q: %w", matchID, err)
+	}
+	return int(count), nil
+}
+
 // MarkAsUsed persists the used_at timestamp for the given invitation.
 func (r *PostgresInvitationRepository) MarkAsUsed(ctx context.Context, inv *entities.Invitation) error {
 	params := mappers.InvitationToMarkAsUsedParams(inv)

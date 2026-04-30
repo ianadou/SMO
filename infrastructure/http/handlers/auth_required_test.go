@@ -71,6 +71,10 @@ func (authRequiredFakeInvitationRepo) ListByMatch(context.Context, entities.Matc
 	return nil, nil
 }
 
+func (authRequiredFakeInvitationRepo) CountConfirmedByMatch(context.Context, entities.MatchID) (int, error) {
+	return 0, nil
+}
+
 func (authRequiredFakeInvitationRepo) Delete(context.Context, entities.InvitationID) error {
 	return nil
 }

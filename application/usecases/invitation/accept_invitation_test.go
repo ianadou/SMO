@@ -3,6 +3,7 @@ package invitation
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -103,5 +104,95 @@ func TestAcceptInvitationUseCase_Execute_PropagatesPersistError(t *testing.T) {
 
 	if !errors.Is(execErr, persistErr) {
 		t.Errorf("expected wrapped persist error, got %v", execErr)
+	}
+}
+
+func TestAcceptInvitationUseCase_Execute_ReturnsErrMatchFull_WhenMatchAtCapacity(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+
+	tokens := newFakeTokenService()
+	hash := tokens.HashToken("plain-token")
+	createdAt := expires.Add(-2 * time.Hour)
+
+	repo := newFakeInvitationRepository()
+
+	// Seed MaxParticipantsPerMatch confirmed invitations (used_at set).
+	for i := 0; i < entities.MaxParticipantsPerMatch; i++ {
+		usedAt := createdAt.Add(time.Duration(i) * time.Minute)
+		confirmed, err := entities.NewInvitation(
+			entities.InvitationID(fmt.Sprintf("inv-confirmed-%d", i)),
+			"match-1",
+			entities.PlayerID(fmt.Sprintf("player-%d", i)),
+			fmt.Sprintf("hash-%d", i),
+			expires,
+			&usedAt,
+			createdAt,
+		)
+		if err != nil {
+			t.Fatalf("seed confirmed: %v", err)
+		}
+		_ = repo.Save(context.Background(), confirmed)
+	}
+
+	// And one fresh pending invitation that will try to accept (the 11th).
+	pending, err := entities.NewInvitation(
+		"inv-pending", "match-1", "player-late", hash, expires, nil, createdAt,
+	)
+	if err != nil {
+		t.Fatalf("seed pending: %v", err)
+	}
+	_ = repo.Save(context.Background(), pending)
+
+	uc := NewAcceptInvitationUseCase(repo, tokens, newFakeClock(now))
+
+	_, execErr := uc.Execute(context.Background(), "plain-token")
+
+	if !errors.Is(execErr, domainerrors.ErrMatchFull) {
+		t.Errorf("expected ErrMatchFull, got %v", execErr)
+	}
+}
+
+func TestAcceptInvitationUseCase_Execute_AllowsAcceptance_WhenBelowCapacity(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+
+	tokens := newFakeTokenService()
+	hash := tokens.HashToken("plain-token")
+	createdAt := expires.Add(-2 * time.Hour)
+
+	repo := newFakeInvitationRepository()
+
+	// Seed (Max - 1) confirmed invitations: there is exactly one slot left.
+	for i := 0; i < entities.MaxParticipantsPerMatch-1; i++ {
+		usedAt := createdAt.Add(time.Duration(i) * time.Minute)
+		confirmed, _ := entities.NewInvitation(
+			entities.InvitationID(fmt.Sprintf("inv-confirmed-%d", i)),
+			"match-1",
+			entities.PlayerID(fmt.Sprintf("player-%d", i)),
+			fmt.Sprintf("hash-%d", i),
+			expires,
+			&usedAt,
+			createdAt,
+		)
+		_ = repo.Save(context.Background(), confirmed)
+	}
+
+	pending, _ := entities.NewInvitation(
+		"inv-pending", "match-1", "player-last", hash, expires, nil, createdAt,
+	)
+	_ = repo.Save(context.Background(), pending)
+
+	uc := NewAcceptInvitationUseCase(repo, tokens, newFakeClock(now))
+
+	inv, execErr := uc.Execute(context.Background(), "plain-token")
+
+	if execErr != nil {
+		t.Fatalf("expected no error at capacity-1, got %v", execErr)
+	}
+	if !inv.IsUsed() {
+		t.Errorf("expected last-slot invitation to be marked used")
 	}
 }

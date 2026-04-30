@@ -19,6 +19,7 @@ type fakeInvitationRepository struct {
 	findByIDErr        error
 	findByTokenHashErr error
 	listByMatchErr     error
+	countErr           error
 	markAsUsedErr      error
 }
 
@@ -76,6 +77,21 @@ func (r *fakeInvitationRepository) ListByMatch(_ context.Context, matchID entiti
 		}
 	}
 	return result, nil
+}
+
+func (r *fakeInvitationRepository) CountConfirmedByMatch(_ context.Context, matchID entities.MatchID) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.countErr != nil {
+		return 0, r.countErr
+	}
+	count := 0
+	for _, inv := range r.invitations {
+		if inv.MatchID() == matchID && inv.IsUsed() {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (r *fakeInvitationRepository) MarkAsUsed(_ context.Context, inv *entities.Invitation) error {

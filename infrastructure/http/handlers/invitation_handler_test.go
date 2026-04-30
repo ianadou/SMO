@@ -70,6 +70,18 @@ func (r *fakeInvRepo) ListByMatch(_ context.Context, matchID entities.MatchID) (
 	return result, nil
 }
 
+func (r *fakeInvRepo) CountConfirmedByMatch(_ context.Context, matchID entities.MatchID) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	count := 0
+	for _, inv := range r.invitations {
+		if inv.MatchID() == matchID && inv.IsUsed() {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (r *fakeInvRepo) MarkAsUsed(_ context.Context, inv *entities.Invitation) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
