@@ -16,6 +16,7 @@ import (
 	"github.com/ianadou/smo/application/usecases/group"
 	"github.com/ianadou/smo/domain/entities"
 	domainerrors "github.com/ianadou/smo/domain/errors"
+	"github.com/ianadou/smo/infrastructure/http/middlewares"
 )
 
 // ----------------------------------------------------------------------------
@@ -49,8 +50,16 @@ func (r *fakeGroupRepository) FindByID(_ context.Context, id entities.GroupID) (
 	return g, nil
 }
 
-func (r *fakeGroupRepository) ListByOrganizer(_ context.Context, _ entities.OrganizerID) ([]*entities.Group, error) {
-	return nil, nil
+func (r *fakeGroupRepository) ListByOrganizer(_ context.Context, organizerID entities.OrganizerID) ([]*entities.Group, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]*entities.Group, 0)
+	for _, g := range r.groups {
+		if g.OrganizerID() == organizerID {
+			out = append(out, g)
+		}
+	}
+	return out, nil
 }
 
 func (r *fakeGroupRepository) Update(_ context.Context, _ *entities.Group) error {
@@ -80,15 +89,30 @@ type testHandlerEnv struct {
 
 func newTestHandlerEnv(t *testing.T, fixedID string, fixedTime time.Time) *testHandlerEnv {
 	t.Helper()
+	return newTestHandlerEnvWithOrganizer(t, fixedID, fixedTime, "")
+}
+
+// newTestHandlerEnvWithOrganizer wires the handler and, if organizerID
+// is non-empty, installs a stub middleware that injects that ID under
+// the JWTAuth context key. The List endpoint reads it from there.
+func newTestHandlerEnvWithOrganizer(t *testing.T, fixedID string, fixedTime time.Time, organizerID entities.OrganizerID) *testHandlerEnv {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 
 	repo := newFakeGroupRepository()
 	createUC := group.NewCreateGroupUseCase(repo, &fakeIDGenerator{id: fixedID}, &fakeClock{now: fixedTime})
 	getUC := group.NewGetGroupUseCase(repo)
-	handler := NewGroupHandler(createUC, getUC)
+	listUC := group.NewListGroupsByOrganizerUseCase(repo)
+	handler := NewGroupHandler(createUC, getUC, listUC)
 
 	router := gin.New()
 	api := router.Group("/api/v1")
+	if organizerID != "" {
+		api.Use(func(c *gin.Context) {
+			c.Request = c.Request.WithContext(middlewares.WithOrganizerID(c.Request.Context(), organizerID))
+			c.Next()
+		})
+	}
 	handler.Register(api, api)
 
 	return &testHandlerEnv{router: router, repo: repo}
@@ -248,5 +272,59 @@ func TestGroupHandler_Create_PersistsGroupInRepository(t *testing.T) {
 	}
 	if stored.Name() != "Persisted" {
 		t.Errorf("expected stored name 'Persisted', got %q", stored.Name())
+	}
+}
+
+func TestGroupHandler_List_Returns200_WithOrganizerGroups(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 4, 30, 10, 0, 0, 0, time.UTC)
+	env := newTestHandlerEnvWithOrganizer(t, "ignored", now, "org-1")
+
+	mine, _ := entities.NewGroup("g-1", "Foot du jeudi", "org-1", "", now)
+	other, _ := entities.NewGroup("g-2", "Pas le mien", "org-2", "", now)
+	alsoMine, _ := entities.NewGroup("g-3", "Foot du mardi", "org-1", "", now)
+	_ = env.repo.Save(context.Background(), mine)
+	_ = env.repo.Save(context.Background(), other)
+	_ = env.repo.Save(context.Background(), alsoMine)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups", nil)
+	rec := httptest.NewRecorder()
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d (body: %s)", rec.Code, rec.Body.String())
+	}
+
+	var response []map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("expected valid JSON array, got error: %v", err)
+	}
+	if len(response) != 2 {
+		t.Fatalf("expected 2 groups for org-1, got %d", len(response))
+	}
+	for _, item := range response {
+		if item["organizer_id"] != "org-1" {
+			t.Errorf("expected only org-1 groups in response, got organizer_id %v", item["organizer_id"])
+		}
+	}
+}
+
+func TestGroupHandler_List_Returns200_WithEmptyArray_WhenOrganizerHasNoGroups(t *testing.T) {
+	t.Parallel()
+
+	env := newTestHandlerEnvWithOrganizer(t, "ignored", time.Now(), "org-empty")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups", nil)
+	rec := httptest.NewRecorder()
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	body := strings.TrimSpace(rec.Body.String())
+	if body != "[]" {
+		t.Errorf("expected empty JSON array '[]', got %q", body)
 	}
 }
