@@ -171,3 +171,92 @@ func TestNewGroup_AcceptsEmptyWebhookURL(t *testing.T) {
 		t.Errorf("expected non-nil group with empty WebhookURL, got %+v", group)
 	}
 }
+
+func TestRehydrateGroup_ReturnsGroup_WhenSnapshotIsValid(t *testing.T) {
+	t.Parallel()
+
+	createdAt := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
+	g, err := RehydrateGroup(GroupSnapshot{
+		ID:          "g-1",
+		Name:        "  Persisted Group  ",
+		OrganizerID: "org-1",
+		WebhookURL:  "https://example.test/non-discord/path",
+		CreatedAt:   createdAt,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if g.ID() != "g-1" || g.Name() != "Persisted Group" || g.OrganizerID() != "org-1" {
+		t.Errorf("unexpected fields after rehydration: %+v", g)
+	}
+}
+
+func TestRehydrateGroup_AcceptsNonDiscordWebhook_BecauseValidationIsOnWritePath(t *testing.T) {
+	t.Parallel()
+
+	// Persistence is trusted: rehydration must not re-run the strict
+	// Discord URL rules. NewGroup is the only entry point that does.
+	g, err := RehydrateGroup(GroupSnapshot{
+		ID:          "g-1",
+		Name:        "Legacy",
+		OrganizerID: "org-1",
+		WebhookURL:  "https://127.0.0.1:8443/api/webhooks/x/y",
+		CreatedAt:   time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("rehydration must accept non-Discord URLs, got: %v", err)
+	}
+	if g.WebhookURL() != "https://127.0.0.1:8443/api/webhooks/x/y" {
+		t.Errorf("webhook URL not preserved on rehydrate: %q", g.WebhookURL())
+	}
+}
+
+func TestRehydrateGroup_RejectsInvalidShapes(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	cases := []struct {
+		name    string
+		s       GroupSnapshot
+		wantErr error
+	}{
+		{
+			name:    "empty id",
+			s:       GroupSnapshot{ID: "", Name: "X", OrganizerID: "org-1", CreatedAt: now},
+			wantErr: domainerrors.ErrInvalidID,
+		},
+		{
+			name:    "empty name",
+			s:       GroupSnapshot{ID: "g", Name: "", OrganizerID: "org-1", CreatedAt: now},
+			wantErr: domainerrors.ErrInvalidName,
+		},
+		{
+			name:    "name too long",
+			s:       GroupSnapshot{ID: "g", Name: strings.Repeat("a", 101), OrganizerID: "org-1", CreatedAt: now},
+			wantErr: domainerrors.ErrInvalidName,
+		},
+		{
+			name:    "empty organizer",
+			s:       GroupSnapshot{ID: "g", Name: "X", OrganizerID: "", CreatedAt: now},
+			wantErr: domainerrors.ErrInvalidID,
+		},
+		{
+			name:    "zero createdAt",
+			s:       GroupSnapshot{ID: "g", Name: "X", OrganizerID: "org-1"},
+			wantErr: domainerrors.ErrInvalidDate,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			g, err := RehydrateGroup(tc.s)
+			if g != nil {
+				t.Errorf("expected nil group, got %+v", g)
+			}
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("expected %v, got %v", tc.wantErr, err)
+			}
+		})
+	}
+}

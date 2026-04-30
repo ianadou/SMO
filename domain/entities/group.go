@@ -85,6 +85,50 @@ func NewGroup(
 	}, nil
 }
 
+// GroupSnapshot is the persistence-shaped view of a Group, used by
+// RehydrateGroup. It mirrors the entity fields exactly; validation is
+// kept to shape checks only since the data was already validated when
+// it was first persisted.
+type GroupSnapshot struct {
+	ID          GroupID
+	Name        string
+	OrganizerID OrganizerID
+	WebhookURL  string
+	CreatedAt   time.Time
+}
+
+// RehydrateGroup rebuilds a Group from its persisted snapshot. Shape
+// rules (non-empty ID, name length, non-empty organizer, non-zero
+// time) are enforced, but the strict webhook validation (host = Discord,
+// path shape, control chars) is NOT re-run: a stored row was already
+// validated at write time. Tightening webhook rules later must therefore
+// be paired with a migration plan, not a silent rejection on load.
+//
+// Use NewGroup for any path where the inputs come from outside the
+// trust boundary (HTTP body, CLI flag, manual fixture).
+func RehydrateGroup(s GroupSnapshot) (*Group, error) {
+	if s.ID == "" {
+		return nil, domainerrors.ErrInvalidID
+	}
+	trimmedName := strings.TrimSpace(s.Name)
+	if trimmedName == "" || len(trimmedName) > maxGroupNameLength {
+		return nil, domainerrors.ErrInvalidName
+	}
+	if s.OrganizerID == "" {
+		return nil, domainerrors.ErrInvalidID
+	}
+	if s.CreatedAt.IsZero() {
+		return nil, domainerrors.ErrInvalidDate
+	}
+	return &Group{
+		id:          s.ID,
+		name:        trimmedName,
+		organizerID: s.OrganizerID,
+		webhookURL:  s.WebhookURL,
+		createdAt:   s.CreatedAt,
+	}, nil
+}
+
 // validateWebhookURL enforces the strict rules a Discord webhook URL
 // must satisfy when non-empty:
 //
