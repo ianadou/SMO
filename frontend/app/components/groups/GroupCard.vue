@@ -2,6 +2,7 @@
 import { ChevronRight, Webhook } from 'lucide-vue-next'
 
 defineProps<{
+  id: string
   name: string
   hasWebhook: boolean
   createdAt: string
@@ -21,9 +22,9 @@ function formatDate(iso: string): string {
 </script>
 
 <template>
-  <button
-    type="button"
-    class="flex flex-col gap-3 w-full text-left bg-bg-elevated border-0 rounded-[var(--radius-lg)] p-4 text-fg-default font-sans cursor-pointer transition-colors duration-150 hover:bg-[#1F252D] active:bg-[#161B22] focus-visible:outline-none focus-visible:[box-shadow:0_0_0_2px_var(--color-bg-base),0_0_0_4px_rgba(32,128,255,0.45)]"
+  <NuxtLink
+    :to="`/groups/${id}`"
+    class="flex flex-col gap-3 w-full text-left bg-bg-elevated rounded-[var(--radius-lg)] p-4 text-fg-default font-sans no-underline transition-colors duration-150 hover:bg-[#1F252D] active:bg-[#161B22] focus-visible:outline-none focus-visible:[box-shadow:0_0_0_2px_var(--color-bg-base),0_0_0_4px_rgba(32,128,255,0.45)]"
   >
     <div class="flex items-center justify-between gap-3">
       <div class="text-[18px] leading-[1.25] font-semibold tracking-[-0.01em] text-fg-default truncate">
@@ -43,5 +44,5 @@ function formatDate(iso: string): string {
         <span class="text-xs">Discord</span>
       </span>
     </div>
-  </button>
+  </NuxtLink>
 </template>
