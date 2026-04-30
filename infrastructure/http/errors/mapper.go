@@ -115,12 +115,17 @@ func mapBusinessRuleError(err error) (int, string, bool) {
 }
 
 // mapAuthError handles errors specific to the authentication flow.
-// Both ErrInvalidCredentials and ErrInvalidToken map to 401 with a
-// short message so the response shape never reveals whether the email
-// exists or whether the token was malformed vs expired.
+// ErrInvalidCredentials, ErrAccountLocked and ErrInvalidToken all map
+// to 401 with a short message so the response shape never reveals
+// whether the email exists, whether the account is throttled, or
+// whether the token was malformed vs expired. ErrAccountLocked
+// deliberately reuses the "invalid credentials" public message: a
+// distinct "account locked" response would tell an attacker that the
+// email is valid AND under attack — see ADR 0007.
 func mapAuthError(err error) (int, string, bool) {
 	switch {
-	case errors.Is(err, domainerrors.ErrInvalidCredentials):
+	case errors.Is(err, domainerrors.ErrInvalidCredentials),
+		errors.Is(err, domainerrors.ErrAccountLocked):
 		return http.StatusUnauthorized, "invalid credentials", true
 	case errors.Is(err, domainerrors.ErrInvalidToken):
 		return http.StatusUnauthorized, "invalid token", true
