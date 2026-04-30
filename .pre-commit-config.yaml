@@ -63,6 +63,20 @@ repos:
         pass_filenames: true
         types: [text]
 
+      # Refuse a Google Fonts CDN URL inside frontend/. Production fonts
+      # are self-hosted via @nuxt/fonts; loading fonts.googleapis.com or
+      # fonts.gstatic.com leaks visitor IPs to Google (RGPD risk on .fr).
+      # Static design system mocks under "SMO Design System/" are
+      # intentionally out of scope.
+      - id: no-google-fonts-cdn
+        name: no google fonts cdn
+        description: Refuse to commit a Google Fonts CDN URL under frontend/.
+        entry: scripts/check-google-fonts.sh
+        language: system
+        pass_filenames: true
+        types: [text]
+        files: ^frontend/
+
   # --- Go formatting and linting (local — uses our installed binaries) ------
   - repo: local
     hooks:
