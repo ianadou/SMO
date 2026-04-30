@@ -3,6 +3,7 @@ import { Plus, LogOut } from 'lucide-vue-next'
 import GroupCard from '~/components/groups/GroupCard.vue'
 import EmptyState from '~/components/groups/EmptyState.vue'
 import CardSkeleton from '~/components/groups/CardSkeleton.vue'
+import CreateGroupModal from '~/components/groups/CreateGroupModal.vue'
 import Wordmark from '~/components/Wordmark.vue'
 import type { GroupDTO } from '~/types/groups'
 import { ApiError } from '~/composables/useApi'
@@ -16,6 +17,7 @@ const auth = useAuthStore()
 const groups = ref<GroupDTO[]>([])
 const loading = ref(true)
 const error = ref('')
+const createOpen = ref(false)
 
 async function loadGroups() {
   error.value = ''
@@ -38,6 +40,11 @@ async function loadGroups() {
 async function logout() {
   auth.logout()
   await navigateTo('/login', { replace: true })
+}
+
+async function onCreated() {
+  createOpen.value = false
+  await loadGroups()
 }
 
 onMounted(loadGroups)
@@ -100,12 +107,13 @@ onMounted(loadGroups)
 
     <button
       type="button"
-      disabled
-      class="fixed right-[max(1.25rem,calc((100vw-600px)/2+1.25rem))] bottom-6 w-14 h-14 border-0 rounded-full bg-action-primary text-fg-emphasis inline-flex items-center justify-center cursor-not-allowed opacity-60 shadow-elevated"
-      title="Création de groupe — bientôt"
-      aria-label="Créer un groupe (bientôt disponible)"
+      class="fixed right-[max(1.25rem,calc((100vw-600px)/2+1.25rem))] bottom-6 w-14 h-14 border-0 rounded-full bg-action-primary text-fg-emphasis inline-flex items-center justify-center cursor-pointer shadow-elevated transition-colors duration-150 hover:bg-action-primary-hover active:bg-action-primary-pressed focus-visible:outline-none focus-visible:[box-shadow:0_8px_24px_-8px_rgba(0,0,0,0.6),0_0_0_2px_var(--color-bg-base),0_0_0_4px_rgba(32,128,255,0.45)]"
+      aria-label="Créer un groupe"
+      @click="createOpen = true"
     >
       <Plus :size="22" />
     </button>
+
+    <CreateGroupModal :open="createOpen" @close="createOpen = false" @created="onCreated" />
   </div>
 </template>
