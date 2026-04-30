@@ -2,6 +2,7 @@ package entities
 
 import (
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -11,7 +12,15 @@ import (
 const (
 	maxGroupNameLength  = 100
 	maxWebhookURLLength = 2048
+	discordWebhookHost  = "discord.com"
 )
+
+// discordWebhookPathRe matches the canonical Discord webhook URL path
+// shape: /api/webhooks/<numeric_id>/<token>. Tokens are alphanumeric
+// plus dash and underscore in current Discord docs; tightening this
+// regex is preferable to a permissive `[^/]+` since the surface is a
+// security boundary for outbound notifications.
+var discordWebhookPathRe = regexp.MustCompile(`^/api/webhooks/\d+/[\w-]+$`)
 
 // GroupID is the unique identifier of a Group.
 type GroupID string
@@ -76,14 +85,17 @@ func NewGroup(
 	}, nil
 }
 
-// validateWebhookURL enforces the five strict rules the Discord
-// webhook URL must satisfy when non-empty:
+// validateWebhookURL enforces the strict rules a Discord webhook URL
+// must satisfy when non-empty:
 //
-//  1. parsable by url.Parse
-//  2. scheme is exactly "https" (no http, no other)
-//  3. no embedded credentials (no userinfo)
-//  4. non-empty Host
-//  5. length ≤ maxWebhookURLLength characters
+//  1. length ≤ maxWebhookURLLength characters
+//  2. no ASCII control characters (CR/LF/NUL/etc. — header injection)
+//  3. parsable by url.Parse
+//  4. scheme is exactly "https" (no http, no other)
+//  5. no embedded credentials (no userinfo)
+//  6. host is exactly discord.com (rejects discordapp.com legacy and
+//     any malicious lookalike)
+//  7. path matches the canonical /api/webhooks/<id>/<token> shape
 //
 // Empty input is accepted: a group is allowed to have no Discord
 // webhook configured (notifications are opt-in).
@@ -92,6 +104,9 @@ func validateWebhookURL(s string) error {
 		return nil
 	}
 	if len(s) > maxWebhookURLLength {
+		return domainerrors.ErrInvalidWebhookURL
+	}
+	if containsControlChar(s) {
 		return domainerrors.ErrInvalidWebhookURL
 	}
 	parsed, err := url.Parse(s)
@@ -104,10 +119,25 @@ func validateWebhookURL(s string) error {
 	if parsed.User != nil {
 		return domainerrors.ErrInvalidWebhookURL
 	}
-	if parsed.Host == "" {
+	if parsed.Host != discordWebhookHost {
+		return domainerrors.ErrInvalidWebhookURL
+	}
+	if !discordWebhookPathRe.MatchString(parsed.Path) {
 		return domainerrors.ErrInvalidWebhookURL
 	}
 	return nil
+}
+
+// containsControlChar reports whether s contains any ASCII control
+// character (0x00-0x1F or 0x7F). Catches CR, LF, NUL and friends used
+// in header-injection payloads disguised as URLs.
+func containsControlChar(s string) bool {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
 }
 
 // ID returns the group identifier.

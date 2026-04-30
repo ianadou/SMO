@@ -132,6 +132,14 @@ func TestNewGroup_RejectsInvalidWebhookURL(t *testing.T) {
 		{name: "url too long rejected", url: longURL},
 		{name: "control characters rejected", url: "https://discord.com/\x00abc"},
 		{name: "raw whitespace rejected", url: "https://discord. com/api/webhooks/1/abc"},
+		{name: "non-discord host rejected", url: "https://malicious.com/api/webhooks/1/abc"},
+		{name: "discord lookalike host rejected", url: "https://discord.com.attacker.com/api/webhooks/1/abc"},
+		{name: "discordapp legacy host rejected", url: "https://discordapp.com/api/webhooks/1/abc"},
+		{name: "non-webhook path rejected", url: "https://discord.com/api/users/me"},
+		{name: "non-numeric webhook id rejected", url: "https://discord.com/api/webhooks/abc/def"},
+		{name: "missing webhook token rejected", url: "https://discord.com/api/webhooks/1"},
+		{name: "control char in middle of url rejected", url: "https://discord.com/api/web\nhooks/1/abc"},
+		{name: "tab character rejected", url: "https://discord.com/api/webhooks/1/abc\t"},
 	}
 
 	for _, tc := range cases {

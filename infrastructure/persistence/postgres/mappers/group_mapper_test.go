@@ -131,7 +131,7 @@ func TestGroupRoundTrip_DomainToParamsToDomain(t *testing.T) {
 	t.Parallel()
 
 	createdAt := time.Date(2026, 4, 10, 10, 0, 0, 0, time.UTC)
-	original, _ := entities.NewGroup("group-1", "Foot du jeudi", "org-1", "https://discord.com/api/webhooks/round/trip", createdAt)
+	original, _ := entities.NewGroup("group-1", "Foot du jeudi", "org-1", "https://discord.com/api/webhooks/123456789/round-trip-token", createdAt)
 
 	// Domain → CreateParams → Groups (via direct conversion since both
 	// structs have identical fields) → Domain. The round trip must

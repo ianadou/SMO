@@ -29,6 +29,7 @@ type fakeGroupRepository struct {
 	mu      sync.Mutex
 	groups  map[entities.GroupID]*entities.Group
 	listErr error
+	saveErr error
 }
 
 func newFakeGroupRepository() *fakeGroupRepository {
@@ -38,6 +39,9 @@ func newFakeGroupRepository() *fakeGroupRepository {
 func (r *fakeGroupRepository) Save(_ context.Context, g *entities.Group) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.saveErr != nil {
+		return r.saveErr
+	}
 	r.groups[g.ID()] = g
 	return nil
 }
@@ -131,9 +135,9 @@ func TestGroupHandler_Create_Returns201_WhenRequestIsValid(t *testing.T) {
 	t.Parallel()
 
 	fixedTime := time.Date(2026, 4, 10, 14, 0, 0, 0, time.UTC)
-	env := newTestHandlerEnv(t, "group-fixed-id", fixedTime)
+	env := newTestHandlerEnvWithOrganizer(t, "group-fixed-id", fixedTime, "org-1")
 
-	body := `{"name":"Foot du jeudi","organizer_id":"org-1"}`
+	body := `{"name":"Foot du jeudi"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -162,7 +166,7 @@ func TestGroupHandler_Create_Returns201_WhenRequestIsValid(t *testing.T) {
 func TestGroupHandler_Create_Returns400_WhenBodyIsInvalidJSON(t *testing.T) {
 	t.Parallel()
 
-	env := newTestHandlerEnv(t, "group-1", time.Now())
+	env := newTestHandlerEnvWithOrganizer(t, "group-1", time.Now(), "org-1")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(`{not json`))
 	req.Header.Set("Content-Type", "application/json")
@@ -182,16 +186,15 @@ func TestGroupHandler_Create_Returns400_WhenRequiredFieldsAreMissing(t *testing.
 		name string
 		body string
 	}{
-		{name: "missing name", body: `{"organizer_id":"org-1"}`},
-		{name: "missing organizer_id", body: `{"name":"Foot"}`},
-		{name: "empty name", body: `{"name":"","organizer_id":"org-1"}`},
+		{name: "missing name", body: `{}`},
+		{name: "empty name", body: `{"name":""}`},
 	}
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			env := newTestHandlerEnv(t, "group-1", time.Now())
+			env := newTestHandlerEnvWithOrganizer(t, "group-1", time.Now(), "org-1")
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(testCase.body))
 			req.Header.Set("Content-Type", "application/json")
@@ -209,10 +212,10 @@ func TestGroupHandler_Create_Returns400_WhenRequiredFieldsAreMissing(t *testing.
 func TestGroupHandler_Get_Returns200_WhenGroupExists(t *testing.T) {
 	t.Parallel()
 
-	env := newTestHandlerEnv(t, "group-1", time.Now())
+	env := newTestHandlerEnvWithOrganizer(t, "group-1", time.Now(), "org-1")
 
 	// Pre-seed: create a group via the POST endpoint.
-	createBody := `{"name":"Existing","organizer_id":"org-1"}`
+	createBody := `{"name":"Existing"}`
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(createBody))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRec := httptest.NewRecorder()
@@ -262,9 +265,9 @@ func TestGroupHandler_Get_Returns404_WhenGroupDoesNotExist(t *testing.T) {
 func TestGroupHandler_Create_PersistsGroupInRepository(t *testing.T) {
 	t.Parallel()
 
-	env := newTestHandlerEnv(t, "group-persisted", time.Now())
+	env := newTestHandlerEnvWithOrganizer(t, "group-persisted", time.Now(), "org-1")
 
-	body := `{"name":"Persisted","organizer_id":"org-1"}`
+	body := `{"name":"Persisted"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -277,6 +280,86 @@ func TestGroupHandler_Create_PersistsGroupInRepository(t *testing.T) {
 	}
 	if stored.Name() != "Persisted" {
 		t.Errorf("expected stored name 'Persisted', got %q", stored.Name())
+	}
+}
+
+func TestGroupHandler_Create_IgnoresOrganizerIdFromBody_AndUsesJWT(t *testing.T) {
+	t.Parallel()
+
+	env := newTestHandlerEnvWithOrganizer(t, "group-idor", time.Now(), "attacker-org")
+
+	body := `{"name":"Sneaky","organizer_id":"victim-org"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400 (unknown field rejected), got %d (body: %s)", rec.Code, rec.Body.String())
+	}
+
+	if _, err := env.repo.FindByID(context.Background(), "group-idor"); err == nil {
+		t.Error("group should not have been persisted when body contains rejected field")
+	}
+}
+
+func TestGroupHandler_Create_Returns400_WhenBodyContainsUnknownField(t *testing.T) {
+	t.Parallel()
+
+	env := newTestHandlerEnvWithOrganizer(t, "group-1", time.Now(), "org-1")
+
+	body := `{"name":"Foot","unexpected_field":42}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d (body: %s)", rec.Code, rec.Body.String())
+	}
+
+	var response map[string]any
+	_ = json.NewDecoder(rec.Body).Decode(&response)
+	got, _ := response["error"].(string)
+	if !strings.Contains(got, "unknown field") {
+		t.Errorf("expected error message to mention unknown field, got %q", got)
+	}
+}
+
+func TestGroupHandler_Create_Returns500_WhenRepositoryFails(t *testing.T) {
+	t.Parallel()
+
+	env := newTestHandlerEnvWithOrganizer(t, "group-broken", time.Now(), "org-1")
+	env.repo.saveErr = errors.New("postgres connection lost")
+
+	body := `{"name":"Foot"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", rec.Code)
+	}
+}
+
+func TestGroupHandler_Create_Returns401_WhenJWTContextIsMissing(t *testing.T) {
+	t.Parallel()
+
+	env := newTestHandlerEnv(t, "group-1", time.Now())
+
+	body := `{"name":"Foot"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d (body: %s)", rec.Code, rec.Body.String())
 	}
 }
 

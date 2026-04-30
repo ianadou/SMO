@@ -60,7 +60,7 @@ func TestGroupResponseFromEntity_HasWebhookIsTrue_WhenWebhookConfigured(t *testi
 func TestGroupResponseFromEntity_NeverIncludesWebhookURL_InJSON(t *testing.T) {
 	t.Parallel()
 
-	const secretURL = "https://discord.com/api/webhooks/SECRET-1234567890/SECRET-token-abcdef"
+	const secretURL = "https://discord.com/api/webhooks/1234567890/SECRET-token-abcdef"
 	group, _ := entities.NewGroup("group-1", "Group", "org-1", secretURL, time.Now())
 
 	response := GroupResponseFromEntity(group)
