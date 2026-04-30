@@ -29,9 +29,11 @@ import (
 	playerusecase "github.com/ianadou/smo/application/usecases/player"
 	voteusecase "github.com/ianadou/smo/application/usecases/vote"
 	"github.com/ianadou/smo/domain/events"
+	"github.com/ianadou/smo/domain/ports"
 	"github.com/ianadou/smo/domain/ranking"
 	bcryptauth "github.com/ianadou/smo/infrastructure/auth/bcrypt"
 	jwtauth "github.com/ianadou/smo/infrastructure/auth/jwt"
+	"github.com/ianadou/smo/infrastructure/auth/loginlockout"
 	cacheredis "github.com/ianadou/smo/infrastructure/cache/redis"
 	"github.com/ianadou/smo/infrastructure/clock"
 	"github.com/ianadou/smo/infrastructure/events/inmemory"
@@ -283,7 +285,20 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 
 	// Auth use cases.
 	registerOrganizerUC := authusecase.NewRegisterOrganizerUseCase(organizerRepo, passwordHasher, idGenerator, systemClock)
-	loginOrganizerUC := authusecase.NewLoginOrganizerUseCase(organizerRepo, passwordHasher, jwtSigner)
+
+	// LoginAttemptTracker: real Redis-backed lockout when Redis is up,
+	// no-op fallback otherwise. The fallback degrades the per-account
+	// defense to nothing — operators see this in the boot log so they
+	// know they are running without lockout protection. ADR 0006.
+	var loginTracker ports.LoginAttemptTracker
+	if redisClient != nil {
+		loginTracker = loginlockout.NewRedisTracker(redisClient, loginlockout.DefaultConfig())
+		slog.Info("login attempt tracker enabled (redis-backed)")
+	} else {
+		loginTracker = loginlockout.NewNoopTracker()
+		slog.Warn("login attempt tracker disabled (no redis); per-account lockout unavailable")
+	}
+	loginOrganizerUC := authusecase.NewLoginOrganizerUseCase(organizerRepo, passwordHasher, jwtSigner, loginTracker)
 
 	// HTTP handlers.
 	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC, listGroupsByOrganizerUC)

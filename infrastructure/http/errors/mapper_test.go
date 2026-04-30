@@ -123,6 +123,7 @@ func TestMapError_AuthErrors(t *testing.T) {
 		wantMessage string
 	}{
 		{name: "invalid credentials", err: domainerrors.ErrInvalidCredentials, wantMessage: "invalid credentials"},
+		{name: "account locked masquerades as invalid credentials", err: domainerrors.ErrAccountLocked, wantMessage: "invalid credentials"},
 		{name: "invalid token", err: domainerrors.ErrInvalidToken, wantMessage: "invalid token"},
 	}
 
