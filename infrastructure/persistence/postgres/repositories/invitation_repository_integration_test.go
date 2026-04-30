@@ -38,6 +38,13 @@ func newTestInvitationRepository(t *testing.T) *repositories.PostgresInvitationR
 	`); err != nil {
 		t.Fatalf("seed match: %v", err)
 	}
+	if _, err := sharedPool.Exec(ctx, `
+		INSERT INTO players (id, group_id, name, ranking)
+		VALUES ('p-1', 'test-group', 'Test Player', 1000)
+		ON CONFLICT (id) DO NOTHING
+	`); err != nil {
+		t.Fatalf("seed player: %v", err)
+	}
 	return repositories.NewPostgresInvitationRepository(sharedPool)
 }
 

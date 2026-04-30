@@ -16,6 +16,7 @@ func TestInvitationToDomain_ReturnsEntity_WhenUsedAtIsNull(t *testing.T) {
 	row := generated.Invitations{
 		ID:        "inv-1",
 		MatchID:   "match-1",
+		PlayerID:  "p-1",
 		TokenHash: "abc123",
 		ExpiresAt: pgtype.Timestamptz{Time: createdAt.Add(5 * 24 * time.Hour), Valid: true},
 		UsedAt:    pgtype.Timestamptz{Valid: false},
@@ -37,6 +38,7 @@ func TestInvitationToDomain_ReturnsEntity_WhenUsedAtIsSet(t *testing.T) {
 	row := generated.Invitations{
 		ID:        "inv-1",
 		MatchID:   "match-1",
+		PlayerID:  "p-1",
 		TokenHash: "abc",
 		ExpiresAt: pgtype.Timestamptz{Time: createdAt.Add(5 * 24 * time.Hour), Valid: true},
 		UsedAt:    pgtype.Timestamptz{Time: usedAt, Valid: true},

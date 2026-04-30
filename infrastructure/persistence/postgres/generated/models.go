@@ -23,6 +23,7 @@ type Invitations struct {
 	ExpiresAt pgtype.Timestamptz
 	UsedAt    pgtype.Timestamptz
 	CreatedAt pgtype.Timestamptz
+	PlayerID  string
 }
 
 type Matches struct {
