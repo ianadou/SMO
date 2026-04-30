@@ -178,3 +178,98 @@ func TestPostgresInvitationRepository_Delete_RemovesInvitation(t *testing.T) {
 		t.Errorf("expected ErrInvitationNotFound after delete, got %v", findErr)
 	}
 }
+
+func TestPostgresInvitationRepository_CountConfirmedByMatch_OnlyCountsUsed(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+	now := time.Now()
+
+	// Two confirmed (used_at set) and one pending invitation for the same match.
+	for i, hash := range []string{"h-c1", "h-c2", "h-pending"} {
+		inv := buildTestInvitation(t, "inv-"+string(rune('1'+i)), "test-match", hash)
+		if err := repo.Save(ctx, inv); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		if hash != "h-pending" {
+			if err := inv.MarkAsUsed(now); err != nil {
+				t.Fatalf("MarkAsUsed: %v", err)
+			}
+			if err := repo.MarkAsUsed(ctx, inv); err != nil {
+				t.Fatalf("repo.MarkAsUsed: %v", err)
+			}
+		}
+	}
+
+	count, err := repo.CountConfirmedByMatch(ctx, "test-match")
+	if err != nil {
+		t.Fatalf("CountConfirmedByMatch: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2 confirmed (pending excluded), got %d", count)
+	}
+}
+
+func TestPostgresInvitationRepository_CountConfirmedByMatch_ReturnsZero_WhenNoneConfirmed(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+
+	count, err := repo.CountConfirmedByMatch(ctx, "test-match")
+	if err != nil {
+		t.Fatalf("CountConfirmedByMatch: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 on empty match, got %d", count)
+	}
+}
+
+func TestPostgresInvitationRepository_ListConfirmedParticipants_JoinsPlayerName(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+	now := time.Now()
+
+	inv := buildTestInvitation(t, "inv-1", "test-match", "hash-1")
+	if err := repo.Save(ctx, inv); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if err := inv.MarkAsUsed(now); err != nil {
+		t.Fatalf("MarkAsUsed entity: %v", err)
+	}
+	if err := repo.MarkAsUsed(ctx, inv); err != nil {
+		t.Fatalf("MarkAsUsed repo: %v", err)
+	}
+
+	participants, err := repo.ListConfirmedParticipants(ctx, "test-match")
+	if err != nil {
+		t.Fatalf("ListConfirmedParticipants: %v", err)
+	}
+	if len(participants) != 1 {
+		t.Fatalf("expected 1 participant, got %d", len(participants))
+	}
+	if participants[0].PlayerID != "p-1" {
+		t.Errorf("expected player_id 'p-1', got %q", participants[0].PlayerID)
+	}
+	if participants[0].PlayerName != "Test Player" {
+		t.Errorf("expected player_name 'Test Player' from JOIN, got %q", participants[0].PlayerName)
+	}
+	if participants[0].ConfirmedAt.IsZero() {
+		t.Error("expected ConfirmedAt to be set")
+	}
+}
+
+func TestPostgresInvitationRepository_ListConfirmedParticipants_ExcludesPending(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+
+	pending := buildTestInvitation(t, "inv-pending", "test-match", "hash-p")
+	if err := repo.Save(ctx, pending); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	participants, err := repo.ListConfirmedParticipants(ctx, "test-match")
+	if err != nil {
+		t.Fatalf("ListConfirmedParticipants: %v", err)
+	}
+	if len(participants) != 0 {
+		t.Errorf("expected 0 participants (pending only), got %d", len(participants))
+	}
+}
