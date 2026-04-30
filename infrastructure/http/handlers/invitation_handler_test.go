@@ -82,6 +82,22 @@ func (r *fakeInvRepo) CountConfirmedByMatch(_ context.Context, matchID entities.
 	return count, nil
 }
 
+func (r *fakeInvRepo) ListConfirmedParticipants(_ context.Context, matchID entities.MatchID) ([]entities.MatchParticipant, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]entities.MatchParticipant, 0)
+	for _, inv := range r.invitations {
+		if inv.MatchID() == matchID && inv.IsUsed() {
+			out = append(out, entities.MatchParticipant{
+				PlayerID:    inv.PlayerID(),
+				PlayerName:  "Fake " + string(inv.PlayerID()),
+				ConfirmedAt: *inv.UsedAt(),
+			})
+		}
+	}
+	return out, nil
+}
+
 func (r *fakeInvRepo) MarkAsUsed(_ context.Context, inv *entities.Invitation) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

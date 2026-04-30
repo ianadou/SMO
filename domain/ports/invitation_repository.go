@@ -19,6 +19,12 @@ type InvitationRepository interface {
 	// enforce MaxParticipantsPerMatch.
 	CountConfirmedByMatch(ctx context.Context, matchID entities.MatchID) (int, error)
 
+	// ListConfirmedParticipants returns the flattened (player + used_at)
+	// projection of every confirmed invitation for the given match,
+	// ordered by confirmation time ascending. Used by the
+	// ListMatchParticipantsUseCase that powers the match detail page.
+	ListConfirmedParticipants(ctx context.Context, matchID entities.MatchID) ([]entities.MatchParticipant, error)
+
 	MarkAsUsed(ctx context.Context, inv *entities.Invitation) error
 	Delete(ctx context.Context, id entities.InvitationID) error
 }

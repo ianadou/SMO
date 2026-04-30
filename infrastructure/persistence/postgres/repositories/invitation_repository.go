@@ -102,6 +102,24 @@ func (r *PostgresInvitationRepository) CountConfirmedByMatch(ctx context.Context
 	return int(count), nil
 }
 
+// ListConfirmedParticipants returns the player + confirmation timestamp
+// for every used invitation of the given match, ordered by used_at asc.
+func (r *PostgresInvitationRepository) ListConfirmedParticipants(ctx context.Context, matchID entities.MatchID) ([]entities.MatchParticipant, error) {
+	rows, err := r.queries.ListConfirmedParticipantsByMatchID(ctx, string(matchID))
+	if err != nil {
+		return nil, fmt.Errorf("postgres invitation repository: list confirmed for %q: %w", matchID, err)
+	}
+	participants := make([]entities.MatchParticipant, 0, len(rows))
+	for _, row := range rows {
+		participants = append(participants, entities.MatchParticipant{
+			PlayerID:    entities.PlayerID(row.PlayerID),
+			PlayerName:  row.PlayerName,
+			ConfirmedAt: row.UsedAt.Time,
+		})
+	}
+	return participants, nil
+}
+
 // MarkAsUsed persists the used_at timestamp for the given invitation.
 func (r *PostgresInvitationRepository) MarkAsUsed(ctx context.Context, inv *entities.Invitation) error {
 	params := mappers.InvitationToMarkAsUsedParams(inv)
