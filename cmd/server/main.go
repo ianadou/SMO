@@ -277,6 +277,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	getInvitationUC := invitationusecase.NewGetInvitationUseCase(invitationRepo)
 	listInvitationsByMatchUC := invitationusecase.NewListInvitationsByMatchUseCase(invitationRepo)
 	acceptInvitationUC := invitationusecase.NewAcceptInvitationUseCase(invitationRepo, tokenService, systemClock)
+	listMatchParticipantsUC := invitationusecase.NewListMatchParticipantsUseCase(invitationRepo)
 
 	// Vote use cases.
 	castVoteUC := voteusecase.NewCastVoteUseCase(voteRepo, matchRepo, idGenerator, systemClock)
@@ -311,6 +312,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 		startMatchUC,
 		completeMatchUC,
 		finalizeMatchUC,
+		listMatchParticipantsUC,
 	)
 
 	// Router configuration.

@@ -22,6 +22,28 @@ type AcceptInvitationRequest struct {
 	Token string `json:"token" binding:"required"`
 }
 
+// ParticipantResponse is the JSON shape of one entry in the response of
+// GET /matches/:id/participants. It mirrors entities.MatchParticipant.
+type ParticipantResponse struct {
+	PlayerID    string    `json:"player_id"`
+	PlayerName  string    `json:"player_name"`
+	ConfirmedAt time.Time `json:"confirmed_at"`
+}
+
+// ParticipantResponsesFromEntities converts a slice of MatchParticipant
+// projections into the wire-format response.
+func ParticipantResponsesFromEntities(participants []entities.MatchParticipant) []ParticipantResponse {
+	out := make([]ParticipantResponse, 0, len(participants))
+	for _, p := range participants {
+		out = append(out, ParticipantResponse{
+			PlayerID:    string(p.PlayerID),
+			PlayerName:  p.PlayerName,
+			ConfirmedAt: p.ConfirmedAt,
+		})
+	}
+	return out
+}
+
 // InvitationResponse is the standard invitation representation.
 // It does NOT include the plain token: once an invitation is created,
 // the token is never returned again.

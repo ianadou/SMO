@@ -219,6 +219,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 		match.NewStartMatchUseCase(repo),
 		match.NewCompleteMatchUseCase(repo),
 		match.NewFinalizeMatchUseCase(repo, voteRepo, playerRepo, calculator),
+		invitation.NewListMatchParticipantsUseCase(&authRequiredFakeInvitationRepo{}),
 	)
 
 	groupRepo := &authRequiredFakeGroupRepo{}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ianadou/smo/application/usecases/invitation"
 	"github.com/ianadou/smo/application/usecases/match"
 	"github.com/ianadou/smo/domain/entities"
 	domainerrors "github.com/ianadou/smo/domain/errors"
@@ -197,6 +198,7 @@ func buildTestRouter(t *testing.T) *testRouter {
 		match.NewStartMatchUseCase(matchRepo),
 		match.NewCompleteMatchUseCase(matchRepo),
 		match.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, calculator),
+		invitation.NewListMatchParticipantsUseCase(newFakeInvRepo()),
 	)
 
 	router := gin.New()
@@ -427,5 +429,23 @@ func TestMatchHandler_Finalize_Returns200_WithMVPAndUpdatedRankings(t *testing.T
 	}
 	if _, hasB := rankings["p-b"]; !hasB {
 		t.Errorf("expected p-b to appear in updated_rankings, got %v", rankings)
+	}
+}
+
+func TestMatchHandler_Participants_Returns200_WithEmptyArray_WhenNoOneConfirmed(t *testing.T) {
+	tr := buildTestRouter(t)
+	seedMatch(t, tr.matchRepo)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/matches/match-1/participants", nil)
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp []any
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp == nil {
+		t.Errorf("expected JSON array (possibly empty), got null")
 	}
 }
