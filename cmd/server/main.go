@@ -242,6 +242,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	// Group use cases.
 	createGroupUC := groupusecase.NewCreateGroupUseCase(groupRepo, idGenerator, systemClock)
 	getGroupUC := groupusecase.NewGetGroupUseCase(groupRepo)
+	listGroupsByOrganizerUC := groupusecase.NewListGroupsByOrganizerUseCase(groupRepo)
 
 	// Ranking calculator. The default learning rate is the right
 	// default for now; making it configurable is on the backlog.
@@ -285,7 +286,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	loginOrganizerUC := authusecase.NewLoginOrganizerUseCase(organizerRepo, passwordHasher, jwtSigner)
 
 	// HTTP handlers.
-	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC)
+	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC, listGroupsByOrganizerUC)
 	matchHandler := handlers.NewMatchHandler(
 		createMatchUC,
 		getMatchUC,

@@ -216,6 +216,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 	groupHandler := handlers.NewGroupHandler(
 		group.NewCreateGroupUseCase(groupRepo, idGen, clock),
 		group.NewGetGroupUseCase(groupRepo),
+		group.NewListGroupsByOrganizerUseCase(groupRepo),
 	)
 
 	invitationHandler := handlers.NewInvitationHandler(

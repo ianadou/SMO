@@ -62,3 +62,11 @@ func OrganizerIDFromContext(ctx context.Context) entities.OrganizerID {
 	id, _ := ctx.Value(organizerIDContextKey{}).(entities.OrganizerID)
 	return id
 }
+
+// WithOrganizerID returns a derived context carrying the organizer ID
+// under the same key the JWTAuth middleware uses. Useful for tests and
+// for synthetic contexts (background jobs, fixtures) that need to act
+// on behalf of a specific organizer without going through HTTP.
+func WithOrganizerID(ctx context.Context, id entities.OrganizerID) context.Context {
+	return context.WithValue(ctx, organizerIDContextKey{}, id)
+}
