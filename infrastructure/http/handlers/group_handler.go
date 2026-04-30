@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -48,17 +49,31 @@ func (h *GroupHandler) Register(public, protected *gin.RouterGroup) {
 	protected.POST("/groups", h.Create)
 }
 
-// Create handles POST /api/groups.
+// Create handles POST /api/v1/groups. The organizer ID is taken from
+// the JWT context, never from the request body — this prevents an
+// authenticated organizer from creating a group on behalf of someone
+// else (IDOR). The strict JSON decoder rejects bodies that include
+// retired fields like `organizer_id`.
 func (h *GroupHandler) Create(ctx *gin.Context) {
 	var request dto.CreateGroupRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
+	if err := bindStrictJSON(ctx, &request); err != nil {
+		if errors.Is(err, errUnknownField) {
+			ctx.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+
+	organizerID := middlewares.OrganizerIDFromContext(ctx.Request.Context())
+	if organizerID == "" {
+		ctx.JSON(http.StatusUnauthorized, httperrors.ErrorResponse{Error: "missing authenticated organizer"})
 		return
 	}
 
 	createdGroup, err := h.createGroup.Execute(ctx.Request.Context(), group.CreateGroupInput{
 		Name:        request.Name,
-		OrganizerID: entities.OrganizerID(request.OrganizerID),
+		OrganizerID: organizerID,
 		WebhookURL:  request.DiscordWebhookURL,
 	})
 	if err != nil {

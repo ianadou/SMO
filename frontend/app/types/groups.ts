@@ -5,3 +5,8 @@ export interface GroupDTO {
   has_webhook: boolean
   created_at: string
 }
+
+export interface CreateGroupPayload {
+  name: string
+  discord_webhook_url?: string
+}

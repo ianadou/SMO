@@ -9,6 +9,8 @@ defineProps<{
   hasError?: boolean
 }>()
 
+defineEmits<{ blur: [event: FocusEvent] }>()
+
 const model = defineModel<string>({ required: true })
 </script>
 
@@ -34,6 +36,7 @@ const model = defineModel<string>({ required: true })
         :inputmode="inputmode"
         :aria-invalid="hasError ? 'true' : 'false'"
         class="flex-1 w-full h-12 bg-transparent border-0 outline-none text-fg-default px-4 text-base leading-[1.4] rounded-md placeholder:text-fg-muted"
+        @blur="$emit('blur', $event)"
       >
       <slot name="right" />
     </div>

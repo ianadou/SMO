@@ -120,9 +120,15 @@ func TestEventsFlow_E2E_PostsToDiscord_OnMarkTeamsReady(t *testing.T) {
 
 func mustNewGroup(t *testing.T, id entities.GroupID, webhookURL string) *entities.Group {
 	t.Helper()
-	g, err := entities.NewGroup(id, "Events Test Group", "org-1", webhookURL, time.Now())
+	g, err := entities.RehydrateGroup(entities.GroupSnapshot{
+		ID:          id,
+		Name:        "Events Test Group",
+		OrganizerID: "org-1",
+		WebhookURL:  webhookURL,
+		CreatedAt:   time.Now(),
+	})
 	if err != nil {
-		t.Fatalf("NewGroup: %v", err)
+		t.Fatalf("RehydrateGroup: %v", err)
 	}
 	return g
 }

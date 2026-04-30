@@ -6,7 +6,14 @@ import (
 	"github.com/ianadou/smo/domain/entities"
 )
 
-// CreateGroupRequest is the JSON body of POST /api/groups.
+// CreateGroupRequest is the JSON body of POST /api/v1/groups.
+//
+// The organizer ID is intentionally NOT a field of this struct — it is
+// derived from the authenticated JWT context by the handler. Accepting
+// it from the body would let an authenticated organizer create groups
+// owned by another organizer (IDOR). Clients that send `organizer_id`
+// receive a 400 thanks to the strict JSON decoder rejecting unknown
+// fields.
 //
 // Validation tags use the github.com/go-playground/validator/v10
 // syntax that Gin supports out of the box. Format validation here
@@ -20,7 +27,6 @@ import (
 // here is intentionally minimal to let the domain own the rules.
 type CreateGroupRequest struct {
 	Name              string `json:"name"                          binding:"required,min=1,max=100"`
-	OrganizerID       string `json:"organizer_id"                  binding:"required"`
 	DiscordWebhookURL string `json:"discord_webhook_url,omitempty"`
 }
 

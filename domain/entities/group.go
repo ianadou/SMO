@@ -2,6 +2,7 @@ package entities
 
 import (
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -11,7 +12,15 @@ import (
 const (
 	maxGroupNameLength  = 100
 	maxWebhookURLLength = 2048
+	discordWebhookHost  = "discord.com"
 )
+
+// discordWebhookPathRe matches the canonical Discord webhook URL path
+// shape: /api/webhooks/<numeric_id>/<token>. Tokens are alphanumeric
+// plus dash and underscore in current Discord docs; tightening this
+// regex is preferable to a permissive `[^/]+` since the surface is a
+// security boundary for outbound notifications.
+var discordWebhookPathRe = regexp.MustCompile(`^/api/webhooks/\d+/[\w-]+$`)
 
 // GroupID is the unique identifier of a Group.
 type GroupID string
@@ -76,14 +85,61 @@ func NewGroup(
 	}, nil
 }
 
-// validateWebhookURL enforces the five strict rules the Discord
-// webhook URL must satisfy when non-empty:
+// GroupSnapshot is the persistence-shaped view of a Group, used by
+// RehydrateGroup. It mirrors the entity fields exactly; validation is
+// kept to shape checks only since the data was already validated when
+// it was first persisted.
+type GroupSnapshot struct {
+	ID          GroupID
+	Name        string
+	OrganizerID OrganizerID
+	WebhookURL  string
+	CreatedAt   time.Time
+}
+
+// RehydrateGroup rebuilds a Group from its persisted snapshot. Shape
+// rules (non-empty ID, name length, non-empty organizer, non-zero
+// time) are enforced, but the strict webhook validation (host = Discord,
+// path shape, control chars) is NOT re-run: a stored row was already
+// validated at write time. Tightening webhook rules later must therefore
+// be paired with a migration plan, not a silent rejection on load.
 //
-//  1. parsable by url.Parse
-//  2. scheme is exactly "https" (no http, no other)
-//  3. no embedded credentials (no userinfo)
-//  4. non-empty Host
-//  5. length ≤ maxWebhookURLLength characters
+// Use NewGroup for any path where the inputs come from outside the
+// trust boundary (HTTP body, CLI flag, manual fixture).
+func RehydrateGroup(s GroupSnapshot) (*Group, error) {
+	if s.ID == "" {
+		return nil, domainerrors.ErrInvalidID
+	}
+	trimmedName := strings.TrimSpace(s.Name)
+	if trimmedName == "" || len(trimmedName) > maxGroupNameLength {
+		return nil, domainerrors.ErrInvalidName
+	}
+	if s.OrganizerID == "" {
+		return nil, domainerrors.ErrInvalidID
+	}
+	if s.CreatedAt.IsZero() {
+		return nil, domainerrors.ErrInvalidDate
+	}
+	return &Group{
+		id:          s.ID,
+		name:        trimmedName,
+		organizerID: s.OrganizerID,
+		webhookURL:  s.WebhookURL,
+		createdAt:   s.CreatedAt,
+	}, nil
+}
+
+// validateWebhookURL enforces the strict rules a Discord webhook URL
+// must satisfy when non-empty:
+//
+//  1. length ≤ maxWebhookURLLength characters
+//  2. no ASCII control characters (CR/LF/NUL/etc. — header injection)
+//  3. parsable by url.Parse
+//  4. scheme is exactly "https" (no http, no other)
+//  5. no embedded credentials (no userinfo)
+//  6. host is exactly discord.com (rejects discordapp.com legacy and
+//     any malicious lookalike)
+//  7. path matches the canonical /api/webhooks/<id>/<token> shape
 //
 // Empty input is accepted: a group is allowed to have no Discord
 // webhook configured (notifications are opt-in).
@@ -92,6 +148,9 @@ func validateWebhookURL(s string) error {
 		return nil
 	}
 	if len(s) > maxWebhookURLLength {
+		return domainerrors.ErrInvalidWebhookURL
+	}
+	if containsControlChar(s) {
 		return domainerrors.ErrInvalidWebhookURL
 	}
 	parsed, err := url.Parse(s)
@@ -104,10 +163,25 @@ func validateWebhookURL(s string) error {
 	if parsed.User != nil {
 		return domainerrors.ErrInvalidWebhookURL
 	}
-	if parsed.Host == "" {
+	if parsed.Host != discordWebhookHost {
+		return domainerrors.ErrInvalidWebhookURL
+	}
+	if !discordWebhookPathRe.MatchString(parsed.Path) {
 		return domainerrors.ErrInvalidWebhookURL
 	}
 	return nil
+}
+
+// containsControlChar reports whether s contains any ASCII control
+// character (0x00-0x1F or 0x7F). Catches CR, LF, NUL and friends used
+// in header-injection payloads disguised as URLs.
+func containsControlChar(s string) bool {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
 }
 
 // ID returns the group identifier.
