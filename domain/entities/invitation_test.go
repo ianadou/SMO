@@ -14,7 +14,7 @@ func TestNewInvitation_ReturnsInvitation_WhenInputsAreValid(t *testing.T) {
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(7 * 24 * time.Hour)
 
-	inv, err := NewInvitation("inv-1", "match-1", "hash-abc-123", expiresAt, nil, createdAt)
+	inv, err := NewInvitation("inv-1", "match-1", "p-1", "hash-abc-123", expiresAt, nil, createdAt)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -23,6 +23,9 @@ func TestNewInvitation_ReturnsInvitation_WhenInputsAreValid(t *testing.T) {
 	}
 	if inv.MatchID() != "match-1" {
 		t.Errorf("expected MatchID 'match-1', got %q", inv.MatchID())
+	}
+	if inv.PlayerID() != "p-1" {
+		t.Errorf("expected PlayerID 'p-1', got %q", inv.PlayerID())
 	}
 	if inv.TokenHash() != "hash-abc-123" {
 		t.Errorf("expected token hash, got %q", inv.TokenHash())
@@ -45,7 +48,7 @@ func TestNewInvitation_AcceptsUsedAtWhenProvided(t *testing.T) {
 	expiresAt := createdAt.Add(7 * 24 * time.Hour)
 	usedAt := createdAt.Add(2 * time.Hour)
 
-	inv, err := NewInvitation("inv-1", "match-1", "hash", expiresAt, &usedAt, createdAt)
+	inv, err := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, &usedAt, createdAt)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -62,7 +65,7 @@ func TestInvitation_IsExpired(t *testing.T) {
 
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := time.Date(2026, 6, 8, 10, 0, 0, 0, time.UTC)
-	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, nil, createdAt)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, nil, createdAt)
 
 	cases := []struct {
 		name string
@@ -97,25 +100,27 @@ func TestNewInvitation_ReturnsError_WhenInputsAreInvalid(t *testing.T) {
 		name      string
 		id        InvitationID
 		matchID   MatchID
+		playerID  PlayerID
 		tokenHash string
 		expiresAt time.Time
 		createdAt time.Time
 		wantErr   error
 	}{
-		{name: "empty id", id: "", matchID: "m-1", tokenHash: "h", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
-		{name: "empty match id", id: "i-1", matchID: "", tokenHash: "h", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
-		{name: "empty token hash", id: "i-1", matchID: "m-1", tokenHash: "", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
-		{name: "zero createdAt", id: "i-1", matchID: "m-1", tokenHash: "h", expiresAt: validExpiresAt, createdAt: time.Time{}, wantErr: domainerrors.ErrInvalidDate},
-		{name: "zero expiresAt", id: "i-1", matchID: "m-1", tokenHash: "h", expiresAt: time.Time{}, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
-		{name: "expiresAt before createdAt", id: "i-1", matchID: "m-1", tokenHash: "h", expiresAt: validCreatedAt.Add(-time.Hour), createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
-		{name: "expiresAt equals createdAt", id: "i-1", matchID: "m-1", tokenHash: "h", expiresAt: validCreatedAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
+		{name: "empty id", id: "", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
+		{name: "empty match id", id: "i-1", matchID: "", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
+		{name: "empty player id", id: "i-1", matchID: "m-1", playerID: "", tokenHash: "h", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
+		{name: "empty token hash", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
+		{name: "zero createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, createdAt: time.Time{}, wantErr: domainerrors.ErrInvalidDate},
+		{name: "zero expiresAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: time.Time{}, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
+		{name: "expiresAt before createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validCreatedAt.Add(-time.Hour), createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
+		{name: "expiresAt equals createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validCreatedAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
 	}
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			inv, err := NewInvitation(testCase.id, testCase.matchID, testCase.tokenHash, testCase.expiresAt, nil, testCase.createdAt)
+			inv, err := NewInvitation(testCase.id, testCase.matchID, testCase.playerID, testCase.tokenHash, testCase.expiresAt, nil, testCase.createdAt)
 
 			if inv != nil {
 				t.Errorf("expected nil invitation, got %+v", inv)
@@ -131,7 +136,7 @@ func TestInvitation_MarkAsUsed_SetsUsedAt(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(7 * 24 * time.Hour)
-	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, nil, createdAt)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, nil, createdAt)
 
 	now := createdAt.Add(2 * time.Hour)
 	if err := inv.MarkAsUsed(now); err != nil {
@@ -150,7 +155,7 @@ func TestInvitation_MarkAsUsed_ReturnsErrInvitationAlreadyUsed_WhenAlreadyUsed(t
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(7 * 24 * time.Hour)
 	firstUsedAt := createdAt.Add(1 * time.Hour)
-	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, &firstUsedAt, createdAt)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, &firstUsedAt, createdAt)
 
 	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))
 
@@ -163,7 +168,7 @@ func TestInvitation_MarkAsUsed_ReturnsErrInvitationExpired_WhenExpired(t *testin
 	t.Parallel()
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(1 * time.Hour)
-	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, nil, createdAt)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, nil, createdAt)
 
 	// now is past expiresAt.
 	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))
@@ -180,7 +185,7 @@ func TestInvitation_MarkAsUsed_PrefersAlreadyUsedOverExpired(t *testing.T) {
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(1 * time.Hour)
 	firstUsedAt := createdAt.Add(30 * time.Minute)
-	inv, _ := NewInvitation("inv-1", "match-1", "hash", expiresAt, &firstUsedAt, createdAt)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, &firstUsedAt, createdAt)
 
 	// Now is past expiresAt.
 	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))

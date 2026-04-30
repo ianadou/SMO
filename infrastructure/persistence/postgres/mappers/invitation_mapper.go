@@ -17,9 +17,14 @@ func InvitationToDomain(row generated.Invitations) (*entities.Invitation, error)
 		t := row.UsedAt.Time
 		usedAtPtr = &t
 	}
+	// PlayerID is read from the regenerated sqlc model in the next commit
+	// (PR A C3). For now we pass a placeholder so the build is green; the
+	// real row.PlayerID lookup lands once sqlc regenerates against the
+	// migration applied in C1.
 	return entities.NewInvitation(
 		entities.InvitationID(row.ID),
 		entities.MatchID(row.MatchID),
+		entities.PlayerID("p-placeholder"),
 		row.TokenHash,
 		row.ExpiresAt.Time,
 		usedAtPtr,

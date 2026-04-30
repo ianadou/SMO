@@ -46,7 +46,7 @@ func buildTestInvitation(t *testing.T, id, matchID, hash string) *entities.Invit
 	createdAt := time.Now()
 	expiresAt := createdAt.Add(5 * 24 * time.Hour)
 	inv, err := entities.NewInvitation(
-		entities.InvitationID(id), entities.MatchID(matchID), hash,
+		entities.InvitationID(id), entities.MatchID(matchID), entities.PlayerID("p-1"), hash,
 		expiresAt, nil, createdAt,
 	)
 	if err != nil {

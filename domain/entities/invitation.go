@@ -23,6 +23,7 @@ type InvitationID string
 type Invitation struct {
 	id        InvitationID
 	matchID   MatchID
+	playerID  PlayerID
 	tokenHash string
 	expiresAt time.Time
 	usedAt    *time.Time
@@ -43,6 +44,7 @@ type Invitation struct {
 func NewInvitation(
 	id InvitationID,
 	matchID MatchID,
+	playerID PlayerID,
 	tokenHash string,
 	expiresAt time.Time,
 	usedAt *time.Time,
@@ -53,6 +55,10 @@ func NewInvitation(
 	}
 
 	if matchID == "" {
+		return nil, domainerrors.ErrInvalidID
+	}
+
+	if playerID == "" {
 		return nil, domainerrors.ErrInvalidID
 	}
 
@@ -71,6 +77,7 @@ func NewInvitation(
 	return &Invitation{
 		id:        id,
 		matchID:   matchID,
+		playerID:  playerID,
 		tokenHash: tokenHash,
 		expiresAt: expiresAt,
 		usedAt:    usedAt,
@@ -83,6 +90,11 @@ func (i *Invitation) ID() InvitationID { return i.id }
 
 // MatchID returns the identifier of the match this invitation grants access to.
 func (i *Invitation) MatchID() MatchID { return i.matchID }
+
+// PlayerID returns the identifier of the player this invitation was issued for.
+// Each invitation is one-to-one with a player; the organizer picks the recipient
+// at creation time.
+func (i *Invitation) PlayerID() PlayerID { return i.playerID }
 
 // TokenHash returns the hashed token. The plain token is never stored.
 func (i *Invitation) TokenHash() string { return i.tokenHash }

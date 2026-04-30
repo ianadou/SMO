@@ -14,7 +14,7 @@ func TestGetInvitationUseCase_Execute_ReturnsInvitation_WhenExists(t *testing.T)
 	t.Parallel()
 	repo := newFakeInvitationRepository()
 	createdAt := time.Now()
-	inv, _ := entities.NewInvitation("inv-1", "m-1", "hash", createdAt.Add(5*24*time.Hour), nil, createdAt)
+	inv, _ := entities.NewInvitation("inv-1", "m-1", "p-1", "hash", createdAt.Add(5*24*time.Hour), nil, createdAt)
 	_ = repo.Save(context.Background(), inv)
 
 	uc := NewGetInvitationUseCase(repo)

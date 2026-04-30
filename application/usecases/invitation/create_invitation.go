@@ -64,9 +64,14 @@ func (uc *CreateInvitationUseCase) Execute(ctx context.Context, input CreateInvi
 	}
 	hash := uc.tokens.HashToken(plainToken)
 
+	// PlayerID is wired through the input + use case in the next commit
+	// (PR A C4); for now we pass a placeholder so the entity build does not
+	// reject empty playerID. The placeholder is overwritten by C4 before
+	// the change reaches main via squash-merge.
 	inv, err := entities.NewInvitation(
 		entities.InvitationID(uc.idGen.Generate()),
 		input.MatchID,
+		entities.PlayerID("p-placeholder"),
 		hash,
 		expiresAt,
 		nil,

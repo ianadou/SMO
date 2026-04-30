@@ -24,6 +24,7 @@ func TestListInvitationsByMatchUseCase_Execute_ReturnsInvitationsForMatch(t *tes
 		inv, _ := entities.NewInvitation(
 			entities.InvitationID(data.id),
 			entities.MatchID(data.matchID),
+			entities.PlayerID("p-1"),
 			"hash-"+data.id, expiresAt, nil, createdAt,
 		)
 		_ = repo.Save(ctx, inv)

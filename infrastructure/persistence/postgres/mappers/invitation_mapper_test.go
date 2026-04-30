@@ -55,7 +55,7 @@ func TestInvitationToCreateParams_BuildsParams(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(5 * 24 * time.Hour)
-	inv, _ := entities.NewInvitation("inv-1", "match-1", "hash", expiresAt, nil, createdAt)
+	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, nil, createdAt)
 
 	params := InvitationToCreateParams(inv)
 	if params.ID != "inv-1" {
@@ -71,7 +71,7 @@ func TestInvitationToMarkAsUsedParams_BuildsParamsWithUsedAt(t *testing.T) {
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(5 * 24 * time.Hour)
 	usedAt := createdAt.Add(2 * time.Hour)
-	inv, _ := entities.NewInvitation("inv-1", "match-1", "hash", expiresAt, &usedAt, createdAt)
+	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, &usedAt, createdAt)
 
 	params := InvitationToMarkAsUsedParams(inv)
 	if !params.UsedAt.Valid || !params.UsedAt.Time.Equal(usedAt) {
