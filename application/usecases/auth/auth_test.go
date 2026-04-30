@@ -93,6 +93,41 @@ type fakeClock struct{ now time.Time }
 
 func (c *fakeClock) Now() time.Time { return c.now }
 
+// fakeTracker records calls and lets tests preset the locked state per
+// email. Failure / Success counters are exposed as plain maps so each
+// test can read what the use case did without going through a method.
+type fakeTracker struct {
+	locked         map[string]bool
+	failureCalls   map[string]int
+	successCalls   map[string]int
+	failOnIsLocked bool
+}
+
+func newFakeTracker() *fakeTracker {
+	return &fakeTracker{
+		locked:       make(map[string]bool),
+		failureCalls: make(map[string]int),
+		successCalls: make(map[string]int),
+	}
+}
+
+func (t *fakeTracker) IsLocked(_ context.Context, email string) (bool, error) {
+	if t.failOnIsLocked {
+		return false, errors.New("simulated tracker error")
+	}
+	return t.locked[email], nil
+}
+
+func (t *fakeTracker) RecordFailure(_ context.Context, email string) error {
+	t.failureCalls[email]++
+	return nil
+}
+
+func (t *fakeTracker) RecordSuccess(_ context.Context, email string) error {
+	t.successCalls[email]++
+	return nil
+}
+
 // --- register tests --------------------------------------------------------
 
 func TestRegisterOrganizerUseCase_HappyPath(t *testing.T) {
@@ -169,7 +204,7 @@ func TestLoginOrganizerUseCase_HappyPath_ReturnsTokenAndOrganizer(t *testing.T) 
 	repo := newFakeOrganizerRepo()
 	signer := newFakeSigner()
 	seedOrganizer(t, repo)
-	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, signer)
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, signer, newFakeTracker())
 
 	out, err := uc.Execute(context.Background(), LoginOrganizerInput{
 		Email: "alice@example.com", Password: "correct-password-12+",
@@ -189,7 +224,7 @@ func TestLoginOrganizerUseCase_ReturnsErrInvalidCredentials_WhenPasswordIsWrong(
 	t.Parallel()
 	repo := newFakeOrganizerRepo()
 	seedOrganizer(t, repo)
-	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner())
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner(), newFakeTracker())
 
 	_, err := uc.Execute(context.Background(), LoginOrganizerInput{
 		Email: "alice@example.com", Password: "wrong-password",
@@ -203,7 +238,7 @@ func TestLoginOrganizerUseCase_ReturnsErrInvalidCredentials_WhenPasswordIsWrong(
 func TestLoginOrganizerUseCase_ReturnsErrInvalidCredentials_WhenEmailDoesNotExist(t *testing.T) {
 	t.Parallel()
 	repo := newFakeOrganizerRepo()
-	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner())
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner(), newFakeTracker())
 
 	_, err := uc.Execute(context.Background(), LoginOrganizerInput{
 		Email: "nonexistent@example.com", Password: "any-password",
@@ -213,5 +248,104 @@ func TestLoginOrganizerUseCase_ReturnsErrInvalidCredentials_WhenEmailDoesNotExis
 	// error as a wrong password, to prevent email enumeration.
 	if !errors.Is(err, domainerrors.ErrInvalidCredentials) {
 		t.Errorf("expected ErrInvalidCredentials (no enumeration), got %v", err)
+	}
+}
+
+func TestLoginOrganizerUseCase_ReturnsErrAccountLocked_WhenTrackerReportsLocked(t *testing.T) {
+	t.Parallel()
+	repo := newFakeOrganizerRepo()
+	seedOrganizer(t, repo)
+	tracker := newFakeTracker()
+	tracker.locked["alice@example.com"] = true
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner(), tracker)
+
+	_, err := uc.Execute(context.Background(), LoginOrganizerInput{
+		Email: "alice@example.com", Password: "correct-password-12+",
+	})
+
+	if !errors.Is(err, domainerrors.ErrAccountLocked) {
+		t.Errorf("expected ErrAccountLocked, got %v", err)
+	}
+	if tracker.failureCalls["alice@example.com"] != 0 {
+		t.Errorf("locked accounts must not record additional failures, got %d", tracker.failureCalls["alice@example.com"])
+	}
+	if tracker.successCalls["alice@example.com"] != 0 {
+		t.Errorf("locked accounts must not record success, got %d", tracker.successCalls["alice@example.com"])
+	}
+}
+
+func TestLoginOrganizerUseCase_RecordsFailure_OnWrongPassword(t *testing.T) {
+	t.Parallel()
+	repo := newFakeOrganizerRepo()
+	seedOrganizer(t, repo)
+	tracker := newFakeTracker()
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner(), tracker)
+
+	_, _ = uc.Execute(context.Background(), LoginOrganizerInput{
+		Email: "alice@example.com", Password: "wrong-password",
+	})
+
+	if tracker.failureCalls["alice@example.com"] != 1 {
+		t.Errorf("expected 1 failure recorded for alice, got %d", tracker.failureCalls["alice@example.com"])
+	}
+}
+
+func TestLoginOrganizerUseCase_RecordsFailure_OnUnknownEmail(t *testing.T) {
+	t.Parallel()
+	repo := newFakeOrganizerRepo()
+	tracker := newFakeTracker()
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner(), tracker)
+
+	_, _ = uc.Execute(context.Background(), LoginOrganizerInput{
+		Email: "ghost@example.com", Password: "any-password",
+	})
+
+	// Recording on unknown email is a deliberate enumeration-defense: an
+	// attacker iterating through emails should see the same throttling
+	// behavior whether the email exists or not.
+	if tracker.failureCalls["ghost@example.com"] != 1 {
+		t.Errorf("expected 1 failure recorded for ghost, got %d", tracker.failureCalls["ghost@example.com"])
+	}
+}
+
+func TestLoginOrganizerUseCase_RecordsSuccess_OnHappyPath(t *testing.T) {
+	t.Parallel()
+	repo := newFakeOrganizerRepo()
+	seedOrganizer(t, repo)
+	tracker := newFakeTracker()
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner(), tracker)
+
+	_, err := uc.Execute(context.Background(), LoginOrganizerInput{
+		Email: "alice@example.com", Password: "correct-password-12+",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if tracker.successCalls["alice@example.com"] != 1 {
+		t.Errorf("expected 1 success recorded for alice, got %d", tracker.successCalls["alice@example.com"])
+	}
+	if tracker.failureCalls["alice@example.com"] != 0 {
+		t.Errorf("happy path must not record any failure, got %d", tracker.failureCalls["alice@example.com"])
+	}
+}
+
+func TestLoginOrganizerUseCase_FailsOpen_WhenTrackerIsLockedErrors(t *testing.T) {
+	t.Parallel()
+	repo := newFakeOrganizerRepo()
+	seedOrganizer(t, repo)
+	tracker := newFakeTracker()
+	tracker.failOnIsLocked = true
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner(), tracker)
+
+	out, err := uc.Execute(context.Background(), LoginOrganizerInput{
+		Email: "alice@example.com", Password: "correct-password-12+",
+	})
+	// Fail-open contract: a tracker error must not block a legitimate
+	// login. The login proceeds and a token is issued — see ADR 0007.
+	if err != nil {
+		t.Fatalf("expected fail-open behavior, got error: %v", err)
+	}
+	if out.Token == "" {
+		t.Errorf("expected token to be issued under fail-open, got empty string")
 	}
 }

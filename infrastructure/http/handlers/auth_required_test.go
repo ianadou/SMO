@@ -20,6 +20,7 @@ import (
 	"github.com/ianadou/smo/domain/events"
 	"github.com/ianadou/smo/domain/ranking"
 	bcryptauth "github.com/ianadou/smo/infrastructure/auth/bcrypt"
+	"github.com/ianadou/smo/infrastructure/auth/loginlockout"
 	"github.com/ianadou/smo/infrastructure/http/handlers"
 	"github.com/ianadou/smo/infrastructure/http/middlewares"
 )
@@ -241,7 +242,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 
 	authHandler := handlers.NewAuthHandler(
 		auth.NewRegisterOrganizerUseCase(&authRequiredFakeOrganizerRepo{}, hasher, idGen, clock),
-		auth.NewLoginOrganizerUseCase(&authRequiredFakeOrganizerRepo{}, hasher, authRequiredStubSigner{}),
+		auth.NewLoginOrganizerUseCase(&authRequiredFakeOrganizerRepo{}, hasher, authRequiredStubSigner{}, loginlockout.NewNoopTracker()),
 	)
 
 	router := gin.New()

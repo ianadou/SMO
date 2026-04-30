@@ -139,4 +139,12 @@ var (
 	// ErrInvalidToken is returned when a JWT cannot be parsed, has an
 	// invalid signature, is expired, or carries unexpected claims.
 	ErrInvalidToken = errors.New("invalid token")
+
+	// ErrAccountLocked is returned by the login flow when too many
+	// failed attempts have triggered a temporary lockout on the
+	// account. Distinct from ErrInvalidCredentials inside the domain
+	// (so logs and metrics can tell them apart), but the HTTP layer
+	// maps both to the same response shape: revealing "your account
+	// is locked" would tell an attacker that the email is valid.
+	ErrAccountLocked = errors.New("account temporarily locked")
 )
