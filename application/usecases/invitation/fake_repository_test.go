@@ -19,6 +19,8 @@ type fakeInvitationRepository struct {
 	findByIDErr        error
 	findByTokenHashErr error
 	listByMatchErr     error
+	countErr           error
+	listConfirmedErr   error
 	markAsUsedErr      error
 }
 
@@ -76,6 +78,40 @@ func (r *fakeInvitationRepository) ListByMatch(_ context.Context, matchID entiti
 		}
 	}
 	return result, nil
+}
+
+func (r *fakeInvitationRepository) CountConfirmedByMatch(_ context.Context, matchID entities.MatchID) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.countErr != nil {
+		return 0, r.countErr
+	}
+	count := 0
+	for _, inv := range r.invitations {
+		if inv.MatchID() == matchID && inv.IsUsed() {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (r *fakeInvitationRepository) ListConfirmedParticipants(_ context.Context, matchID entities.MatchID) ([]entities.MatchParticipant, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.listConfirmedErr != nil {
+		return nil, r.listConfirmedErr
+	}
+	out := make([]entities.MatchParticipant, 0)
+	for _, inv := range r.invitations {
+		if inv.MatchID() == matchID && inv.IsUsed() {
+			out = append(out, entities.MatchParticipant{
+				PlayerID:    inv.PlayerID(),
+				PlayerName:  "Fake " + string(inv.PlayerID()),
+				ConfirmedAt: *inv.UsedAt(),
+			})
+		}
+	}
+	return out, nil
 }
 
 func (r *fakeInvitationRepository) MarkAsUsed(_ context.Context, inv *entities.Invitation) error {

@@ -99,7 +99,8 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 		PlainToken string `json:"plain_token"`
 	}
 	c.postExpect(t, http.StatusCreated, "/api/v1/invitations", c.token, map[string]any{
-		"match_id": match.ID,
+		"match_id":  match.ID,
+		"player_id": p1.ID,
 	}, &inv)
 	if inv.PlainToken == "" {
 		t.Fatalf("invitation response missing plain_token: %+v", inv)

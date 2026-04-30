@@ -71,6 +71,14 @@ func (authRequiredFakeInvitationRepo) ListByMatch(context.Context, entities.Matc
 	return nil, nil
 }
 
+func (authRequiredFakeInvitationRepo) CountConfirmedByMatch(context.Context, entities.MatchID) (int, error) {
+	return 0, nil
+}
+
+func (authRequiredFakeInvitationRepo) ListConfirmedParticipants(context.Context, entities.MatchID) ([]entities.MatchParticipant, error) {
+	return nil, nil
+}
+
 func (authRequiredFakeInvitationRepo) Delete(context.Context, entities.InvitationID) error {
 	return nil
 }
@@ -211,6 +219,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 		match.NewStartMatchUseCase(repo),
 		match.NewCompleteMatchUseCase(repo),
 		match.NewFinalizeMatchUseCase(repo, voteRepo, playerRepo, calculator),
+		invitation.NewListMatchParticipantsUseCase(&authRequiredFakeInvitationRepo{}),
 	)
 
 	groupRepo := &authRequiredFakeGroupRepo{}
@@ -221,7 +230,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 	)
 
 	invitationHandler := handlers.NewInvitationHandler(
-		invitation.NewCreateInvitationUseCase(&authRequiredFakeInvitationRepo{}, &noopTokenService{}, idGen, clock),
+		invitation.NewCreateInvitationUseCase(&authRequiredFakeInvitationRepo{}, &authRequiredFakeMatchRepo{}, &authRequiredFakePlayerRepo{}, &noopTokenService{}, idGen, clock),
 		invitation.NewGetInvitationUseCase(&authRequiredFakeInvitationRepo{}),
 		invitation.NewListInvitationsByMatchUseCase(&authRequiredFakeInvitationRepo{}),
 		invitation.NewAcceptInvitationUseCase(&authRequiredFakeInvitationRepo{}, &noopTokenService{}, clock),

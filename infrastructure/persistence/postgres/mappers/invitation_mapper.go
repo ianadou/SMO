@@ -20,6 +20,7 @@ func InvitationToDomain(row generated.Invitations) (*entities.Invitation, error)
 	return entities.NewInvitation(
 		entities.InvitationID(row.ID),
 		entities.MatchID(row.MatchID),
+		entities.PlayerID(row.PlayerID),
 		row.TokenHash,
 		row.ExpiresAt.Time,
 		usedAtPtr,
@@ -32,6 +33,7 @@ func InvitationToCreateParams(inv *entities.Invitation) generated.CreateInvitati
 	return generated.CreateInvitationParams{
 		ID:        string(inv.ID()),
 		MatchID:   string(inv.MatchID()),
+		PlayerID:  string(inv.PlayerID()),
 		TokenHash: inv.TokenHash(),
 		ExpiresAt: pgtype.Timestamptz{Time: inv.ExpiresAt(), Valid: true},
 		UsedAt:    usedAtToPg(inv.UsedAt()),

@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	CountConfirmedInvitationsByMatchID(ctx context.Context, matchID string) (int64, error)
 	// ============================================================================
 	// group.sql — Queries for the groups table.
 	//
@@ -59,6 +60,7 @@ type Querier interface {
 	GetOrganizerByID(ctx context.Context, id string) (Organizers, error)
 	GetPlayerByID(ctx context.Context, id string) (Players, error)
 	GetVoteByID(ctx context.Context, id string) (Votes, error)
+	ListConfirmedParticipantsByMatchID(ctx context.Context, matchID string) ([]ListConfirmedParticipantsByMatchIDRow, error)
 	ListGroupsByOrganizerID(ctx context.Context, organizerID string) ([]Groups, error)
 	ListInvitationsByMatchID(ctx context.Context, matchID string) ([]Invitations, error)
 	// Returns all matches for a group, ordered by scheduled date descending

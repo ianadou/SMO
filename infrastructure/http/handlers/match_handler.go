@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ianadou/smo/application/usecases/invitation"
 	"github.com/ianadou/smo/application/usecases/match"
 	"github.com/ianadou/smo/domain/entities"
 	"github.com/ianadou/smo/infrastructure/http/dto"
@@ -14,14 +15,15 @@ import (
 
 // MatchHandler exposes the Match aggregate over HTTP.
 type MatchHandler struct {
-	createMatch        *match.CreateMatchUseCase
-	getMatch           *match.GetMatchUseCase
-	listMatchesByGroup *match.ListMatchesByGroupUseCase
-	openMatch          *match.OpenMatchUseCase
-	markTeamsReady     *match.MarkTeamsReadyUseCase
-	startMatch         *match.StartMatchUseCase
-	completeMatch      *match.CompleteMatchUseCase
-	finalizeMatch      *match.FinalizeMatchUseCase
+	createMatch           *match.CreateMatchUseCase
+	getMatch              *match.GetMatchUseCase
+	listMatchesByGroup    *match.ListMatchesByGroupUseCase
+	openMatch             *match.OpenMatchUseCase
+	markTeamsReady        *match.MarkTeamsReadyUseCase
+	startMatch            *match.StartMatchUseCase
+	completeMatch         *match.CompleteMatchUseCase
+	finalizeMatch         *match.FinalizeMatchUseCase
+	listMatchParticipants *invitation.ListMatchParticipantsUseCase
 }
 
 // NewMatchHandler builds a MatchHandler with the full set of use cases.
@@ -34,16 +36,18 @@ func NewMatchHandler(
 	startMatch *match.StartMatchUseCase,
 	completeMatch *match.CompleteMatchUseCase,
 	finalizeMatch *match.FinalizeMatchUseCase,
+	listMatchParticipants *invitation.ListMatchParticipantsUseCase,
 ) *MatchHandler {
 	return &MatchHandler{
-		createMatch:        createMatch,
-		getMatch:           getMatch,
-		listMatchesByGroup: listMatchesByGroup,
-		openMatch:          openMatch,
-		markTeamsReady:     markTeamsReady,
-		startMatch:         startMatch,
-		completeMatch:      completeMatch,
-		finalizeMatch:      finalizeMatch,
+		createMatch:           createMatch,
+		getMatch:              getMatch,
+		listMatchesByGroup:    listMatchesByGroup,
+		openMatch:             openMatch,
+		markTeamsReady:        markTeamsReady,
+		startMatch:            startMatch,
+		completeMatch:         completeMatch,
+		finalizeMatch:         finalizeMatch,
+		listMatchParticipants: listMatchParticipants,
 	}
 }
 
@@ -61,6 +65,13 @@ func (h *MatchHandler) Register(public, protected *gin.RouterGroup) {
 	protectedMatches.POST("/:id/start", h.Start)
 	protectedMatches.POST("/:id/complete", h.Complete)
 	protectedMatches.POST("/:id/finalize", h.Finalize)
+
+	// Participants of a match are NOT public: §3 Personas decided that an
+	// invited player must not see other matches' rosters. Until the
+	// dual-mode middleware lands (PR A.1 follow-up of #49 and ADR 0008),
+	// this endpoint requires a JWT organizer; the cross-organizer leak
+	// is a known temporary trade-off.
+	protectedMatches.GET("/:id/participants", h.Participants)
 }
 
 // Create handles POST /api/matches.
@@ -136,6 +147,19 @@ func (h *MatchHandler) Start(c *gin.Context) {
 // Complete handles POST /api/matches/:id/complete.
 func (h *MatchHandler) Complete(c *gin.Context) {
 	h.runTransition(c, h.completeMatch.Execute)
+}
+
+// Participants handles GET /api/matches/:id/participants. Returns the
+// confirmed participants (used invitations) ordered by confirmation time.
+func (h *MatchHandler) Participants(c *gin.Context) {
+	matchID := entities.MatchID(c.Param("id"))
+	participants, err := h.listMatchParticipants.Execute(c.Request.Context(), matchID)
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		c.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+	c.JSON(http.StatusOK, dto.ParticipantResponsesFromEntities(participants))
 }
 
 // Finalize handles POST /api/matches/:id/finalize. Unlike the four other
