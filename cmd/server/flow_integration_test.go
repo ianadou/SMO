@@ -58,8 +58,7 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 		ID string `json:"id"`
 	}
 	c.postExpect(t, http.StatusCreated, "/api/v1/groups", c.token, map[string]any{
-		"name":         "Flow Group",
-		"organizer_id": login.Organizer.ID,
+		"name": "Flow Group",
 	}, &group)
 	c.getExpect(t, http.StatusOK, "/api/v1/groups/"+group.ID, "", nil)
 

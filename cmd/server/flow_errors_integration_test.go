@@ -50,8 +50,7 @@ func TestBuildRouter_ErrorPaths(t *testing.T) {
 		ID string `json:"id"`
 	}
 	c.postExpect(t, http.StatusCreated, "/api/v1/groups", c.token, map[string]any{
-		"name":         "Error Group",
-		"organizer_id": login.Organizer.ID,
+		"name": "Error Group",
 	}, &group)
 
 	var draftMatch struct {
@@ -92,15 +91,13 @@ func TestBuildRouter_ErrorPaths(t *testing.T) {
 
 	t.Run("auth: protected endpoint without JWT returns 401", func(t *testing.T) {
 		c.expectStatus(t, http.MethodPost, "/api/v1/groups", "", map[string]any{
-			"name":         "Should Fail",
-			"organizer_id": login.Organizer.ID,
+			"name": "Should Fail",
 		}, http.StatusUnauthorized)
 	})
 
 	t.Run("auth: protected endpoint with garbage JWT returns 401", func(t *testing.T) {
 		c.expectStatus(t, http.MethodPost, "/api/v1/groups", "not-a-real-jwt", map[string]any{
-			"name":         "Should Fail",
-			"organizer_id": login.Organizer.ID,
+			"name": "Should Fail",
 		}, http.StatusUnauthorized)
 	})
 
@@ -125,9 +122,8 @@ func TestBuildRouter_ErrorPaths(t *testing.T) {
 	})
 
 	t.Run("400: create group missing name returns 400", func(t *testing.T) {
-		c.expectStatus(t, http.MethodPost, "/api/v1/groups", c.token, map[string]any{
-			"organizer_id": login.Organizer.ID,
-		}, http.StatusBadRequest)
+		c.expectStatus(t, http.MethodPost, "/api/v1/groups", c.token, map[string]any{},
+			http.StatusBadRequest)
 	})
 
 	t.Run("400: create match missing required field returns 400", func(t *testing.T) {
