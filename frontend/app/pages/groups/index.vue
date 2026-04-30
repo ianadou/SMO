@@ -98,6 +98,7 @@ onMounted(loadGroups)
       <GroupCard
         v-for="group in groups"
         v-else
+        :id="group.id"
         :key="group.id"
         :name="group.name"
         :has-webhook="group.has_webhook"
