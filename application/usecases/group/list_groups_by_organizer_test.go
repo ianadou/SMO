@@ -2,11 +2,22 @@ package group
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ianadou/smo/domain/entities"
 )
+
+type erroringGroupRepository struct {
+	fakeGroupRepository
+	listErr error
+}
+
+func (r *erroringGroupRepository) ListByOrganizer(_ context.Context, _ entities.OrganizerID) ([]*entities.Group, error) {
+	return nil, r.listErr
+}
 
 func TestListGroupsByOrganizerUseCase_Execute_ReturnsOnlyTheOrganizerGroups(t *testing.T) {
 	t.Parallel()
@@ -32,6 +43,28 @@ func TestListGroupsByOrganizerUseCase_Execute_ReturnsOnlyTheOrganizerGroups(t *t
 		if g.OrganizerID() != "org-1" {
 			t.Errorf("expected only org-1 groups, got organizer %q", g.OrganizerID())
 		}
+	}
+}
+
+func TestListGroupsByOrganizerUseCase_Execute_WrapsRepositoryError(t *testing.T) {
+	t.Parallel()
+
+	repoErr := errors.New("postgres connection lost")
+	repo := &erroringGroupRepository{listErr: repoErr}
+	useCase := NewListGroupsByOrganizerUseCase(repo)
+
+	got, err := useCase.Execute(context.Background(), "org-1")
+	if got != nil {
+		t.Errorf("expected nil result on error, got %+v", got)
+	}
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped repo error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "list groups by organizer use case") {
+		t.Errorf("expected use case prefix in error message, got %q", err.Error())
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,8 +26,9 @@ import (
 // ----------------------------------------------------------------------------
 
 type fakeGroupRepository struct {
-	mu     sync.Mutex
-	groups map[entities.GroupID]*entities.Group
+	mu      sync.Mutex
+	groups  map[entities.GroupID]*entities.Group
+	listErr error
 }
 
 func newFakeGroupRepository() *fakeGroupRepository {
@@ -53,6 +55,9 @@ func (r *fakeGroupRepository) FindByID(_ context.Context, id entities.GroupID) (
 func (r *fakeGroupRepository) ListByOrganizer(_ context.Context, organizerID entities.OrganizerID) ([]*entities.Group, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.listErr != nil {
+		return nil, r.listErr
+	}
 	out := make([]*entities.Group, 0)
 	for _, g := range r.groups {
 		if g.OrganizerID() == organizerID {
@@ -307,6 +312,29 @@ func TestGroupHandler_List_Returns200_WithOrganizerGroups(t *testing.T) {
 		if item["organizer_id"] != "org-1" {
 			t.Errorf("expected only org-1 groups in response, got organizer_id %v", item["organizer_id"])
 		}
+	}
+}
+
+func TestGroupHandler_List_Returns500_WhenRepositoryFails(t *testing.T) {
+	t.Parallel()
+
+	env := newTestHandlerEnvWithOrganizer(t, "ignored", time.Now(), "org-broken")
+	env.repo.listErr = errors.New("postgres connection lost")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups", nil)
+	rec := httptest.NewRecorder()
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d (body: %s)", rec.Code, rec.Body.String())
+	}
+
+	var response map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("expected valid JSON response, got error: %v", err)
+	}
+	if response["error"] != "internal server error" {
+		t.Errorf("expected error 'internal server error', got %q", response["error"])
 	}
 }
 
