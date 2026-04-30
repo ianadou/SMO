@@ -8,8 +8,11 @@ import (
 
 // CreateInvitationRequest is the body of POST /api/invitations.
 // ExpiresAt is optional; if zero the use case applies the default.
+// PlayerID identifies the recipient of this invitation; the use case
+// rejects players that do not belong to the match's group.
 type CreateInvitationRequest struct {
 	MatchID   string    `json:"match_id"             binding:"required"`
+	PlayerID  string    `json:"player_id"            binding:"required"`
 	ExpiresAt time.Time `json:"expires_at,omitempty"`
 }
 
@@ -25,6 +28,7 @@ type AcceptInvitationRequest struct {
 type InvitationResponse struct {
 	ID        string     `json:"id"`
 	MatchID   string     `json:"match_id"`
+	PlayerID  string     `json:"player_id"`
 	ExpiresAt time.Time  `json:"expires_at"`
 	UsedAt    *time.Time `json:"used_at"`
 	CreatedAt time.Time  `json:"created_at"`
@@ -44,6 +48,7 @@ func InvitationResponseFromEntity(inv *entities.Invitation) InvitationResponse {
 	return InvitationResponse{
 		ID:        string(inv.ID()),
 		MatchID:   string(inv.MatchID()),
+		PlayerID:  string(inv.PlayerID()),
 		ExpiresAt: inv.ExpiresAt(),
 		UsedAt:    inv.UsedAt(),
 		CreatedAt: inv.CreatedAt(),

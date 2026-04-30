@@ -273,7 +273,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	updatePlayerRankingUC := playerusecase.NewUpdatePlayerRankingUseCase(playerRepo)
 
 	// Invitation use cases.
-	createInvitationUC := invitationusecase.NewCreateInvitationUseCase(invitationRepo, tokenService, idGenerator, systemClock)
+	createInvitationUC := invitationusecase.NewCreateInvitationUseCase(invitationRepo, matchRepo, playerRepo, tokenService, idGenerator, systemClock)
 	getInvitationUC := invitationusecase.NewGetInvitationUseCase(invitationRepo)
 	listInvitationsByMatchUC := invitationusecase.NewListInvitationsByMatchUseCase(invitationRepo)
 	acceptInvitationUC := invitationusecase.NewAcceptInvitationUseCase(invitationRepo, tokenService, systemClock)

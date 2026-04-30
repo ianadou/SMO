@@ -60,6 +60,7 @@ func (h *InvitationHandler) Create(c *gin.Context) {
 
 	result, err := h.createInvitation.Execute(c.Request.Context(), invitation.CreateInvitationInput{
 		MatchID:   entities.MatchID(req.MatchID),
+		PlayerID:  entities.PlayerID(req.PlayerID),
 		ExpiresAt: req.ExpiresAt,
 	})
 	if err != nil {
