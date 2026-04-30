@@ -113,3 +113,48 @@ func TestParseTrustedProxies_DropsEmptyEntries(t *testing.T) {
 		t.Errorf("expected empty entries dropped, got=%v want=%v", got, want)
 	}
 }
+
+func TestParseAllowedOrigins_ReturnsLocalhostDevPair_WhenInputIsEmpty(t *testing.T) {
+	t.Parallel()
+
+	got := parseAllowedOrigins("")
+	want := []string{
+		"http://localhost:3000",
+		"http://127.0.0.1:3000",
+		"http://localhost:3001",
+		"http://127.0.0.1:3001",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("default origins mismatch:\n got=%v\nwant=%v", got, want)
+	}
+}
+
+func TestParseAllowedOrigins_SplitsCommaSeparatedOrigins(t *testing.T) {
+	t.Parallel()
+
+	got := parseAllowedOrigins("https://sportpotes.fr,https://staging.sportpotes.fr")
+	want := []string{"https://sportpotes.fr", "https://staging.sportpotes.fr"}
+	if !slices.Equal(got, want) {
+		t.Errorf("got=%v want=%v", got, want)
+	}
+}
+
+func TestParseAllowedOrigins_TrimsWhitespaceAroundEntries(t *testing.T) {
+	t.Parallel()
+
+	got := parseAllowedOrigins("  https://sportpotes.fr , https://staging.sportpotes.fr  ")
+	want := []string{"https://sportpotes.fr", "https://staging.sportpotes.fr"}
+	if !slices.Equal(got, want) {
+		t.Errorf("expected trimmed entries, got=%v want=%v", got, want)
+	}
+}
+
+func TestParseAllowedOrigins_DropsEmptyEntries(t *testing.T) {
+	t.Parallel()
+
+	got := parseAllowedOrigins("https://sportpotes.fr,,https://staging.sportpotes.fr, ")
+	want := []string{"https://sportpotes.fr", "https://staging.sportpotes.fr"}
+	if !slices.Equal(got, want) {
+		t.Errorf("expected empty entries dropped, got=%v want=%v", got, want)
+	}
+}
