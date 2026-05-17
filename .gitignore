@@ -161,3 +161,12 @@ logs/
 # sqlc-generated code IS committed (it's the source of truth for types).
 # Do not ignore it — the whole point of sqlc is that the generated code
 # is versioned alongside the queries.
+
+# ============================================================================
+# Design-system mocks
+# ============================================================================
+# Static HTML/JSX/CSS prototypes used as a visual reference while porting
+# pages into the Nuxt app. Not deployed code. Kept locally and in history
+# (commit 7e997ee) but untracked so the repo — and SonarCloud — only see
+# real application code.
+SMO Design System/
