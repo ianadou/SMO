@@ -210,17 +210,17 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 	}
 	hasher := bcryptauth.New(4)
 
-	matchHandler := handlers.NewMatchHandler(
-		match.NewCreateMatchUseCase(repo, idGen, clock),
-		match.NewGetMatchUseCase(repo),
-		match.NewListMatchesByGroupUseCase(repo),
-		match.NewOpenMatchUseCase(repo),
-		match.NewMarkTeamsReadyUseCase(repo, noopPublisher{}, clock),
-		match.NewStartMatchUseCase(repo),
-		match.NewCompleteMatchUseCase(repo),
-		match.NewFinalizeMatchUseCase(repo, voteRepo, playerRepo, calculator),
-		invitation.NewListMatchParticipantsUseCase(&authRequiredFakeInvitationRepo{}),
-	)
+	matchHandler := handlers.NewMatchHandler(handlers.MatchHandlerDeps{
+		CreateMatch:           match.NewCreateMatchUseCase(repo, idGen, clock),
+		GetMatch:              match.NewGetMatchUseCase(repo),
+		ListMatchesByGroup:    match.NewListMatchesByGroupUseCase(repo),
+		OpenMatch:             match.NewOpenMatchUseCase(repo),
+		MarkTeamsReady:        match.NewMarkTeamsReadyUseCase(repo, noopPublisher{}, clock),
+		StartMatch:            match.NewStartMatchUseCase(repo),
+		CompleteMatch:         match.NewCompleteMatchUseCase(repo),
+		FinalizeMatch:         match.NewFinalizeMatchUseCase(repo, voteRepo, playerRepo, calculator),
+		ListMatchParticipants: invitation.NewListMatchParticipantsUseCase(&authRequiredFakeInvitationRepo{}),
+	})
 
 	groupRepo := &authRequiredFakeGroupRepo{}
 	groupHandler := handlers.NewGroupHandler(

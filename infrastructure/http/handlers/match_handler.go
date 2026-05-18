@@ -26,28 +26,32 @@ type MatchHandler struct {
 	listMatchParticipants *invitation.ListMatchParticipantsUseCase
 }
 
+// MatchHandlerDeps groups the use cases a MatchHandler needs, so the
+// constructor takes one parameter instead of nine.
+type MatchHandlerDeps struct {
+	CreateMatch           *match.CreateMatchUseCase
+	GetMatch              *match.GetMatchUseCase
+	ListMatchesByGroup    *match.ListMatchesByGroupUseCase
+	OpenMatch             *match.OpenMatchUseCase
+	MarkTeamsReady        *match.MarkTeamsReadyUseCase
+	StartMatch            *match.StartMatchUseCase
+	CompleteMatch         *match.CompleteMatchUseCase
+	FinalizeMatch         *match.FinalizeMatchUseCase
+	ListMatchParticipants *invitation.ListMatchParticipantsUseCase
+}
+
 // NewMatchHandler builds a MatchHandler with the full set of use cases.
-func NewMatchHandler(
-	createMatch *match.CreateMatchUseCase,
-	getMatch *match.GetMatchUseCase,
-	listMatchesByGroup *match.ListMatchesByGroupUseCase,
-	openMatch *match.OpenMatchUseCase,
-	markTeamsReady *match.MarkTeamsReadyUseCase,
-	startMatch *match.StartMatchUseCase,
-	completeMatch *match.CompleteMatchUseCase,
-	finalizeMatch *match.FinalizeMatchUseCase,
-	listMatchParticipants *invitation.ListMatchParticipantsUseCase,
-) *MatchHandler {
+func NewMatchHandler(deps MatchHandlerDeps) *MatchHandler {
 	return &MatchHandler{
-		createMatch:           createMatch,
-		getMatch:              getMatch,
-		listMatchesByGroup:    listMatchesByGroup,
-		openMatch:             openMatch,
-		markTeamsReady:        markTeamsReady,
-		startMatch:            startMatch,
-		completeMatch:         completeMatch,
-		finalizeMatch:         finalizeMatch,
-		listMatchParticipants: listMatchParticipants,
+		createMatch:           deps.CreateMatch,
+		getMatch:              deps.GetMatch,
+		listMatchesByGroup:    deps.ListMatchesByGroup,
+		openMatch:             deps.OpenMatch,
+		markTeamsReady:        deps.MarkTeamsReady,
+		startMatch:            deps.StartMatch,
+		completeMatch:         deps.CompleteMatch,
+		finalizeMatch:         deps.FinalizeMatch,
+		listMatchParticipants: deps.ListMatchParticipants,
 	}
 }
 
