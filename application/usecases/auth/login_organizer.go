@@ -59,31 +59,33 @@ func NewLoginOrganizerUseCase(
 
 // Execute logs the organizer in.
 func (uc *LoginOrganizerUseCase) Execute(ctx context.Context, in LoginOrganizerInput) (*LoginOrganizerOutput, error) {
+	const op = "login organizer"
+
 	locked, _ := uc.tracker.IsLocked(ctx, in.Email)
 	if locked {
-		return nil, fmt.Errorf("login organizer: %w", domainerrors.ErrAccountLocked)
+		return nil, fmt.Errorf(op+": %w", domainerrors.ErrAccountLocked)
 	}
 
 	organizer, err := uc.organizerRepo.FindByEmail(ctx, in.Email)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrOrganizerNotFound) {
 			_ = uc.tracker.RecordFailure(ctx, in.Email)
-			return nil, fmt.Errorf("login organizer: %w", domainerrors.ErrInvalidCredentials)
+			return nil, fmt.Errorf(op+": %w", domainerrors.ErrInvalidCredentials)
 		}
-		return nil, fmt.Errorf("login organizer: find: %w", err)
+		return nil, fmt.Errorf(op+": find: %w", err)
 	}
 
 	if compareErr := uc.hasher.Compare(organizer.PasswordHash(), in.Password); compareErr != nil {
 		if errors.Is(compareErr, domainerrors.ErrInvalidCredentials) {
 			_ = uc.tracker.RecordFailure(ctx, in.Email)
-			return nil, fmt.Errorf("login organizer: %w", domainerrors.ErrInvalidCredentials)
+			return nil, fmt.Errorf(op+": %w", domainerrors.ErrInvalidCredentials)
 		}
-		return nil, fmt.Errorf("login organizer: compare password: %w", compareErr)
+		return nil, fmt.Errorf(op+": compare password: %w", compareErr)
 	}
 
 	token, err := uc.signer.Sign(organizer.ID())
 	if err != nil {
-		return nil, fmt.Errorf("login organizer: sign token: %w", err)
+		return nil, fmt.Errorf(op+": sign token: %w", err)
 	}
 
 	_ = uc.tracker.RecordSuccess(ctx, in.Email)
