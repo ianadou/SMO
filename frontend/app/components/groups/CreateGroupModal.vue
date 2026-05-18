@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import TextField from '~/components/login/TextField.vue'
-import PrimaryButton from '~/components/login/PrimaryButton.vue'
-import InlineError from '~/components/login/InlineError.vue'
 import type { GroupDTO } from '~/types/groups'
 import { ApiError } from '~/composables/useApi'
 
@@ -142,26 +140,13 @@ watch(
         <p v-if="webhookError" class="text-xs text-team-red">{{ webhookError }}</p>
       </div>
 
-      <InlineError v-if="error">{{ error }}</InlineError>
-
-      <div class="flex gap-3 mt-2">
-        <button
-          type="button"
-          class="flex-1 h-12 inline-flex items-center justify-center bg-transparent border border-border-default rounded-md text-fg-default font-medium cursor-pointer transition-colors duration-150 hover:bg-white/5 disabled:opacity-60 disabled:cursor-not-allowed"
-          :disabled="submitting"
-          @click="close"
-        >
-          Annuler
-        </button>
-        <PrimaryButton
-          type="submit"
-          :loading="submitting"
-          :disabled="!canSubmit"
-          loading-label="Création…"
-        >
-          Créer le groupe
-        </PrimaryButton>
-      </div>
+      <ModalActions
+        :error="error"
+        :submitting="submitting"
+        :can-submit="canSubmit"
+        submit-label="Créer le groupe"
+        @cancel="close"
+      />
     </form>
   </BaseModal>
 </template>
