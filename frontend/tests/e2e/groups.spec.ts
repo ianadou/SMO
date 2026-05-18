@@ -100,53 +100,53 @@ test.describe('Groups page', () => {
   })
 })
 
-test.describe('Create group modal', () => {
-  async function openModal(page: Page) {
-    await authenticate(page)
-    await mockGroups(page, 200, [])
-    await page.goto('/groups')
-    await page.getByRole('button', { name: 'Créer un groupe' }).click()
-    await expect(page.getByRole('dialog')).toBeVisible()
-  }
+async function openCreateGroupModal(page: Page) {
+  await authenticate(page)
+  await mockGroups(page, 200, [])
+  await page.goto('/groups')
+  await page.getByRole('button', { name: 'Créer un groupe' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+}
 
+test.describe('Create group modal', () => {
   test('opens when clicking the floating action button', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     await expect(page.getByRole('heading', { name: 'Nouveau groupe' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'Nom du groupe' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'Webhook Discord (optionnel)' })).toBeVisible()
   })
 
   test('Esc closes the modal', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).not.toBeVisible()
   })
 
   test('clicking the overlay closes the modal', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     await page.locator('.fixed.inset-0.z-50').click({ position: { x: 5, y: 5 } })
     await expect(page.getByRole('dialog')).not.toBeVisible()
   })
 
   test('Annuler button closes the modal', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     await page.getByRole('button', { name: 'Annuler' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible()
   })
 
   test('submit button is disabled when name is empty', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     await expect(page.getByRole('button', { name: 'Créer le groupe' })).toBeDisabled()
   })
 
   test('submit button enables when a non-empty name is typed', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     await page.getByRole('textbox', { name: 'Nom du groupe' }).fill('Foot du jeudi')
     await expect(page.getByRole('button', { name: 'Créer le groupe' })).toBeEnabled()
   })
 
   test('shows length counter and rejects names over 100 chars', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     await page.getByRole('textbox', { name: 'Nom du groupe' }).fill('A'.repeat(101))
     await expect(page.getByText('101/100')).toBeVisible()
     await expect(page.getByText(`Trop long (max 100 caractères)`)).toBeVisible()
@@ -154,7 +154,7 @@ test.describe('Create group modal', () => {
   })
 
   test('rejects an invalid Discord webhook URL', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     await page.getByRole('textbox', { name: 'Nom du groupe' }).fill('Foot')
     await page.getByRole('textbox', { name: 'Webhook Discord (optionnel)' }).fill('https://malicious.com/api/webhooks/1/abc')
     await page.getByRole('textbox', { name: 'Webhook Discord (optionnel)' }).blur()
@@ -246,7 +246,7 @@ test.describe('Create group modal', () => {
   })
 
   test('trims whitespace around the name on blur', async ({ page }) => {
-    await openModal(page)
+    await openCreateGroupModal(page)
     const input = page.getByRole('textbox', { name: 'Nom du groupe' })
     await input.fill('  Foot  ')
     await input.blur()
