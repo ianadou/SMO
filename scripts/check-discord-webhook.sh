@@ -22,7 +22,7 @@ set -euo pipefail
 
 PATTERN='discord\.com/api/webhooks/[0-9]{15,}/[A-Za-z0-9_-]{50,}'
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
   exit 0
 fi
 

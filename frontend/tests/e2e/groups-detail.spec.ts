@@ -144,30 +144,31 @@ test.describe('Group detail page', () => {
   })
 })
 
+async function openCreateMatchModal(page: Page) {
+  await authenticate(page)
+  await mockGroupAndMatches(page, {})
+  await page.goto('/groups/g-1')
+  await page.getByRole('button', { name: 'Créer un match' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+}
+
 test.describe('Create match modal', () => {
-  async function openModal(page: Page) {
-    await authenticate(page)
-    await mockGroupAndMatches(page, {})
-    await page.goto('/groups/g-1')
-    await page.getByRole('button', { name: 'Créer un match' }).click()
-    await expect(page.getByRole('dialog')).toBeVisible()
-  }
 
   test('opens when clicking the FAB', async ({ page }) => {
-    await openModal(page)
+    await openCreateMatchModal(page)
     await expect(page.getByRole('heading', { name: 'Nouveau match' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'Titre' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'Lieu' })).toBeVisible()
   })
 
   test('Esc closes the modal', async ({ page }) => {
-    await openModal(page)
+    await openCreateMatchModal(page)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).not.toBeVisible()
   })
 
   test('submit button is disabled until title, venue, and date are set', async ({ page }) => {
-    await openModal(page)
+    await openCreateMatchModal(page)
     const submit = page.getByRole('button', { name: 'Créer le match' })
     await expect(submit).toBeDisabled()
     await page.getByRole('textbox', { name: 'Titre' }).fill('Match du jeudi')
@@ -179,7 +180,7 @@ test.describe('Create match modal', () => {
   })
 
   test('rejects a past date', async ({ page }) => {
-    await openModal(page)
+    await openCreateMatchModal(page)
     await page.getByRole('textbox', { name: 'Titre' }).fill('Match du jeudi')
     await page.getByRole('textbox', { name: 'Lieu' }).fill('Stade')
     await page.locator('#match-scheduled').fill('2000-01-01T18:00')
