@@ -6,8 +6,11 @@
 #   - tidy: ensures go.mod and go.sum are clean and minimal
 #   - test: runs the test suite (unit + integration) with race detection
 #           and coverage gate
+#   - sonar: SonarCloud CI-based analysis (runs after test, ingests its
+#            Go coverage report)
 #
-# All jobs run in parallel for fast feedback.
+# All jobs run in parallel for fast feedback, except sonar which waits on
+# test for the coverage artifact.
 name: CI
 on:
   push:
@@ -193,3 +196,30 @@ jobs:
           files: coverage.out
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+      - name: Upload coverage report for Sonar
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: coverage.out
+          retention-days: 1
+  sonar:
+    name: Sonar scan
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repository
+        # Full history so SonarCloud can attribute new code and blame.
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Download Go coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: go-coverage
+      - name: SonarCloud scan
+        # Third-party action pinned to a full commit SHA (supply-chain
+        # hardening, githubactions:S7637). Bump via Renovate.
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
