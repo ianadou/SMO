@@ -124,7 +124,7 @@ test.describe('Create group modal', () => {
 
   test('clicking the overlay closes the modal', async ({ page }) => {
     await openCreateGroupModal(page)
-    await page.locator('.fixed.inset-0.z-50').click({ position: { x: 5, y: 5 } })
+    await page.getByRole('dialog').click({ position: { x: 5, y: 5 } })
     await expect(page.getByRole('dialog')).not.toBeVisible()
   })
 
