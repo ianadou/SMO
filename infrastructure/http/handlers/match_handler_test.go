@@ -189,17 +189,17 @@ func buildTestRouter(t *testing.T) *testRouter {
 		t.Fatalf("test setup: build calculator: %v", err)
 	}
 
-	handler := handlers.NewMatchHandler(
-		match.NewCreateMatchUseCase(matchRepo, idGen, clock),
-		match.NewGetMatchUseCase(matchRepo),
-		match.NewListMatchesByGroupUseCase(matchRepo),
-		match.NewOpenMatchUseCase(matchRepo),
-		match.NewMarkTeamsReadyUseCase(matchRepo, noopPublisher{}, clock),
-		match.NewStartMatchUseCase(matchRepo),
-		match.NewCompleteMatchUseCase(matchRepo),
-		match.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, calculator),
-		invitation.NewListMatchParticipantsUseCase(newFakeInvRepo()),
-	)
+	handler := handlers.NewMatchHandler(handlers.MatchHandlerDeps{
+		CreateMatch:           match.NewCreateMatchUseCase(matchRepo, idGen, clock),
+		GetMatch:              match.NewGetMatchUseCase(matchRepo),
+		ListMatchesByGroup:    match.NewListMatchesByGroupUseCase(matchRepo),
+		OpenMatch:             match.NewOpenMatchUseCase(matchRepo),
+		MarkTeamsReady:        match.NewMarkTeamsReadyUseCase(matchRepo, noopPublisher{}, clock),
+		StartMatch:            match.NewStartMatchUseCase(matchRepo),
+		CompleteMatch:         match.NewCompleteMatchUseCase(matchRepo),
+		FinalizeMatch:         match.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, calculator),
+		ListMatchParticipants: invitation.NewListMatchParticipantsUseCase(newFakeInvRepo()),
+	})
 
 	router := gin.New()
 	api := router.Group("/api/v1")

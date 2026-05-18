@@ -133,3 +133,20 @@ func TestPostgresVoteRepository_Delete_Removes(t *testing.T) {
 		t.Errorf("expected ErrVoteNotFound, got %v", findErr)
 	}
 }
+
+func TestPostgresVoteRepository_ListByVoter_ReturnsVotesCastByVoter(t *testing.T) {
+	repo := newTestVoteRepository(t)
+	ctx := context.Background()
+	_ = repo.Save(ctx, buildTestVote(t, "v-1", "p-voter", "p-voted", 4))
+
+	votes, err := repo.ListByVoter(ctx, "p-voter")
+	if err != nil {
+		t.Fatalf("list by voter: %v", err)
+	}
+	if len(votes) != 1 {
+		t.Fatalf("expected 1 vote, got %d", len(votes))
+	}
+	if votes[0].VoterID() != "p-voter" {
+		t.Errorf("expected voter 'p-voter', got %q", votes[0].VoterID())
+	}
+}

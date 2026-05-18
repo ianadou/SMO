@@ -303,17 +303,17 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 
 	// HTTP handlers.
 	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC, listGroupsByOrganizerUC)
-	matchHandler := handlers.NewMatchHandler(
-		createMatchUC,
-		getMatchUC,
-		listMatchesByGroupUC,
-		openMatchUC,
-		markTeamsReadyUC,
-		startMatchUC,
-		completeMatchUC,
-		finalizeMatchUC,
-		listMatchParticipantsUC,
-	)
+	matchHandler := handlers.NewMatchHandler(handlers.MatchHandlerDeps{
+		CreateMatch:           createMatchUC,
+		GetMatch:              getMatchUC,
+		ListMatchesByGroup:    listMatchesByGroupUC,
+		OpenMatch:             openMatchUC,
+		MarkTeamsReady:        markTeamsReadyUC,
+		StartMatch:            startMatchUC,
+		CompleteMatch:         completeMatchUC,
+		FinalizeMatch:         finalizeMatchUC,
+		ListMatchParticipants: listMatchParticipantsUC,
+	})
 
 	// Router configuration.
 	//
