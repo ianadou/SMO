@@ -21,7 +21,7 @@ set -euo pipefail
 
 PATTERN='fonts\.(googleapis|gstatic)\.com'
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
   exit 0
 fi
 
