@@ -87,10 +87,10 @@ func TestCORS_PreflightRequest_Returns204(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Errorf("expected 204 on preflight, got %d", rec.Code)
 	}
-	if got := rec.Header().Get("Access-Control-Allow-Methods"); got == "" {
+	if rec.Header().Get("Access-Control-Allow-Methods") == "" {
 		t.Errorf("expected allow-methods header on preflight, got empty")
 	}
-	if got := rec.Header().Get("Access-Control-Allow-Headers"); got == "" {
+	if rec.Header().Get("Access-Control-Allow-Headers") == "" {
 		t.Errorf("expected allow-headers header on preflight, got empty")
 	}
 }
