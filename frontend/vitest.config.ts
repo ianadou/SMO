@@ -18,5 +18,12 @@ export default defineVitestConfig({
     // foo.test.ts). E2E tests are separate, handled by Playwright.
     include: ['app/**/*.test.ts', 'app/**/*.spec.ts'],
     exclude: ['node_modules', '.nuxt', '.output', 'tests/e2e/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['app/**/*.{ts,vue}'],
+      exclude: ['app/**/*.test.ts', 'app/**/*.spec.ts'],
+    },
   },
 })

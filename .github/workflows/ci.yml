@@ -6,11 +6,12 @@
 #   - tidy: ensures go.mod and go.sum are clean and minimal
 #   - test: runs the test suite (unit + integration) with race detection
 #           and coverage gate
-#   - sonar: SonarCloud CI-based analysis (runs after test, ingests its
-#            Go coverage report)
+#   - frontend-test: runs the Nuxt vitest suite with coverage
+#   - sonar: SonarCloud CI-based analysis (runs after test +
+#            frontend-test, ingests their Go + JS lcov coverage)
 #
-# All jobs run in parallel for fast feedback, except sonar which waits on
-# test for the coverage artifact.
+# All jobs run in parallel for fast feedback, except sonar which waits
+# on test + frontend-test for the coverage artifacts.
 name: CI
 on:
   push:
@@ -202,10 +203,35 @@ jobs:
           name: go-coverage
           path: coverage.out
           retention-days: 1
+  frontend-test:
+    name: Frontend test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enable corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+      - name: Upload frontend coverage for Sonar
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+          retention-days: 1
   sonar:
     name: Sonar scan
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, frontend-test]
     steps:
       - name: Checkout repository
         # Full history so SonarCloud can attribute new code and blame.
@@ -216,6 +242,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: go-coverage
+      - name: Download frontend coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
       - name: SonarCloud scan
         # Third-party action pinned to a full commit SHA (supply-chain
         # hardening, githubactions:S7637). Bump via Renovate.
