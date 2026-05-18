@@ -14,8 +14,9 @@ import (
 // --- minimal fakes ---------------------------------------------------------
 
 type fakeOrganizerRepo struct {
-	byID    map[entities.OrganizerID]*entities.Organizer
-	byEmail map[string]*entities.Organizer
+	byID           map[entities.OrganizerID]*entities.Organizer
+	byEmail        map[string]*entities.Organizer
+	findByEmailErr error
 }
 
 func newFakeOrganizerRepo() *fakeOrganizerRepo {
@@ -43,6 +44,9 @@ func (r *fakeOrganizerRepo) FindByID(_ context.Context, id entities.OrganizerID)
 }
 
 func (r *fakeOrganizerRepo) FindByEmail(_ context.Context, email string) (*entities.Organizer, error) {
+	if r.findByEmailErr != nil {
+		return nil, r.findByEmailErr
+	}
 	o, ok := r.byEmail[strings.ToLower(email)]
 	if !ok {
 		return nil, domainerrors.ErrOrganizerNotFound
@@ -64,6 +68,7 @@ func (fakeHasher) Compare(hash, plain string) error {
 
 type fakeSigner struct {
 	tokenForID map[entities.OrganizerID]string
+	signErr    error
 }
 
 func newFakeSigner() *fakeSigner {
@@ -71,6 +76,9 @@ func newFakeSigner() *fakeSigner {
 }
 
 func (s *fakeSigner) Sign(id entities.OrganizerID) (string, error) {
+	if s.signErr != nil {
+		return "", s.signErr
+	}
 	token := "fake-token-for-" + string(id)
 	s.tokenForID[id] = token
 	return token, nil
@@ -84,6 +92,13 @@ func (s *fakeSigner) Verify(token string) (entities.OrganizerID, error) {
 	}
 	return "", domainerrors.ErrInvalidToken
 }
+
+// compareErrHasher returns a preset error from Compare, to exercise the
+// use case branch that wraps a non-credential hasher failure.
+type compareErrHasher struct{ err error }
+
+func (compareErrHasher) Hash(plain string) (string, error) { return "hashed:" + plain, nil }
+func (h compareErrHasher) Compare(_, _ string) error       { return h.err }
 
 type fakeIDGen struct{ id string }
 
@@ -347,5 +362,55 @@ func TestLoginOrganizerUseCase_FailsOpen_WhenTrackerIsLockedErrors(t *testing.T)
 	}
 	if out.Token == "" {
 		t.Errorf("expected token to be issued under fail-open, got empty string")
+	}
+}
+
+func TestLoginOrganizerUseCase_PropagatesError_WhenFindByEmailFails(t *testing.T) {
+	t.Parallel()
+	errFindDB := errors.New("organizer lookup: connection refused")
+	repo := newFakeOrganizerRepo()
+	repo.findByEmailErr = errFindDB
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, newFakeSigner(), newFakeTracker())
+
+	_, err := uc.Execute(context.Background(), LoginOrganizerInput{
+		Email: "alice@example.com", Password: "any-password",
+	})
+
+	if !errors.Is(err, errFindDB) {
+		t.Errorf("expected the find error to propagate wrapped, got %v", err)
+	}
+}
+
+func TestLoginOrganizerUseCase_PropagatesError_WhenHasherCompareFails(t *testing.T) {
+	t.Parallel()
+	errCompare := errors.New("bcrypt: unexpected failure")
+	repo := newFakeOrganizerRepo()
+	seedOrganizer(t, repo)
+	uc := NewLoginOrganizerUseCase(repo, compareErrHasher{err: errCompare}, newFakeSigner(), newFakeTracker())
+
+	_, err := uc.Execute(context.Background(), LoginOrganizerInput{
+		Email: "alice@example.com", Password: "correct-password-12+",
+	})
+
+	if !errors.Is(err, errCompare) {
+		t.Errorf("expected the compare error to propagate wrapped, got %v", err)
+	}
+}
+
+func TestLoginOrganizerUseCase_PropagatesError_WhenTokenSigningFails(t *testing.T) {
+	t.Parallel()
+	errSign := errors.New("jwt: signing key unavailable")
+	repo := newFakeOrganizerRepo()
+	seedOrganizer(t, repo)
+	signer := newFakeSigner()
+	signer.signErr = errSign
+	uc := NewLoginOrganizerUseCase(repo, fakeHasher{}, signer, newFakeTracker())
+
+	_, err := uc.Execute(context.Background(), LoginOrganizerInput{
+		Email: "alice@example.com", Password: "correct-password-12+",
+	})
+
+	if !errors.Is(err, errSign) {
+		t.Errorf("expected the signing error to propagate wrapped, got %v", err)
 	}
 }
