@@ -2,6 +2,7 @@
   "name": "frontend",
   "type": "module",
   "private": true,
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
@@ -38,6 +39,10 @@
     "overrides": {
       "devalue": "^5.8.1",
       "nitropack": "2.13.4"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "esbuild"
+    ]
   }
 }
