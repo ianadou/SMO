@@ -10,11 +10,10 @@ CREATE TABLE match_team_members (
     match_id   TEXT NOT NULL REFERENCES matches (id) ON DELETE CASCADE,
     player_id  TEXT NOT NULL REFERENCES players (id) ON DELETE CASCADE,
     team       TEXT NOT NULL CHECK (team IN ('A', 'B')),
-    slot       INTEGER NOT NULL,
-    PRIMARY KEY (match_id, player_id)
+    slot       INTEGER NOT NULL CHECK (slot >= 0),
+    PRIMARY KEY (match_id, player_id),
+    UNIQUE (match_id, team, slot)
 );
-
-CREATE INDEX idx_match_team_members_match ON match_team_members (match_id);
 
 -- +goose StatementEnd
 
