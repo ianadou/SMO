@@ -102,7 +102,27 @@ describe('Invitation page', () => {
     expect(wrapper.text()).toContain('Invitation expirée')
   })
 
-  it('refetches context and shows the locked result when respond returns 409', async () => {
+  it('reopens the modal from the result view and changes the answer', async () => {
+    post.mockResolvedValueOnce(fullContext)
+    post.mockResolvedValueOnce({ response: 'yes', responded_at: '2026-05-01T10:00:00Z' })
+    post.mockResolvedValueOnce({ response: 'no', responded_at: '2026-05-01T10:05:00Z' })
+    const wrapper = await mountSuspended(InvitePage)
+    await flushPromises()
+
+    await wrapper.get('[data-testid="respond-cta"]').trigger('click')
+    await wrapper.get('[data-testid="answer-yes"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Vous êtes inscrit')
+
+    await wrapper.get('[data-testid="modify-cta"]').trigger('click')
+    await wrapper.get('[data-testid="answer-no"]').trigger('click')
+    await flushPromises()
+
+    expect(post).toHaveBeenLastCalledWith('/invitations/respond', { token: 'tok-123', answer: 'no' })
+    expect(wrapper.text()).toContain('Réponse enregistrée')
+  })
+
+  it('refetches context and shows the locked-pending screen when respond returns 409 and the player never answered', async () => {
     post.mockResolvedValueOnce(fullContext)
     post.mockRejectedValueOnce(new ApiError(409, 'match locked'))
     post.mockResolvedValueOnce({ ...fullContext, state: 'locked', response: 'pending' })
