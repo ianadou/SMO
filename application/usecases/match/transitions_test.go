@@ -28,7 +28,7 @@ func seedMatchInStatus(t *testing.T, repo *fakeMatchRepository, status entities.
 		CreatedAt:   time.Now(),
 	})
 	if err != nil {
-		t.Fatalf("seed: NewMatch failed: %v", err)
+		t.Fatalf("seed: RehydrateMatch failed: %v", err)
 	}
 	if saveErr := repo.Save(context.Background(), match); saveErr != nil {
 		t.Fatalf("seed: Save failed: %v", saveErr)

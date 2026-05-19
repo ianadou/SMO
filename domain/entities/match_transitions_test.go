@@ -5,9 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	domainerrors "github.com/ianadou/smo/domain/errors"
 )
 
@@ -156,24 +153,32 @@ func TestMatch_TransitionsRejectInvalidSourceStatus(t *testing.T) {
 }
 
 func TestMarkTeamsReady_Rejected_WhenNoTeamsAssigned(t *testing.T) {
-	m, err := NewMatch("m1", "g1", "Match", "Hall", time.Now(), time.Now())
-	require.NoError(t, err)
-	require.NoError(t, m.Open())
+	t.Parallel()
 
-	err = m.MarkTeamsReady()
+	match := newMatchInStatus(t, MatchStatusOpen)
 
-	assert.ErrorIs(t, err, domainerrors.ErrTeamsRequired)
-	assert.Equal(t, MatchStatusOpen, m.Status())
+	err := match.MarkTeamsReady()
+
+	if !errors.Is(err, domainerrors.ErrTeamsRequired) {
+		t.Fatalf("expected ErrTeamsRequired, got %v", err)
+	}
+	if match.Status() != MatchStatusOpen {
+		t.Errorf("expected status to remain open, got %q", match.Status())
+	}
 }
 
 func TestMarkTeamsReady_Succeeds_WhenTeamsAssigned(t *testing.T) {
-	m, err := NewMatch("m1", "g1", "Match", "Hall", time.Now(), time.Now())
-	require.NoError(t, err)
-	require.NoError(t, m.Open())
-	require.NoError(t, m.AssignTeams([]PlayerID{"a"}, []PlayerID{"b"}))
+	t.Parallel()
 
-	err = m.MarkTeamsReady()
+	match := newMatchInStatus(t, MatchStatusOpen)
+	if err := match.AssignTeams([]PlayerID{"a"}, []PlayerID{"b"}); err != nil {
+		t.Fatalf("AssignTeams failed: %v", err)
+	}
 
-	require.NoError(t, err)
-	assert.Equal(t, MatchStatusTeamsReady, m.Status())
+	if err := match.MarkTeamsReady(); err != nil {
+		t.Fatalf("MarkTeamsReady failed: %v", err)
+	}
+	if match.Status() != MatchStatusTeamsReady {
+		t.Errorf("expected status teams_ready, got %q", match.Status())
+	}
 }
