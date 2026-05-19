@@ -62,6 +62,7 @@ func (r *fakeMatchRepo) FindByID(_ context.Context, id entities.MatchID) (*entit
 func (r *fakeMatchRepo) Save(context.Context, *entities.Match) error         { return nil }
 func (r *fakeMatchRepo) UpdateStatus(context.Context, *entities.Match) error { return nil }
 func (r *fakeMatchRepo) Finalize(context.Context, *entities.Match) error     { return nil }
+func (r *fakeMatchRepo) ReplaceTeams(context.Context, *entities.Match) error { return nil }
 func (r *fakeMatchRepo) Delete(context.Context, entities.MatchID) error      { return nil }
 func (r *fakeMatchRepo) ListByGroup(context.Context, entities.GroupID) ([]*entities.Match, error) {
 	return nil, nil

@@ -138,6 +138,7 @@ func (invStubMatchRepo) FindByID(_ context.Context, id entities.MatchID) (*entit
 func (invStubMatchRepo) Save(context.Context, *entities.Match) error         { return nil }
 func (invStubMatchRepo) UpdateStatus(context.Context, *entities.Match) error { return nil }
 func (invStubMatchRepo) Finalize(context.Context, *entities.Match) error     { return nil }
+func (invStubMatchRepo) ReplaceTeams(context.Context, *entities.Match) error { return nil }
 func (invStubMatchRepo) Delete(context.Context, entities.MatchID) error      { return nil }
 func (invStubMatchRepo) ListByGroup(context.Context, entities.GroupID) ([]*entities.Match, error) {
 	return nil, nil
