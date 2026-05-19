@@ -193,6 +193,10 @@ func (r *inmemoryMatchRepoForEventsTest) UpdateStatus(_ context.Context, m *enti
 	return nil
 }
 
+func (r *inmemoryMatchRepoForEventsTest) ReplaceTeams(context.Context, *entities.Match) error {
+	return nil
+}
+
 func (r *inmemoryMatchRepoForEventsTest) Finalize(context.Context, *entities.Match) error {
 	return nil
 }
