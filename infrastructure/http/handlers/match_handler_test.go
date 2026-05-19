@@ -219,10 +219,17 @@ func buildTestRouter(t *testing.T) *testRouter {
 
 func seedMatch(t *testing.T, repo *fakeMatchRepo) *entities.Match {
 	t.Helper()
-	m, err := entities.NewMatch(
-		"match-1", "group-1", "Test", "Venue",
-		time.Now().Add(24*time.Hour), time.Now(),
-	)
+	m, err := entities.RehydrateMatch(entities.MatchSnapshot{
+		ID:          "match-1",
+		GroupID:     "group-1",
+		Title:       "Test",
+		Venue:       "Venue",
+		ScheduledAt: time.Now().Add(24 * time.Hour),
+		Status:      entities.MatchStatusDraft,
+		CreatedAt:   time.Now(),
+		TeamA:       []entities.PlayerID{"p-a"},
+		TeamB:       []entities.PlayerID{"p-b"},
+	})
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
