@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './fixtures'
 
 async function mockRegister(page: Page, status: number, body: unknown) {
   await page.route('**/api/v1/auth/register', async (route) => {
@@ -20,6 +20,12 @@ async function mockLoginSuccess(page: Page) {
         organizer: { id: 'org-1', email: 'alex@example.fr', display_name: 'Alex L.', created_at: '2026-01-01T00:00:00Z' },
       }),
     })
+  })
+}
+
+async function mockGroupsEmpty(page: Page) {
+  await page.route('**/api/v1/groups', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
   })
 }
 
@@ -76,6 +82,7 @@ test.describe('Register page', () => {
   test('successful registration auto-logs-in and redirects to /groups', async ({ page }) => {
     await mockRegister(page, 201, { id: 'org-1', email: 'alex@example.fr', display_name: 'Alex L.', created_at: '2026-01-01T00:00:00Z' })
     await mockLoginSuccess(page)
+    await mockGroupsEmpty(page)
 
     await page.goto('/register')
     await page.getByRole('textbox', { name: /Comment te présenter/ }).fill('Alex L.')
