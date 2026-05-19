@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './fixtures'
 
 async function mockLogin(page: Page, status: number, body: unknown) {
   await page.route('**/api/v1/auth/login', async (route) => {
@@ -7,6 +7,12 @@ async function mockLogin(page: Page, status: number, body: unknown) {
       contentType: 'application/json',
       body: JSON.stringify(body),
     })
+  })
+}
+
+async function mockGroupsEmpty(page: Page) {
+  await page.route('**/api/v1/groups', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
   })
 }
 
@@ -52,6 +58,7 @@ test.describe('Login page', () => {
       token: 'fake-jwt-token',
       organizer: { id: 'org-1', email: 'alex@example.fr', display_name: 'Alex', created_at: '2026-01-01T00:00:00Z' },
     })
+    await mockGroupsEmpty(page)
     await page.goto('/login')
     await page.getByRole('textbox', { name: 'Email' }).fill('alex@example.fr')
     await page.getByRole('textbox', { name: 'Mot de passe' }).fill('rightpassword')
