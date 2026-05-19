@@ -23,6 +23,8 @@ func seedMatchInStatus(t *testing.T, repo *fakeMatchRepository, status entities.
 		Venue:       "Venue",
 		ScheduledAt: time.Now().Add(24 * time.Hour),
 		Status:      status,
+		TeamA:       []entities.PlayerID{"a"},
+		TeamB:       []entities.PlayerID{"b"},
 		CreatedAt:   time.Now(),
 	})
 	if err != nil {
