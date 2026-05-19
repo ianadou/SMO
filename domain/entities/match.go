@@ -142,6 +142,14 @@ func (m *Match) ScheduledAt() time.Time { return m.scheduledAt }
 // Status returns the current status of the match.
 func (m *Match) Status() MatchStatus { return m.status }
 
+// AttendanceLocked reports whether the match has moved past the point
+// where a player can still change their attendance. Attendance is
+// changeable while the match is draft or open; from teams_ready onward
+// the rosters are being acted upon, so responses are frozen.
+func (m *Match) AttendanceLocked() bool {
+	return m.status != MatchStatusDraft && m.status != MatchStatusOpen
+}
+
 // MVP returns the identifier of the player elected MVP for this match,
 // or nil if no MVP was elected (match not yet finalized, or finalized
 // with no votes).

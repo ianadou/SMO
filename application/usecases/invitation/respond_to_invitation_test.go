@@ -31,7 +31,7 @@ func newRespondFixture(
 	t.Helper()
 	repo := newFakeInvitationRepository()
 	matchRepo := newFakeMatchRepo()
-	matchRepo.seedMatchWithStatus(t, "match-1", "group-1", matchStatus)
+	matchRepo.seedMatchWithStatus(t, matchStatus)
 	tokens := newFakeTokenService()
 	hash := tokens.HashToken(plain)
 
@@ -186,7 +186,7 @@ func TestRespondToInvitationUseCase_Execute_ReturnsErrMatchFull_WhenMatchAtCapac
 
 	repo := newFakeInvitationRepository()
 	matchRepo := newFakeMatchRepo()
-	matchRepo.seedMatchWithStatus(t, "match-1", "group-1", entities.MatchStatusOpen)
+	matchRepo.seedMatchWithStatus(t, entities.MatchStatusOpen)
 	tokens := newFakeTokenService()
 	hash := tokens.HashToken("tok")
 
@@ -234,7 +234,7 @@ func TestRespondToInvitationUseCase_Execute_AllowsConfirmation_WhenBelowCapacity
 
 	repo := newFakeInvitationRepository()
 	matchRepo := newFakeMatchRepo()
-	matchRepo.seedMatchWithStatus(t, "match-1", "group-1", entities.MatchStatusOpen)
+	matchRepo.seedMatchWithStatus(t, entities.MatchStatusOpen)
 	tokens := newFakeTokenService()
 	hash := tokens.HashToken("tok")
 
