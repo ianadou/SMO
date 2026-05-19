@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	domainerrors "github.com/ianadou/smo/domain/errors"
 )
 
@@ -185,4 +188,30 @@ func TestNewMatch_ReturnsError_WhenInputsAreInvalid(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRehydrateMatch_CarriesTeams_WhenSnapshotHasThem(t *testing.T) {
+	snap := MatchSnapshot{
+		ID: "m1", GroupID: "g1", Title: "Match", Venue: "Hall",
+		ScheduledAt: time.Now(), Status: MatchStatusOpen,
+		CreatedAt: time.Now(),
+		TeamA:     []PlayerID{"p1", "p2"},
+		TeamB:     []PlayerID{"p3", "p4"},
+	}
+
+	m, err := RehydrateMatch(snap)
+
+	require.NoError(t, err)
+	assert.Equal(t, []PlayerID{"p1", "p2"}, m.TeamA())
+	assert.Equal(t, []PlayerID{"p3", "p4"}, m.TeamB())
+	assert.True(t, m.HasTeams())
+}
+
+func TestMatch_HasTeams_IsFalse_WhenNoTeamsAssigned(t *testing.T) {
+	m, err := NewMatch("m1", "g1", "Match", "Hall", time.Now(), time.Now())
+
+	require.NoError(t, err)
+	assert.False(t, m.HasTeams())
+	assert.Empty(t, m.TeamA())
+	assert.Empty(t, m.TeamB())
 }
