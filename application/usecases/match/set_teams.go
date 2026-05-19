@@ -9,6 +9,11 @@ import (
 	"github.com/ianadou/smo/domain/strategies"
 )
 
+// stubPlayerName satisfies entities.NewPlayer's non-empty-name rule for
+// the throwaway players passed to ManualAssignmentStrategy, which
+// validates by player ID only — the name is never read.
+const stubPlayerName = "stub"
+
 // SetTeamsUseCase replaces a match's team composition with an explicit
 // organizer-provided partition of the confirmed participants.
 type SetTeamsUseCase struct {
@@ -35,13 +40,17 @@ func (uc *SetTeamsUseCase) Execute(ctx context.Context, matchID entities.MatchID
 	}
 	players := make([]*entities.Player, 0, len(participants))
 	for _, p := range participants {
-		stub, perr := entities.NewPlayer(p.PlayerID, match.GroupID(), "x", entities.DefaultPlayerRanking())
+		stub, perr := entities.NewPlayer(p.PlayerID, match.GroupID(), stubPlayerName, entities.DefaultPlayerRanking())
 		if perr != nil {
 			return nil, fmt.Errorf("set teams use case: build player stub: %w", perr)
 		}
 		players = append(players, stub)
 	}
 
+	// ManualAssignmentStrategy enforces the exact-partition rule (teams
+	// must be exactly the confirmed set); Match.AssignTeams then enforces
+	// status, balance and overlap. The overlap check is intentionally
+	// duplicated across both — defense-in-depth at the domain boundary.
 	manual, err := strategies.NewManualAssignmentStrategy(teamA, teamB)
 	if err != nil {
 		return nil, fmt.Errorf("set teams use case: build manual: %w", err)
