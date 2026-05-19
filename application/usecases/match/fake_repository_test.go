@@ -21,6 +21,10 @@ type fakeMatchRepository struct {
 	updateStatusErr error
 	finalizeErr     error
 	replaceTeamsErr error
+
+	// Call counters for assertions that a port method was actually
+	// invoked (guards against vacuous shared-pointer-mutation tests).
+	replaceTeamsCalls int
 }
 
 func newFakeMatchRepository() *fakeMatchRepository {
@@ -94,6 +98,7 @@ func (r *fakeMatchRepository) Finalize(_ context.Context, m *entities.Match) err
 func (r *fakeMatchRepository) ReplaceTeams(_ context.Context, m *entities.Match) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.replaceTeamsCalls++
 	if r.replaceTeamsErr != nil {
 		return r.replaceTeamsErr
 	}

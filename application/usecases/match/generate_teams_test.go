@@ -206,6 +206,10 @@ func TestGenerateTeams_AssignsAllConfirmedPlayers_WithRanking(t *testing.T) {
 		t.Errorf("expected 4 players assigned, got %d", total)
 	}
 
+	if matchRepo.replaceTeamsCalls != 1 {
+		t.Fatalf("expected ReplaceTeams to be called exactly once, got %d", matchRepo.replaceTeamsCalls)
+	}
+
 	persisted, ferr := matchRepo.FindByID(ctx, generateTestMatchID)
 	if ferr != nil {
 		t.Fatalf("expected persisted match, got error: %v", ferr)
