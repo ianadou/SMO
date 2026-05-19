@@ -13,7 +13,8 @@ definePageMeta({ layout: false })
 useHead({ title: 'Invitation — SMO' })
 
 const route = useRoute()
-const token = route.params.token as string
+const tokenParam = route.params.token
+const token = (Array.isArray(tokenParam) ? tokenParam[0] : tokenParam) ?? ''
 
 const outcome = ref<LoadOutcome | null>(null)
 const loading = ref(true)
