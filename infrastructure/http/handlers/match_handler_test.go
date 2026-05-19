@@ -90,6 +90,10 @@ func (r *fakeMatchRepo) ReplaceTeams(_ context.Context, m *entities.Match) error
 	return nil
 }
 
+func (r *fakeMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
+	return nil, nil
+}
+
 func (r *fakeMatchRepo) Delete(_ context.Context, id entities.MatchID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

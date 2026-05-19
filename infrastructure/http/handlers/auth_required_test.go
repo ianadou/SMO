@@ -165,6 +165,10 @@ func (authRequiredFakeMatchRepo) ReplaceTeams(context.Context, *entities.Match) 
 	return domainerrors.ErrMatchNotFound
 }
 
+func (authRequiredFakeMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
+	return nil, domainerrors.ErrMatchNotFound
+}
+
 func (authRequiredFakeMatchRepo) Delete(context.Context, entities.MatchID) error { return nil }
 
 type noopTokenService struct{}

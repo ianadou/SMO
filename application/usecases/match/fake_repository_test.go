@@ -9,8 +9,9 @@ import (
 )
 
 type fakeMatchRepository struct {
-	mu      sync.Mutex
-	matches map[entities.MatchID]*entities.Match
+	mu          sync.Mutex
+	matches     map[entities.MatchID]*entities.Match
+	teamMembers map[entities.MatchID][]entities.MatchTeamMember
 
 	// Optional per-method error injectors for use case error-branch
 	// tests. nil = method behaves normally; non-nil = method returns
@@ -107,6 +108,12 @@ func (r *fakeMatchRepository) ReplaceTeams(_ context.Context, m *entities.Match)
 	}
 	r.matches[m.ID()] = m
 	return nil
+}
+
+func (r *fakeMatchRepository) ListTeamMembersWithPlayers(_ context.Context, matchID entities.MatchID) ([]entities.MatchTeamMember, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.teamMembers[matchID], nil
 }
 
 func (r *fakeMatchRepository) Delete(_ context.Context, id entities.MatchID) error {

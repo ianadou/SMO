@@ -82,6 +82,9 @@ func (r *fakeMatchRepo) UpdateStatus(context.Context, *entities.Match) error { r
 func (r *fakeMatchRepo) Finalize(context.Context, *entities.Match) error     { return nil }
 func (r *fakeMatchRepo) ReplaceTeams(context.Context, *entities.Match) error { return nil }
 func (r *fakeMatchRepo) Delete(context.Context, entities.MatchID) error      { return nil }
+func (r *fakeMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
+	return nil, nil
+}
 
 func discardLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))

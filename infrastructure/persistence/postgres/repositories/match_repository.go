@@ -155,6 +155,22 @@ func (r *PostgresMatchRepository) ReplaceTeams(ctx context.Context, match *entit
 	return nil
 }
 
+// ListTeamMembersWithPlayers returns team membership joined with players.
+func (r *PostgresMatchRepository) ListTeamMembersWithPlayers(ctx context.Context, matchID entities.MatchID) ([]entities.MatchTeamMember, error) {
+	rows, err := r.queries.ListMatchTeamMembersWithPlayers(ctx, string(matchID))
+	if err != nil {
+		return nil, fmt.Errorf("postgres match repository: list team members %q: %w", matchID, err)
+	}
+	out := make([]entities.MatchTeamMember, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, entities.MatchTeamMember{
+			PlayerID: entities.PlayerID(row.PlayerID), PlayerName: row.Name,
+			Team: row.Team, Slot: int(row.Slot),
+		})
+	}
+	return out, nil
+}
+
 // Delete removes a match by its identifier. Idempotent.
 func (r *PostgresMatchRepository) Delete(ctx context.Context, id entities.MatchID) error {
 	if err := r.queries.DeleteMatch(ctx, string(id)); err != nil {

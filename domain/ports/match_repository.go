@@ -48,6 +48,10 @@ type MatchRepository interface {
 	// ErrReferencedEntityNotFound (wrapped).
 	ReplaceTeams(ctx context.Context, match *entities.Match) error
 
+	// ListTeamMembersWithPlayers returns the team membership of a match
+	// joined with player display data, ordered by team then slot.
+	ListTeamMembersWithPlayers(ctx context.Context, matchID entities.MatchID) ([]entities.MatchTeamMember, error)
+
 	// Delete removes a match by its identifier.
 	Delete(ctx context.Context, id entities.MatchID) error
 }

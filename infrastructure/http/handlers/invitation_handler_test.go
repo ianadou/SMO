@@ -140,6 +140,10 @@ func (invStubMatchRepo) UpdateStatus(context.Context, *entities.Match) error { r
 func (invStubMatchRepo) Finalize(context.Context, *entities.Match) error     { return nil }
 func (invStubMatchRepo) ReplaceTeams(context.Context, *entities.Match) error { return nil }
 func (invStubMatchRepo) Delete(context.Context, entities.MatchID) error      { return nil }
+func (invStubMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
+	return nil, nil
+}
+
 func (invStubMatchRepo) ListByGroup(context.Context, entities.GroupID) ([]*entities.Match, error) {
 	return nil, nil
 }

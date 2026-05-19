@@ -197,6 +197,10 @@ func (r *inmemoryMatchRepoForEventsTest) ReplaceTeams(context.Context, *entities
 	return nil
 }
 
+func (r *inmemoryMatchRepoForEventsTest) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
+	return nil, nil
+}
+
 func (r *inmemoryMatchRepoForEventsTest) Finalize(context.Context, *entities.Match) error {
 	return nil
 }
