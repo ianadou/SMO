@@ -24,8 +24,8 @@ const filled = computed(
     :fill="filled ? 'currentColor' : 'none'"
     :stroke="filled ? undefined : 'currentColor'"
     :stroke-width="filled ? undefined : 1.8"
-    stroke-linecap="round"
-    stroke-linejoin="round"
+    :stroke-linecap="filled ? undefined : 'round'"
+    :stroke-linejoin="filled ? undefined : 'round'"
     aria-hidden="true"
   >
     <template v-if="name === 'calendar'">

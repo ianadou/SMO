@@ -13,7 +13,6 @@ definePageMeta({ layout: false })
 useHead({ title: 'Invitation — SMO' })
 
 const route = useRoute()
-const api = useApi()
 const token = route.params.token as string
 
 const outcome = ref<LoadOutcome | null>(null)
@@ -28,6 +27,7 @@ const view = computed(() => (outcome.value ? resolveInviteView(outcome.value) : 
 const isYes = computed(() => context.value?.response === 'yes')
 
 async function load() {
+  const api = useApi()
   loading.value = true
   try {
     const ctx = await api.post<InvitationContext>('/invitations/context', { token })
@@ -47,6 +47,7 @@ async function load() {
 }
 
 async function submit(answer: 'yes' | 'no') {
+  const api = useApi()
   submitting.value = true
   try {
     const result = await api.post<RespondResult>('/invitations/respond', { token, answer })
