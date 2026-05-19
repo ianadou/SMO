@@ -97,6 +97,9 @@ func (r *voteTestMatchRepo) UpdateStatus(context.Context, *entities.Match) error
 func (r *voteTestMatchRepo) Finalize(context.Context, *entities.Match) error     { panic("unused") }
 func (r *voteTestMatchRepo) ReplaceTeams(context.Context, *entities.Match) error { panic("unused") }
 func (r *voteTestMatchRepo) Delete(context.Context, entities.MatchID) error      { panic("unused") }
+func (r *voteTestMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
+	panic("unused")
+}
 
 type voteIDGen struct{ id string }
 

@@ -55,6 +55,10 @@ func (r *fakeMatchRepository) ReplaceTeams(context.Context, *entities.Match) err
 	panic("not implemented in vote tests")
 }
 
+func (r *fakeMatchRepository) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
+	panic("not implemented in vote tests")
+}
+
 func (r *fakeMatchRepository) Delete(context.Context, entities.MatchID) error {
 	panic("not implemented in vote tests")
 }

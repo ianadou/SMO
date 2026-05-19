@@ -16,3 +16,13 @@ type MatchParticipant struct {
 	PlayerName  string
 	ConfirmedAt time.Time
 }
+
+// MatchTeamMember is a value-object projection: a player assigned to a
+// match team, with display data. Built by the persistence layer from a
+// JOIN, never by domain code. Team is "A" or "B".
+type MatchTeamMember struct {
+	PlayerID   PlayerID
+	PlayerName string
+	Team       string
+	Slot       int
+}
