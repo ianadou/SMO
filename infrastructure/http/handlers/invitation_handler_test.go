@@ -158,6 +158,34 @@ func (invStubPlayerRepo) ListByGroup(context.Context, entities.GroupID) ([]*enti
 	return nil, nil
 }
 
+// invStubGroupRepo answers FindByID with group "g-1" owned by organizer
+// "org-1", matching the group invStubMatchRepo puts every match in.
+type invStubGroupRepo struct{}
+
+func (invStubGroupRepo) FindByID(_ context.Context, id entities.GroupID) (*entities.Group, error) {
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	return entities.NewGroup(id, "Les Bras Cassés", "org-1", "", now)
+}
+func (invStubGroupRepo) Save(context.Context, *entities.Group) error    { return nil }
+func (invStubGroupRepo) Update(context.Context, *entities.Group) error  { return nil }
+func (invStubGroupRepo) Delete(context.Context, entities.GroupID) error { return nil }
+func (invStubGroupRepo) ListByOrganizer(context.Context, entities.OrganizerID) ([]*entities.Group, error) {
+	return nil, nil
+}
+
+// invStubOrganizerRepo answers FindByID with a fixed display name so the
+// context endpoint has an organizer to surface.
+type invStubOrganizerRepo struct{}
+
+func (invStubOrganizerRepo) FindByID(_ context.Context, id entities.OrganizerID) (*entities.Organizer, error) {
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	return entities.NewOrganizer(id, "organizer@example.com", "Eddin", "hash", now)
+}
+func (invStubOrganizerRepo) Save(context.Context, *entities.Organizer) error { return nil }
+func (invStubOrganizerRepo) FindByEmail(context.Context, string) (*entities.Organizer, error) {
+	return nil, domainerrors.ErrOrganizerNotFound
+}
+
 // --- helpers -------------------------------------------------------------
 
 func buildInvitationTestRouter(t *testing.T) *gin.Engine {
@@ -172,6 +200,7 @@ func buildInvitationTestRouter(t *testing.T) *gin.Engine {
 	handler := handlers.NewInvitationHandler(
 		invitation.NewCreateInvitationUseCase(repo, invStubMatchRepo{}, invStubPlayerRepo{}, tokens, idGen, clock),
 		invitation.NewGetInvitationUseCase(repo),
+		invitation.NewGetInvitationContextUseCase(repo, invStubMatchRepo{}, invStubGroupRepo{}, invStubOrganizerRepo{}, tokens, clock),
 		invitation.NewListInvitationsByMatchUseCase(repo),
 		invitation.NewRespondToInvitationUseCase(repo, invStubMatchRepo{}, tokens, clock),
 	)
@@ -339,5 +368,62 @@ func TestInvitationHandler_ListByMatch_Returns200_WithArray(t *testing.T) {
 	_ = json.Unmarshal(rec.Body.Bytes(), &list)
 	if len(list) != 1 {
 		t.Errorf("expected 1 invitation, got %d", len(list))
+	}
+}
+
+func requestContext(t *testing.T, router *gin.Engine, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations/context", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestInvitationHandler_Context_Returns200_WithAssembledContext(t *testing.T) {
+	router := buildInvitationTestRouter(t)
+	token := createInvitationAndToken(t, router)
+
+	rec := requestContext(t, router, `{"token":"`+token+`"}`)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 on context, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp["organizer_name"] != "Eddin" {
+		t.Errorf("organizer_name = %v, want Eddin", resp["organizer_name"])
+	}
+	if resp["group_name"] != "Les Bras Cassés" {
+		t.Errorf("group_name = %v, want Les Bras Cassés", resp["group_name"])
+	}
+	if resp["capacity"] != "10 (5v5)" {
+		t.Errorf("capacity = %v, want 10 (5v5)", resp["capacity"])
+	}
+	if resp["state"] != "respondable" {
+		t.Errorf("state = %v, want respondable", resp["state"])
+	}
+	if resp["response"] != "pending" {
+		t.Errorf("response = %v, want pending", resp["response"])
+	}
+}
+
+func TestInvitationHandler_Context_Returns404_WhenTokenUnknown(t *testing.T) {
+	router := buildInvitationTestRouter(t)
+
+	rec := requestContext(t, router, `{"token":"does-not-exist"}`)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for unknown token, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestInvitationHandler_Context_Returns400_WhenTokenMissing(t *testing.T) {
+	router := buildInvitationTestRouter(t)
+
+	rec := requestContext(t, router, `{}`)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing token, got %d (body=%s)", rec.Code, rec.Body.String())
 	}
 }

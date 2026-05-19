@@ -15,6 +15,7 @@ import (
 type InvitationHandler struct {
 	createInvitation       *invitation.CreateInvitationUseCase
 	getInvitation          *invitation.GetInvitationUseCase
+	getInvitationContext   *invitation.GetInvitationContextUseCase
 	listInvitationsByMatch *invitation.ListInvitationsByMatchUseCase
 	respondToInvitation    *invitation.RespondToInvitationUseCase
 }
@@ -23,12 +24,14 @@ type InvitationHandler struct {
 func NewInvitationHandler(
 	createInvitation *invitation.CreateInvitationUseCase,
 	getInvitation *invitation.GetInvitationUseCase,
+	getInvitationContext *invitation.GetInvitationContextUseCase,
 	listInvitationsByMatch *invitation.ListInvitationsByMatchUseCase,
 	respondToInvitation *invitation.RespondToInvitationUseCase,
 ) *InvitationHandler {
 	return &InvitationHandler{
 		createInvitation:       createInvitation,
 		getInvitation:          getInvitation,
+		getInvitationContext:   getInvitationContext,
 		listInvitationsByMatch: listInvitationsByMatch,
 		respondToInvitation:    respondToInvitation,
 	}
@@ -40,6 +43,7 @@ func NewInvitationHandler(
 func (h *InvitationHandler) Register(public, protected *gin.RouterGroup) {
 	publicInvitations := public.Group("/invitations")
 	publicInvitations.POST("/respond", h.Respond)
+	publicInvitations.POST("/context", h.Context)
 	publicInvitations.GET("/:id", h.Get)
 
 	protected.POST("/invitations", h.Create)
@@ -102,6 +106,26 @@ func (h *InvitationHandler) ListByMatch(c *gin.Context) {
 		responses = append(responses, dto.InvitationResponseFromEntity(inv))
 	}
 	c.JSON(http.StatusOK, responses)
+}
+
+// Context handles POST /api/v1/invitations/context. The player submits
+// their plain token and gets back everything the invitation page needs
+// to render. The only 404 is an unknown token; expiry and lock are
+// reported in the body as states, not as errors.
+func (h *InvitationHandler) Context(c *gin.Context) {
+	var req dto.InvitationContextRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+
+	ctx, err := h.getInvitationContext.Execute(c.Request.Context(), req.Token)
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		c.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+	c.JSON(http.StatusOK, dto.InvitationContextResponseFromContext(ctx))
 }
 
 // Respond handles POST /api/invitations/respond. The player submits

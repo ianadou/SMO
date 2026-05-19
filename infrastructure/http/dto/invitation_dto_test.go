@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ianadou/smo/application/usecases/invitation"
 	"github.com/ianadou/smo/domain/entities"
 )
 
@@ -71,5 +72,104 @@ func TestParticipantResponsesFromEntities_EmptyInput_ReturnsEmptyNotNilSlice(t *
 	}
 	if len(out) != 0 {
 		t.Errorf("expected length 0, got %d", len(out))
+	}
+}
+
+func TestInvitationContextResponseFromContext_DerivesPresentationFields(t *testing.T) {
+	t.Parallel()
+	scheduled := time.Date(2026, 6, 15, 19, 0, 0, 0, time.UTC)
+	expires := time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)
+	ctx := &invitation.PageContext{
+		OrganizerName:   "Eddin",
+		GroupName:       "Les Bras Cassés",
+		MatchTitle:      "Foot du jeudi",
+		Venue:           "Gerland",
+		ScheduledAt:     scheduled,
+		MaxParticipants: 10,
+		ConfirmedNames:  []string{"Jean Dupont", "Alice"},
+		Response:        entities.InvitationResponsePending,
+		ExpiresAt:       expires,
+		Locked:          false,
+		Expired:         false,
+	}
+
+	resp := InvitationContextResponseFromContext(ctx)
+
+	if resp.Capacity != "10 (5v5)" {
+		t.Errorf("Capacity = %q, want %q", resp.Capacity, "10 (5v5)")
+	}
+	if resp.ConfirmedCount != 2 {
+		t.Errorf("ConfirmedCount = %d, want 2", resp.ConfirmedCount)
+	}
+	if resp.MaxParticipants != 10 {
+		t.Errorf("MaxParticipants = %d, want 10", resp.MaxParticipants)
+	}
+	if resp.State != "respondable" {
+		t.Errorf("State = %q, want respondable", resp.State)
+	}
+	if resp.Response != "pending" {
+		t.Errorf("Response = %q, want pending", resp.Response)
+	}
+	if !resp.ScheduledAt.Equal(scheduled) {
+		t.Errorf("ScheduledAt = %v, want %v", resp.ScheduledAt, scheduled)
+	}
+	want := []string{"JD", "A"}
+	if len(resp.ConfirmedInitials) != len(want) {
+		t.Fatalf("ConfirmedInitials = %v, want %v", resp.ConfirmedInitials, want)
+	}
+	for i := range want {
+		if resp.ConfirmedInitials[i] != want[i] {
+			t.Errorf("ConfirmedInitials[%d] = %q, want %q", i, resp.ConfirmedInitials[i], want[i])
+		}
+	}
+}
+
+func TestInvitationContextResponseFromContext_ExpiredBeatsLocked(t *testing.T) {
+	t.Parallel()
+	ctx := &invitation.PageContext{
+		MaxParticipants: 10,
+		Response:        entities.InvitationResponseYes,
+		Expired:         true,
+		Locked:          true,
+	}
+
+	resp := InvitationContextResponseFromContext(ctx)
+
+	if resp.State != "expired" {
+		t.Errorf("State = %q, want expired (expired must take precedence over locked)", resp.State)
+	}
+}
+
+func TestInvitationContextResponseFromContext_LockedWhenNotExpired(t *testing.T) {
+	t.Parallel()
+	ctx := &invitation.PageContext{
+		MaxParticipants: 10,
+		Response:        entities.InvitationResponseYes,
+		Expired:         false,
+		Locked:          true,
+	}
+
+	resp := InvitationContextResponseFromContext(ctx)
+
+	if resp.State != "locked" {
+		t.Errorf("State = %q, want locked", resp.State)
+	}
+}
+
+func TestInvitationContextResponseFromContext_EmptyConfirmed_ReturnsEmptyNotNilSlice(t *testing.T) {
+	t.Parallel()
+	ctx := &invitation.PageContext{
+		MaxParticipants: 10,
+		Response:        entities.InvitationResponsePending,
+		ConfirmedNames:  nil,
+	}
+
+	resp := InvitationContextResponseFromContext(ctx)
+
+	if resp.ConfirmedInitials == nil {
+		t.Error("ConfirmedInitials = nil, want empty slice for JSON [] not null")
+	}
+	if len(resp.ConfirmedInitials) != 0 {
+		t.Errorf("ConfirmedInitials len = %d, want 0", len(resp.ConfirmedInitials))
 	}
 }
