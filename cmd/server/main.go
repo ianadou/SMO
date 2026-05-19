@@ -265,6 +265,9 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	startMatchUC := matchusecase.NewStartMatchUseCase(matchRepo)
 	completeMatchUC := matchusecase.NewCompleteMatchUseCase(matchRepo)
 	finalizeMatchUC := matchusecase.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, rankingCalculator)
+	generateTeamsUC := matchusecase.NewGenerateTeamsUseCase(matchRepo, invitationRepo, playerRepo, systemClock)
+	setTeamsUC := matchusecase.NewSetTeamsUseCase(matchRepo, invitationRepo)
+	getMatchTeamsUC := matchusecase.NewGetMatchTeamsUseCase(matchRepo)
 
 	// Player use cases.
 	createPlayerUC := playerusecase.NewCreatePlayerUseCase(playerRepo, idGenerator)
@@ -314,6 +317,9 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 		CompleteMatch:         completeMatchUC,
 		FinalizeMatch:         finalizeMatchUC,
 		ListMatchParticipants: listMatchParticipantsUC,
+		GenerateTeams:         generateTeamsUC,
+		SetTeams:              setTeamsUC,
+		GetMatchTeams:         getMatchTeamsUC,
 	})
 
 	// Router configuration.

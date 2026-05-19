@@ -46,6 +46,44 @@ func MatchResponseFromEntity(m *entities.Match) MatchResponse {
 	}
 }
 
+// GenerateTeamsRequest is the body of POST /api/v1/matches/:id/teams/generate.
+type GenerateTeamsRequest struct {
+	Strategy string `json:"strategy" binding:"required,oneof=random ranking"`
+}
+
+// SetTeamsRequest is the body of PUT /api/v1/matches/:id/teams. Both
+// sides must be non-empty; the exact-partition and balance rules are
+// enforced by the domain, not by binding tags.
+type SetTeamsRequest struct {
+	TeamA []string `json:"team_a" binding:"required,min=1"`
+	TeamB []string `json:"team_b" binding:"required,min=1"`
+}
+
+// TeamMemberResponse is one player of a team in the GET /teams payload.
+// PlayerName is empty on generate/set responses (those return ids only);
+// GET resolves names via the JOIN read model.
+type TeamMemberResponse struct {
+	PlayerID   string `json:"player_id"`
+	PlayerName string `json:"player_name"`
+	Team       string `json:"team"`
+	Slot       int    `json:"slot"`
+}
+
+// TeamMemberResponsesFromEntities maps the read-model projection to the
+// HTTP shape. A nil slice yields an empty array, never null.
+func TeamMemberResponsesFromEntities(members []entities.MatchTeamMember) []TeamMemberResponse {
+	out := make([]TeamMemberResponse, 0, len(members))
+	for _, m := range members {
+		out = append(out, TeamMemberResponse{
+			PlayerID:   string(m.PlayerID),
+			PlayerName: m.PlayerName,
+			Team:       m.Team,
+			Slot:       m.Slot,
+		})
+	}
+	return out
+}
+
 // FinalizeMatchResponse is the JSON body returned by POST
 // /api/matches/:id/finalize. It includes the final match state, the
 // elected MVP (if any), and the new ranking of every participant whose
