@@ -34,6 +34,8 @@ type Match struct {
 	scheduledAt time.Time
 	status      MatchStatus
 	mvpPlayerID *PlayerID
+	teamA       []PlayerID
+	teamB       []PlayerID
 	createdAt   time.Time
 }
 
@@ -49,6 +51,8 @@ type MatchSnapshot struct {
 	ScheduledAt time.Time
 	Status      MatchStatus
 	MVPPlayerID *PlayerID
+	TeamA       []PlayerID
+	TeamB       []PlayerID
 	CreatedAt   time.Time
 }
 
@@ -120,6 +124,8 @@ func RehydrateMatch(s MatchSnapshot) (*Match, error) {
 		scheduledAt: s.ScheduledAt,
 		status:      s.Status,
 		mvpPlayerID: s.MVPPlayerID,
+		teamA:       clonePlayerIDs(s.TeamA),
+		teamB:       clonePlayerIDs(s.TeamB),
 		createdAt:   s.CreatedAt,
 	}, nil
 }
@@ -157,3 +163,25 @@ func (m *Match) MVP() *PlayerID { return m.mvpPlayerID }
 
 // CreatedAt returns the creation timestamp of the match.
 func (m *Match) CreatedAt() time.Time { return m.createdAt }
+
+// TeamA returns the player IDs composing team A, or an empty slice if
+// teams have not been assigned yet.
+func (m *Match) TeamA() []PlayerID { return clonePlayerIDs(m.teamA) }
+
+// TeamB returns the player IDs composing team B, or an empty slice if
+// teams have not been assigned yet.
+func (m *Match) TeamB() []PlayerID { return clonePlayerIDs(m.teamB) }
+
+// HasTeams reports whether both teams have been assigned.
+func (m *Match) HasTeams() bool {
+	return len(m.teamA) > 0 && len(m.teamB) > 0
+}
+
+func clonePlayerIDs(src []PlayerID) []PlayerID {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]PlayerID, len(src))
+	copy(out, src)
+	return out
+}
