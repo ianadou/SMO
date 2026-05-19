@@ -143,6 +143,10 @@ func mustRehydrateOpenMatch(t *testing.T, id entities.MatchID, groupID entities.
 		ScheduledAt: time.Now().Add(time.Hour),
 		Status:      entities.MatchStatusOpen,
 		CreatedAt:   time.Now(),
+		// Teams are required before teams_ready; this E2E asserts the
+		// Discord side effect, not roster content, so any valid split works.
+		TeamA: []entities.PlayerID{"p-a"},
+		TeamB: []entities.PlayerID{"p-b"},
 	})
 	if err != nil {
 		t.Fatalf("RehydrateMatch: %v", err)
