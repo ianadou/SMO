@@ -9,9 +9,9 @@ import (
 )
 
 // ListMatchParticipantsUseCase returns the confirmed participants for a
-// given match. A confirmed participant is a player whose invitation has
-// `used_at IS NOT NULL` (the player clicked their invite link). This is
-// the primary input of the match-detail organizer view and the future
+// given match. A confirmed participant is a player whose invitation
+// response is "yes" (the player accepted the invite). This is the
+// primary input of the match-detail organizer view and the future
 // team-generation use case.
 type ListMatchParticipantsUseCase struct {
 	repo ports.InvitationRepository

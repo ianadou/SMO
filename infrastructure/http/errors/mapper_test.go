@@ -58,6 +58,7 @@ func TestMapError_ValidationErrors(t *testing.T) {
 		{name: "invalid email", err: domainerrors.ErrInvalidEmail, wantStatus: http.StatusBadRequest, wantMessage: "invalid email"},
 		{name: "invalid password", err: domainerrors.ErrInvalidPassword, wantStatus: http.StatusBadRequest, wantMessage: "invalid password"},
 		{name: "invalid webhook url", err: domainerrors.ErrInvalidWebhookURL, wantStatus: http.StatusBadRequest, wantMessage: "invalid webhook url"},
+		{name: "invalid invitation response", err: domainerrors.ErrInvalidInvitationResponse, wantStatus: http.StatusBadRequest, wantMessage: "invalid invitation response"},
 	}
 
 	for _, testCase := range cases {
@@ -92,7 +93,7 @@ func TestMapError_BusinessRuleErrors(t *testing.T) {
 		{name: "team full", err: domainerrors.ErrTeamFull, wantStatus: http.StatusConflict, wantMessage: "team is full"},
 		{name: "player not in match", err: domainerrors.ErrPlayerNotInMatch, wantStatus: http.StatusBadRequest, wantMessage: "player is not in this match"},
 		{name: "invitation expired", err: domainerrors.ErrInvitationExpired, wantStatus: http.StatusGone, wantMessage: "invitation expired"},
-		{name: "invitation already used", err: domainerrors.ErrInvitationAlreadyUsed, wantStatus: http.StatusConflict, wantMessage: "invitation already used"},
+		{name: "invitation locked", err: domainerrors.ErrInvitationLocked, wantStatus: http.StatusConflict, wantMessage: "invitation can no longer be changed"},
 		{name: "already voted", err: domainerrors.ErrAlreadyVoted, wantStatus: http.StatusConflict, wantMessage: "already voted for this player in this match"},
 		{name: "match not completed", err: domainerrors.ErrMatchNotCompleted, wantStatus: http.StatusConflict, wantMessage: "match is not completed"},
 		{name: "email already exists", err: domainerrors.ErrEmailAlreadyExists, wantStatus: http.StatusConflict, wantMessage: "email already exists"},

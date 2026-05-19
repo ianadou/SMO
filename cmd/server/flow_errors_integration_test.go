@@ -142,16 +142,24 @@ func TestBuildRouter_ErrorPaths(t *testing.T) {
 		}, http.StatusBadRequest)
 	})
 
-	t.Run("400: accept invitation with garbage token returns 4xx", func(t *testing.T) {
+	t.Run("4xx: respond to invitation with garbage token", func(t *testing.T) {
 		// Token-shape errors and not-found can both surface here. We
 		// only assert the response is a 4xx — more precise than that
 		// and the test couples to an internal mapping detail.
-		resp, _ := c.do(t, http.MethodPost, "/api/v1/invitations/accept", "", map[string]any{
-			"token": "definitely-not-a-real-token",
+		resp, _ := c.do(t, http.MethodPost, "/api/v1/invitations/respond", "", map[string]any{
+			"token":  "definitely-not-a-real-token",
+			"answer": "yes",
 		})
 		if resp.StatusCode < 400 || resp.StatusCode >= 500 {
-			t.Errorf("expected 4xx for bad accept token, got %d", resp.StatusCode)
+			t.Errorf("expected 4xx for bad respond token, got %d", resp.StatusCode)
 		}
+	})
+
+	t.Run("400: respond with invalid answer returns 400", func(t *testing.T) {
+		c.expectStatus(t, http.MethodPost, "/api/v1/invitations/respond", "", map[string]any{
+			"token":  "irrelevant",
+			"answer": "maybe",
+		}, http.StatusBadRequest)
 	})
 
 	t.Run("409: start match while still in Draft returns 409", func(t *testing.T) {

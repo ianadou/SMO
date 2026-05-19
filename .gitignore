@@ -170,3 +170,6 @@ logs/
 # (commit 7e997ee) but untracked so the repo — and SonarCloud — only see
 # real application code.
 SMO Design System/
+
+# brainstorming visual companion scratch
+.superpowers/

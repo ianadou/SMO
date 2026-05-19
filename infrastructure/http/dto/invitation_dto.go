@@ -16,10 +16,30 @@ type CreateInvitationRequest struct {
 	ExpiresAt time.Time `json:"expires_at,omitempty"`
 }
 
-// AcceptInvitationRequest is the body of POST /api/invitations/accept.
-// The token is the plain value shared by the organizer.
-type AcceptInvitationRequest struct {
-	Token string `json:"token" binding:"required"`
+// RespondInvitationRequest is the body of POST /api/invitations/respond.
+// Token is the plain value shared by the organizer; Answer is the
+// player's reply, restricted to "yes" or "no" (pending is the initial
+// state, never something a client can set).
+type RespondInvitationRequest struct {
+	Token  string `json:"token"  binding:"required"`
+	Answer string `json:"answer" binding:"required,oneof=yes no"`
+}
+
+// RespondInvitationResponse is the body returned by a successful
+// POST /api/invitations/respond. It exposes only the mutable part of
+// the invitation the player just changed.
+type RespondInvitationResponse struct {
+	Response    string     `json:"response"`
+	RespondedAt *time.Time `json:"responded_at"`
+}
+
+// RespondInvitationResponseFromEntity projects the answered invitation
+// into the respond response shape.
+func RespondInvitationResponseFromEntity(inv *entities.Invitation) RespondInvitationResponse {
+	return RespondInvitationResponse{
+		Response:    string(inv.Response()),
+		RespondedAt: inv.RespondedAt(),
+	}
 }
 
 // ParticipantResponse is the JSON shape of one entry in the response of
@@ -48,12 +68,13 @@ func ParticipantResponsesFromEntities(participants []entities.MatchParticipant) 
 // It does NOT include the plain token: once an invitation is created,
 // the token is never returned again.
 type InvitationResponse struct {
-	ID        string     `json:"id"`
-	MatchID   string     `json:"match_id"`
-	PlayerID  string     `json:"player_id"`
-	ExpiresAt time.Time  `json:"expires_at"`
-	UsedAt    *time.Time `json:"used_at"`
-	CreatedAt time.Time  `json:"created_at"`
+	ID          string     `json:"id"`
+	MatchID     string     `json:"match_id"`
+	PlayerID    string     `json:"player_id"`
+	ExpiresAt   time.Time  `json:"expires_at"`
+	Response    string     `json:"response"`
+	RespondedAt *time.Time `json:"responded_at"`
+	CreatedAt   time.Time  `json:"created_at"`
 }
 
 // CreateInvitationResponse is the one-time response returned by
@@ -68,11 +89,12 @@ type CreateInvitationResponse struct {
 // standard response (no plain token).
 func InvitationResponseFromEntity(inv *entities.Invitation) InvitationResponse {
 	return InvitationResponse{
-		ID:        string(inv.ID()),
-		MatchID:   string(inv.MatchID()),
-		PlayerID:  string(inv.PlayerID()),
-		ExpiresAt: inv.ExpiresAt(),
-		UsedAt:    inv.UsedAt(),
-		CreatedAt: inv.CreatedAt(),
+		ID:          string(inv.ID()),
+		MatchID:     string(inv.MatchID()),
+		PlayerID:    string(inv.PlayerID()),
+		ExpiresAt:   inv.ExpiresAt(),
+		Response:    string(inv.Response()),
+		RespondedAt: inv.RespondedAt(),
+		CreatedAt:   inv.CreatedAt(),
 	}
 }

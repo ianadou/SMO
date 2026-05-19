@@ -12,9 +12,9 @@ const (
 	maxVenueLength      = 200
 
 	// MaxParticipantsPerMatch caps the number of confirmed invitations
-	// (used_at IS NOT NULL) that a single match can accumulate. AcceptInvitation
-	// returns ErrMatchFull on the (N+1)th attempt; this is the FCFS policy
-	// agreed in ADR 0008.
+	// (response = 'yes') that a single match can accumulate. Confirming
+	// the (N+1)th invitation returns ErrMatchFull; this is the FCFS
+	// policy agreed in ADR 0008.
 	MaxParticipantsPerMatch = 10
 )
 

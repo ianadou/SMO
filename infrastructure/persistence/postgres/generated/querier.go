@@ -69,8 +69,9 @@ type Querier interface {
 	ListPlayersByGroupID(ctx context.Context, groupID string) ([]Players, error)
 	ListVotesByMatchID(ctx context.Context, matchID string) ([]Votes, error)
 	ListVotesByVoterID(ctx context.Context, voterID string) ([]Votes, error)
-	MarkInvitationAsUsed(ctx context.Context, arg MarkInvitationAsUsedParams) (Invitations, error)
+	LockMatchRow(ctx context.Context, id string) (string, error)
 	UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Groups, error)
+	UpdateInvitationResponse(ctx context.Context, arg UpdateInvitationResponseParams) (Invitations, error)
 	// Updates only the status column. The state machine on the Match entity
 	// controls which status transitions are valid; this query trusts the
 	// caller and just persists the new value.

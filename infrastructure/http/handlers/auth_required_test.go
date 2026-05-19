@@ -63,7 +63,7 @@ func (authRequiredFakeInvitationRepo) FindByTokenHash(context.Context, string) (
 	return nil, domainerrors.ErrInvitationNotFound
 }
 
-func (authRequiredFakeInvitationRepo) MarkAsUsed(context.Context, *entities.Invitation) error {
+func (authRequiredFakeInvitationRepo) RespondWithCapacityGuard(context.Context, *entities.Invitation, int) error {
 	return domainerrors.ErrInvitationNotFound
 }
 
@@ -233,7 +233,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 		invitation.NewCreateInvitationUseCase(&authRequiredFakeInvitationRepo{}, &authRequiredFakeMatchRepo{}, &authRequiredFakePlayerRepo{}, &noopTokenService{}, idGen, clock),
 		invitation.NewGetInvitationUseCase(&authRequiredFakeInvitationRepo{}),
 		invitation.NewListInvitationsByMatchUseCase(&authRequiredFakeInvitationRepo{}),
-		invitation.NewAcceptInvitationUseCase(&authRequiredFakeInvitationRepo{}, &noopTokenService{}, clock),
+		invitation.NewRespondToInvitationUseCase(&authRequiredFakeInvitationRepo{}, &authRequiredFakeMatchRepo{}, &noopTokenService{}, clock),
 	)
 
 	playerHandler := handlers.NewPlayerHandler(

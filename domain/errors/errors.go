@@ -46,6 +46,12 @@ var (
 	// (groups without a Discord channel), so this error only fires on
 	// non-empty malformed inputs.
 	ErrInvalidWebhookURL = errors.New("invalid webhook url")
+
+	// ErrInvalidInvitationResponse is returned when an invitation
+	// response value is not one of the accepted constants, or when a
+	// caller tries to settle an invitation with "pending" (which is the
+	// initial state, not a settable answer — only "yes" or "no" are).
+	ErrInvalidInvitationResponse = errors.New("invalid invitation response")
 )
 
 // Business rule errors — returned when a domain operation is not allowed
@@ -97,13 +103,14 @@ var (
 	// or token hash has no match.
 	ErrInvitationNotFound = errors.New("invitation not found")
 
-	// ErrInvitationExpired is returned when attempting to accept an
+	// ErrInvitationExpired is returned when attempting to respond to an
 	// invitation whose expires_at is in the past.
 	ErrInvitationExpired = errors.New("invitation expired")
 
-	// ErrInvitationAlreadyUsed is returned when attempting to accept an
-	// invitation that has already been consumed.
-	ErrInvitationAlreadyUsed = errors.New("invitation already used")
+	// ErrInvitationLocked is returned when attempting to change an
+	// invitation response after the match has moved past the point
+	// where attendance can still be changed (teams_ready onward).
+	ErrInvitationLocked = errors.New("invitation locked")
 
 	// ErrVoteNotFound is returned when a vote lookup by ID has no match.
 	ErrVoteNotFound = errors.New("vote not found")
