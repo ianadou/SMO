@@ -480,6 +480,17 @@
 }
 .md-setup-btn:disabled { opacity: 0.6; cursor: progress; }
 
+.md-banner {
+  margin: var(--space-2) var(--space-3) 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(220, 42, 59, 0.12);
+  border: 1px solid var(--team-red);
+  color: var(--fg-default);
+  font-size: 13px;
+  font-family: var(--font-sans);
+}
+
 .md-state {
   flex: 1;
   display: flex;
