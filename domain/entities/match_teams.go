@@ -29,15 +29,13 @@ func (m *Match) AssignTeams(teamA, teamB []PlayerID) error {
 			domainerrors.ErrInvalidAssignment, len(teamA), len(teamB))
 	}
 
-	inA := make(map[PlayerID]struct{}, len(teamA))
-	for _, id := range teamA {
-		inA[id] = struct{}{}
-	}
-	for _, id := range teamB {
-		if _, dup := inA[id]; dup {
-			return fmt.Errorf("%w: player %q appears in both teams",
+	seen := make(map[PlayerID]struct{}, len(teamA)+len(teamB))
+	for _, id := range append(append([]PlayerID{}, teamA...), teamB...) {
+		if _, dup := seen[id]; dup {
+			return fmt.Errorf("%w: player %q appears more than once",
 				domainerrors.ErrInvalidAssignment, id)
 		}
+		seen[id] = struct{}{}
 	}
 
 	m.teamA = clonePlayerIDs(teamA)
