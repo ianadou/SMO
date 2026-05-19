@@ -20,6 +20,7 @@ type fakeMatchRepository struct {
 	listByGroupErr  error
 	updateStatusErr error
 	finalizeErr     error
+	replaceTeamsErr error
 }
 
 func newFakeMatchRepository() *fakeMatchRepository {
@@ -82,6 +83,19 @@ func (r *fakeMatchRepository) Finalize(_ context.Context, m *entities.Match) err
 	defer r.mu.Unlock()
 	if r.finalizeErr != nil {
 		return r.finalizeErr
+	}
+	if _, exists := r.matches[m.ID()]; !exists {
+		return domainerrors.ErrMatchNotFound
+	}
+	r.matches[m.ID()] = m
+	return nil
+}
+
+func (r *fakeMatchRepository) ReplaceTeams(_ context.Context, m *entities.Match) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.replaceTeamsErr != nil {
+		return r.replaceTeamsErr
 	}
 	if _, exists := r.matches[m.ID()]; !exists {
 		return domainerrors.ErrMatchNotFound

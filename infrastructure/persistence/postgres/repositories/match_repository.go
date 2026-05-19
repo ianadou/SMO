@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ianadou/smo/domain/entities"
 	domainerrors "github.com/ianadou/smo/domain/errors"
@@ -17,14 +18,19 @@ import (
 
 // PostgresMatchRepository is the PostgreSQL implementation of the
 // domain MatchRepository port.
+//
+// It holds the pool (not just a generated.DBTX) because ReplaceTeams
+// runs inside an explicit transaction (delete-all then insert), which
+// the sqlc DBTX interface does not expose.
 type PostgresMatchRepository struct {
+	pool    *pgxpool.Pool
 	queries *generated.Queries
 }
 
 // NewPostgresMatchRepository builds a PostgresMatchRepository on top of
-// the given DBTX.
-func NewPostgresMatchRepository(db generated.DBTX) *PostgresMatchRepository {
-	return &PostgresMatchRepository{queries: generated.New(db)}
+// the given pool.
+func NewPostgresMatchRepository(pool *pgxpool.Pool) *PostgresMatchRepository {
+	return &PostgresMatchRepository{pool: pool, queries: generated.New(pool)}
 }
 
 // Save persists a new match. Translates foreign key violations into
@@ -56,6 +62,24 @@ func (r *PostgresMatchRepository) FindByID(ctx context.Context, id entities.Matc
 	match, err := mappers.MatchToDomain(row)
 	if err != nil {
 		return nil, fmt.Errorf("postgres match repository: map match %q to domain: %w", id, err)
+	}
+
+	members, err := r.queries.ListMatchTeamMembers(ctx, string(id))
+	if err != nil {
+		return nil, fmt.Errorf("postgres match repository: load teams %q: %w", id, err)
+	}
+	teamA, teamB := mappers.TeamsFromMemberRows(members)
+	if len(teamA) > 0 || len(teamB) > 0 {
+		hydrated, rehErr := entities.RehydrateMatch(entities.MatchSnapshot{
+			ID: match.ID(), GroupID: match.GroupID(), Title: match.Title(),
+			Venue: match.Venue(), ScheduledAt: match.ScheduledAt(),
+			Status: match.Status(), MVPPlayerID: match.MVP(),
+			CreatedAt: match.CreatedAt(), TeamA: teamA, TeamB: teamB,
+		})
+		if rehErr != nil {
+			return nil, fmt.Errorf("postgres match repository: rehydrate teams %q: %w", id, rehErr)
+		}
+		match = hydrated
 	}
 	return match, nil
 }
@@ -99,6 +123,34 @@ func (r *PostgresMatchRepository) Finalize(ctx context.Context, match *entities.
 			return fmt.Errorf("postgres match repository: finalize match %q: %w", match.ID(), domainerrors.ErrMatchNotFound)
 		}
 		return fmt.Errorf("postgres match repository: finalize match %q: %w", match.ID(), err)
+	}
+	return nil
+}
+
+// ReplaceTeams atomically replaces the match's team composition.
+func (r *PostgresMatchRepository) ReplaceTeams(ctx context.Context, match *entities.Match) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("postgres match repository: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := r.queries.WithTx(tx)
+
+	if delErr := qtx.DeleteMatchTeamMembers(ctx, string(match.ID())); delErr != nil {
+		return fmt.Errorf("postgres match repository: clear teams %q: %w", match.ID(), delErr)
+	}
+	for _, p := range mappers.MatchTeamMemberInsertParams(match) {
+		if insErr := qtx.InsertMatchTeamMember(ctx, p); insErr != nil {
+			if isMatchForeignKeyViolation(insErr) {
+				return fmt.Errorf("postgres match repository: insert team member %q: %w",
+					match.ID(), domainerrors.ErrReferencedEntityNotFound)
+			}
+			return fmt.Errorf("postgres match repository: insert team member %q: %w", match.ID(), insErr)
+		}
+	}
+	if commitErr := tx.Commit(ctx); commitErr != nil {
+		return fmt.Errorf("postgres match repository: commit teams %q: %w", match.ID(), commitErr)
 	}
 	return nil
 }

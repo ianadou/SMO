@@ -17,6 +17,8 @@ type MatchRepository interface {
 
 	// FindByID looks up a match by its identifier. Returns
 	// errors.ErrMatchNotFound (wrapped) if no match exists with that id.
+	// The returned match has its team composition hydrated from
+	// persisted membership rows.
 	FindByID(ctx context.Context, id entities.MatchID) (*entities.Match, error)
 
 	// ListByGroup returns all matches belonging to the given group,
@@ -33,6 +35,12 @@ type MatchRepository interface {
 	// FinalizeMatchUseCase to avoid a partial state where MVP is
 	// recorded but status hasn't transitioned yet.
 	Finalize(ctx context.Context, match *entities.Match) error
+
+	// ReplaceTeams atomically replaces the full team composition of the
+	// match (delete-all then insert) in a single transaction. The match
+	// row itself is not modified. Returns ErrMatchNotFound (wrapped) if
+	// the match does not exist.
+	ReplaceTeams(ctx context.Context, match *entities.Match) error
 
 	// Delete removes a match by its identifier.
 	Delete(ctx context.Context, id entities.MatchID) error

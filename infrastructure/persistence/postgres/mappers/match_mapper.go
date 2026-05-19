@@ -74,3 +74,32 @@ func MatchToFinalizeParams(match *entities.Match) generated.FinalizeMatchParams 
 		Status:      string(match.Status()),
 	}
 }
+
+// MatchTeamMemberInsertParams flattens a match's teamA/teamB into the
+// per-row insert params for match_team_members, slot = index within team.
+func MatchTeamMemberInsertParams(match *entities.Match) []generated.InsertMatchTeamMemberParams {
+	rows := make([]generated.InsertMatchTeamMemberParams, 0, len(match.TeamA())+len(match.TeamB()))
+	for slot, id := range match.TeamA() {
+		rows = append(rows, generated.InsertMatchTeamMemberParams{
+			MatchID: string(match.ID()), PlayerID: string(id), Team: "A", Slot: int32(slot),
+		})
+	}
+	for slot, id := range match.TeamB() {
+		rows = append(rows, generated.InsertMatchTeamMemberParams{
+			MatchID: string(match.ID()), PlayerID: string(id), Team: "B", Slot: int32(slot),
+		})
+	}
+	return rows
+}
+
+// TeamsFromMemberRows splits ordered membership rows into (teamA, teamB).
+func TeamsFromMemberRows(rows []generated.MatchTeamMembers) (teamA, teamB []entities.PlayerID) {
+	for _, r := range rows {
+		if r.Team == "A" {
+			teamA = append(teamA, entities.PlayerID(r.PlayerID))
+		} else {
+			teamB = append(teamB, entities.PlayerID(r.PlayerID))
+		}
+	}
+	return teamA, teamB
+}

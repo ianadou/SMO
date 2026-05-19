@@ -80,6 +80,16 @@ func (r *fakeMatchRepo) Finalize(_ context.Context, m *entities.Match) error {
 	return nil
 }
 
+func (r *fakeMatchRepo) ReplaceTeams(_ context.Context, m *entities.Match) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.matches[m.ID()]; !ok {
+		return domainerrors.ErrMatchNotFound
+	}
+	r.matches[m.ID()] = m
+	return nil
+}
+
 func (r *fakeMatchRepo) Delete(_ context.Context, id entities.MatchID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
