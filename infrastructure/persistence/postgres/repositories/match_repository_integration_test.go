@@ -141,6 +141,12 @@ func TestPostgresMatchRepository_Finalize_PersistsMVPAndStatus(t *testing.T) {
 	if err := match.Open(); err != nil {
 		t.Fatalf("setup: Open: %v", err)
 	}
+	// MarkTeamsReady requires a composition since the teams precondition
+	// landed; the values are irrelevant here (this test asserts status
+	// and MVP only, not rosters).
+	if err := match.AssignTeams([]entities.PlayerID{"p-a"}, []entities.PlayerID{"p-b"}); err != nil {
+		t.Fatalf("setup: AssignTeams: %v", err)
+	}
 	if err := match.MarkTeamsReady(); err != nil {
 		t.Fatalf("setup: MarkTeamsReady: %v", err)
 	}
@@ -210,7 +216,9 @@ func TestPostgresMatchRepository_Finalize_PersistsNonNilMVP(t *testing.T) {
 	// Walk the state machine to Completed, then Finalize with the
 	// real player as MVP.
 	for i, step := range []func() error{
-		match.Open, match.MarkTeamsReady, match.Start, match.Complete,
+		match.Open,
+		func() error { return match.AssignTeams([]entities.PlayerID{"p-a"}, []entities.PlayerID{"p-b"}) },
+		match.MarkTeamsReady, match.Start, match.Complete,
 	} {
 		if err := step(); err != nil {
 			t.Fatalf("setup: transition %d: %v", i, err)
