@@ -24,7 +24,9 @@ export function formatMatchTime(iso: string): string {
 }
 
 export function parseCapacity(capacity: string): { count: string, format: string } {
-  const match = capacity.match(/^(\S+)\s*\(([^)]+)\)/)
-  if (!match) return { count: capacity.trim(), format: '' }
-  return { count: match[1], format: match[2] }
+  const open = capacity.indexOf('(')
+  if (open === -1) return { count: capacity.trim(), format: '' }
+  const close = capacity.indexOf(')', open)
+  const end = close === -1 ? capacity.length : close
+  return { count: capacity.slice(0, open).trim(), format: capacity.slice(open + 1, end) }
 }
