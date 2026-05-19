@@ -40,7 +40,8 @@
   "pnpm": {
     "overrides": {
       "devalue": "^5.8.1",
-      "nitropack": "2.13.4"
+      "nitropack": "2.13.4",
+      "ws": "^8.20.1"
     },
     "onlyBuiltDependencies": [
       "@parcel/watcher",
