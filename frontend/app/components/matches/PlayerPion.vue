@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { playerInitials } from '~/utils/playerInitials'
 import type { TeamMemberDTO } from '~/types/matches'
 
 const props = defineProps<{
@@ -18,11 +19,7 @@ const emit = defineEmits<{
   pointerdown: [player: TeamMemberDTO, evt: PointerEvent]
 }>()
 
-const initials = computed(() => {
-  const parts = props.player.player_name.trim().split(/\s+/)
-  const letters = parts.length > 1 ? parts[0]![0]! + parts[parts.length - 1]![0]! : props.player.player_name.slice(0, 2)
-  return letters.toUpperCase()
-})
+const initials = computed(() => playerInitials(props.player.player_name))
 
 const label = computed(() => {
   const n = props.player.player_name

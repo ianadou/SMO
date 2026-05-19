@@ -54,12 +54,14 @@ function validate() {
 
     <div v-if="loading && !match" class="md-state">Chargement…</div>
 
-    <div v-else-if="error" class="md-state">
+    <div v-else-if="error && !match" class="md-state">
       <span>{{ error }}</span>
       <button @click="detail.load()">Réessayer</button>
     </div>
 
     <template v-else-if="match">
+      <div v-if="error" class="md-banner" role="alert">{{ error }}</div>
+
       <MatchSetupCard
         v-if="screen === 'setup-draft'"
         kind="draft"
