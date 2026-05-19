@@ -31,8 +31,27 @@ func MatchToDomain(row generated.Matches) (*entities.Match, error) {
 		ScheduledAt: row.ScheduledAt.Time,
 		Status:      status,
 		MVPPlayerID: mvp,
+		ScoreA:      int32PtrToInt(row.ScoreA),
+		ScoreB:      int32PtrToInt(row.ScoreB),
 		CreatedAt:   row.CreatedAt.Time,
 	})
+}
+
+func int32PtrToInt(src *int32) *int {
+	if src == nil {
+		return nil
+	}
+	v := int(*src)
+	return &v
+}
+
+func intPtrToInt32(src *int) *int32 {
+	if src == nil {
+		return nil
+	}
+	//nolint:gosec // a match goal count is a tiny bounded integer; int->int32 cannot realistically overflow
+	v := int32(*src)
+	return &v
 }
 
 // MatchToCreateParams converts a domain Match entity into the parameter
@@ -51,11 +70,13 @@ func MatchToCreateParams(match *entities.Match) generated.CreateMatchParams {
 
 // MatchToUpdateStatusParams converts a domain Match entity into the
 // parameter struct expected by the generated UpdateMatchStatus function.
-// Only the ID (for WHERE) and the status (for SET) are populated.
+// ID (WHERE), status and the nullable final score (SET) are populated.
 func MatchToUpdateStatusParams(match *entities.Match) generated.UpdateMatchStatusParams {
 	return generated.UpdateMatchStatusParams{
 		ID:     string(match.ID()),
 		Status: string(match.Status()),
+		ScoreA: intPtrToInt32(match.ScoreA()),
+		ScoreB: intPtrToInt32(match.ScoreB()),
 	}
 }
 

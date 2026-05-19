@@ -52,6 +52,14 @@ type MatchRepository interface {
 	// joined with player display data, ordered by team then slot.
 	ListTeamMembersWithPlayers(ctx context.Context, matchID entities.MatchID) ([]entities.MatchTeamMember, error)
 
+	// FindLatestDecidedByGroup returns the most recent match of the group
+	// (by scheduled date) that was completed or closed with a decisive
+	// score (no draw), excluding the given match id. It reports
+	// errors.ErrMatchNotFound (wrapped) when the group has no such prior
+	// match — a normal first-match case the caller treats as "no previous
+	// winner", not a failure.
+	FindLatestDecidedByGroup(ctx context.Context, groupID entities.GroupID, excludeID entities.MatchID) (*entities.Match, error)
+
 	// Delete removes a match by its identifier.
 	Delete(ctx context.Context, id entities.MatchID) error
 }

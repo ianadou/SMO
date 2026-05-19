@@ -139,7 +139,10 @@ func (invStubMatchRepo) Save(context.Context, *entities.Match) error         { r
 func (invStubMatchRepo) UpdateStatus(context.Context, *entities.Match) error { return nil }
 func (invStubMatchRepo) Finalize(context.Context, *entities.Match) error     { return nil }
 func (invStubMatchRepo) ReplaceTeams(context.Context, *entities.Match) error { return nil }
-func (invStubMatchRepo) Delete(context.Context, entities.MatchID) error      { return nil }
+func (invStubMatchRepo) FindLatestDecidedByGroup(context.Context, entities.GroupID, entities.MatchID) (*entities.Match, error) {
+	return nil, domainerrors.ErrMatchNotFound
+}
+func (invStubMatchRepo) Delete(context.Context, entities.MatchID) error { return nil }
 func (invStubMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
 	return nil, nil
 }

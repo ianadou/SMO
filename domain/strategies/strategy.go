@@ -19,8 +19,14 @@ import "github.com/ianadou/smo/domain/entities"
 type AssignmentStrategy interface {
 	// Assign distributes the given players into two teams.
 	//
+	// previousWinner is the side ("A"/"B") that won the group's previous
+	// match, or nil when there is no applicable previous result (first
+	// match, or the previous one was a draw). Only RankingBasedStrategy
+	// acts on it (to seed the top-ranked player onto the winning side);
+	// Random and Manual ignore it.
+	//
 	// Returns ErrInvalidAssignment wrapped with context if the input
 	// cannot produce a valid distribution (e.g., fewer than 2 players,
 	// duplicate IDs, or strategy-specific constraints not satisfied).
-	Assign(players []*entities.Player) (teamA, teamB []entities.PlayerID, err error)
+	Assign(players []*entities.Player, previousWinner *entities.TeamSide) (teamA, teamB []entities.PlayerID, err error)
 }

@@ -3,6 +3,7 @@ package match
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -282,6 +283,38 @@ func TestGenerateTeams_Random_IsDeterministic_WithFixedClockSeed(t *testing.T) {
 	}
 	if !equalPlayerIDs(firstB, second.TeamB()) {
 		t.Errorf("teamB not deterministic: %v vs %v", firstB, second.TeamB())
+	}
+}
+
+func TestGenerateTeams_SeedsTopPlayerOntoPreviousWinnerSide_WhenPreviousMatchDecided(t *testing.T) {
+	t.Parallel()
+	uc, matchRepo, invRepo, playerRepo := newGenerateUseCase(t)
+	ctx := context.Background()
+
+	seedOpenMatch(t, matchRepo)
+	seedFourConfirmedPlayers(t, invRepo, playerRepo)
+
+	a, b := 0, 2
+	previous, err := entities.RehydrateMatch(entities.MatchSnapshot{
+		ID: "m0", GroupID: "g-1", Title: "Prev", Venue: "Venue",
+		ScheduledAt: time.Now().Add(-time.Hour), Status: entities.MatchStatusCompleted,
+		ScoreA: &a, ScoreB: &b, CreatedAt: time.Now().Add(-2 * time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("seed previous match: %v", err)
+	}
+	matchRepo.latestDecided = previous // team B won the previous match
+
+	result, err := uc.Execute(ctx, generateTestMatchID, "ranking")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// p1 has the highest ranking (1400); the rule must place it on the
+	// side that won the previous match (B).
+	if !slices.Contains(result.TeamB(), entities.PlayerID("p1")) {
+		t.Errorf("expected top player p1 on team B (previous winner), got A=%v B=%v",
+			result.TeamA(), result.TeamB())
 	}
 }
 

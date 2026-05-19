@@ -52,6 +52,10 @@ type Querier interface {
 	GetGroupByID(ctx context.Context, id string) (Groups, error)
 	GetInvitationByID(ctx context.Context, id string) (Invitations, error)
 	GetInvitationByTokenHash(ctx context.Context, tokenHash string) (Invitations, error)
+	// Returns the group's most recent decided match (completed or closed,
+	// with a non-draw score), excluding a given match id, ordered by
+	// scheduled date. Feeds the "top player joins the previous winner" rule.
+	GetLatestDecidedMatchByGroup(ctx context.Context, arg GetLatestDecidedMatchByGroupParams) (Matches, error)
 	GetMatchByID(ctx context.Context, id string) (Matches, error)
 	// Email lookups go through this query exclusively. Emails are stored
 	// lower-cased by the entity, so the WHERE clause does not need
@@ -79,9 +83,11 @@ type Querier interface {
 	LockMatchRow(ctx context.Context, id string) (string, error)
 	UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Groups, error)
 	UpdateInvitationResponse(ctx context.Context, arg UpdateInvitationResponseParams) (Invitations, error)
-	// Updates only the status column. The state machine on the Match entity
-	// controls which status transitions are valid; this query trusts the
-	// caller and just persists the new value.
+	// Persists the status and the final score. The state machine on the
+	// Match entity controls which transitions are valid; this query trusts
+	// the caller. Score is nil for every transition except complete (and
+	// finalize uses its own query, so a recorded score is never clobbered
+	// here).
 	UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusParams) (Matches, error)
 	UpdatePlayerRanking(ctx context.Context, arg UpdatePlayerRankingParams) (Players, error)
 }

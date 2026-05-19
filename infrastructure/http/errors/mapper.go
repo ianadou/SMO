@@ -22,6 +22,9 @@ func MapError(err error) (int, string) {
 	if status, message, matched := mapValidationError(err); matched {
 		return status, message
 	}
+	if status, message, matched := mapScoreError(err); matched {
+		return status, message
+	}
 	if status, message, matched := mapBusinessRuleError(err); matched {
 		return status, message
 	}
@@ -66,8 +69,6 @@ func mapValidationError(err error) (int, string, bool) {
 		return http.StatusBadRequest, "invalid id", true
 	case errors.Is(err, domainerrors.ErrInvalidName):
 		return http.StatusBadRequest, "invalid name", true
-	case errors.Is(err, domainerrors.ErrInvalidScore):
-		return http.StatusBadRequest, "invalid score", true
 	case errors.Is(err, domainerrors.ErrInvalidDate):
 		return http.StatusBadRequest, "invalid date", true
 	case errors.Is(err, domainerrors.ErrInvalidStatus):
@@ -84,6 +85,19 @@ func mapValidationError(err error) (int, string, bool) {
 		return http.StatusBadRequest, "invalid webhook url", true
 	case errors.Is(err, domainerrors.ErrInvalidInvitationResponse):
 		return http.StatusBadRequest, "invalid invitation response", true
+	}
+	return 0, "", false
+}
+
+// mapScoreError handles the two score validation errors. Split out of
+// mapValidationError so each category helper stays within the project
+// cyclomatic-complexity limit. Both are 400: the request shape is wrong.
+func mapScoreError(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, domainerrors.ErrInvalidScore):
+		return http.StatusBadRequest, "invalid score", true
+	case errors.Is(err, domainerrors.ErrInvalidMatchScore):
+		return http.StatusBadRequest, "invalid match score", true
 	}
 	return 0, "", false
 }

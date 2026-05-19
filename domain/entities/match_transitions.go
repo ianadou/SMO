@@ -39,12 +39,21 @@ func (m *Match) Start() error {
 	return nil
 }
 
-// Complete transitions the match from in_progress to completed, signaling
-// that the match has ended and post-match voting is now open.
-func (m *Match) Complete() error {
+// Complete transitions the match from in_progress to completed, recording
+// the final score and signaling that post-match voting is now open. The
+// score is required here because it is the result that closes the match;
+// a completed match without a score would be an invalid state the
+// assignment rule must then defend against everywhere.
+func (m *Match) Complete(scoreA, scoreB int) error {
 	if m.status != MatchStatusInProgress {
 		return fmt.Errorf("%w: cannot complete match in status %q", domainerrors.ErrInvalidTransition, m.status)
 	}
+	if scoreA < 0 || scoreB < 0 {
+		return fmt.Errorf("%w: scores must be non-negative (got %d, %d)",
+			domainerrors.ErrInvalidMatchScore, scoreA, scoreB)
+	}
+	m.scoreA = &scoreA
+	m.scoreB = &scoreB
 	m.status = MatchStatusCompleted
 	return nil
 }

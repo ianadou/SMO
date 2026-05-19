@@ -46,7 +46,7 @@ func TestRandomAssignmentStrategy_Assign_DistributesAllPlayersExactlyOnce(t *tes
 	players := buildTestPlayers(t, 10)
 	strategy, _ := NewRandomAssignmentStrategy(newDeterministicRng())
 
-	teamA, teamB, err := strategy.Assign(players)
+	teamA, teamB, err := strategy.Assign(players, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestRandomAssignmentStrategy_Assign_SplitsEvenCountInHalf(t *testing.T) {
 	players := buildTestPlayers(t, 10)
 	strategy, _ := NewRandomAssignmentStrategy(newDeterministicRng())
 
-	teamA, teamB, _ := strategy.Assign(players)
+	teamA, teamB, _ := strategy.Assign(players, nil)
 
 	if len(teamA) != 5 {
 		t.Errorf("expected team A size 5, got %d", len(teamA))
@@ -92,7 +92,7 @@ func TestRandomAssignmentStrategy_Assign_GivesExtraPlayerToTeamAOnOddCount(t *te
 	players := buildTestPlayers(t, 7)
 	strategy, _ := NewRandomAssignmentStrategy(newDeterministicRng())
 
-	teamA, teamB, _ := strategy.Assign(players)
+	teamA, teamB, _ := strategy.Assign(players, nil)
 
 	if len(teamA) != 4 {
 		t.Errorf("expected team A size 4 (extra player), got %d", len(teamA))
@@ -110,8 +110,8 @@ func TestRandomAssignmentStrategy_Assign_IsReproducibleWithSameSeed(t *testing.T
 	strategy1, _ := NewRandomAssignmentStrategy(newDeterministicRng())
 	strategy2, _ := NewRandomAssignmentStrategy(newDeterministicRng())
 
-	teamA1, teamB1, _ := strategy1.Assign(players)
-	teamA2, teamB2, _ := strategy2.Assign(players)
+	teamA1, teamB1, _ := strategy1.Assign(players, nil)
+	teamA2, teamB2, _ := strategy2.Assign(players, nil)
 
 	if !slicesEqual(teamA1, teamA2) {
 		t.Errorf("expected reproducible team A, got %v vs %v", teamA1, teamA2)
@@ -131,7 +131,7 @@ func TestRandomAssignmentStrategy_Assign_DoesNotMutateInputSlice(t *testing.T) {
 	}
 
 	strategy, _ := NewRandomAssignmentStrategy(newDeterministicRng())
-	_, _, _ = strategy.Assign(players)
+	_, _, _ = strategy.Assign(players, nil)
 
 	for index, player := range players {
 		if player.ID() != originalIDs[index] {
@@ -149,7 +149,7 @@ func TestRandomAssignmentStrategy_Assign_ReturnsError_WhenTooFewPlayers(t *testi
 		players := buildTestPlayers(t, count)
 		strategy, _ := NewRandomAssignmentStrategy(newDeterministicRng())
 
-		teamA, teamB, err := strategy.Assign(players)
+		teamA, teamB, err := strategy.Assign(players, nil)
 
 		if teamA != nil || teamB != nil {
 			t.Errorf("expected nil teams on error for %d players", count)

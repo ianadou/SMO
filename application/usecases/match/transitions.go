@@ -112,10 +112,12 @@ func NewCompleteMatchUseCase(matchRepo ports.MatchRepository) *CompleteMatchUseC
 	return &CompleteMatchUseCase{matchRepo: matchRepo}
 }
 
-// Execute completes the match with the given ID.
-func (uc *CompleteMatchUseCase) Execute(ctx context.Context, id entities.MatchID) (*entities.Match, error) {
+// Execute completes the match with the given ID, recording the final
+// score. Persistence goes through the shared runTransition helper, whose
+// UpdateStatus call also writes the score columns.
+func (uc *CompleteMatchUseCase) Execute(ctx context.Context, id entities.MatchID, scoreA, scoreB int) (*entities.Match, error) {
 	return runTransition(ctx, uc.matchRepo, id, "complete", func(m *entities.Match) error {
-		return m.Complete()
+		return m.Complete(scoreA, scoreB)
 	})
 }
 

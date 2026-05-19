@@ -61,7 +61,8 @@ func NewManualAssignmentStrategy(teamA, teamB []entities.PlayerID) (*ManualAssig
 
 // Assign returns the pre-defined teams after verifying that they exactly
 // match the input players (no missing player, no extra player).
-func (s *ManualAssignmentStrategy) Assign(players []*entities.Player) ([]entities.PlayerID, []entities.PlayerID, error) {
+// previousWinner is ignored: a manual composition is explicit by design.
+func (s *ManualAssignmentStrategy) Assign(players []*entities.Player, _ *entities.TeamSide) ([]entities.PlayerID, []entities.PlayerID, error) {
 	expectedSet := make(map[entities.PlayerID]struct{}, len(players))
 	for _, player := range players {
 		expectedSet[player.ID()] = struct{}{}

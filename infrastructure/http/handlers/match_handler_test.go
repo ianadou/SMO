@@ -95,6 +95,10 @@ func (r *fakeMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.Mat
 	return nil, nil
 }
 
+func (r *fakeMatchRepo) FindLatestDecidedByGroup(context.Context, entities.GroupID, entities.MatchID) (*entities.Match, error) {
+	return nil, domainerrors.ErrMatchNotFound
+}
+
 func (r *fakeMatchRepo) Delete(_ context.Context, id entities.MatchID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -430,16 +434,23 @@ func TestMatchHandler_AllTransitions_ReturnsOK_InOrder(t *testing.T) {
 
 	steps := []struct {
 		path   string
+		body   string
 		status string
 	}{
-		{"/api/v1/matches/match-1/open", "open"},
-		{"/api/v1/matches/match-1/teams-ready", "teams_ready"},
-		{"/api/v1/matches/match-1/start", "in_progress"},
-		{"/api/v1/matches/match-1/complete", "completed"},
+		{"/api/v1/matches/match-1/open", "", "open"},
+		{"/api/v1/matches/match-1/teams-ready", "", "teams_ready"},
+		{"/api/v1/matches/match-1/start", "", "in_progress"},
+		{"/api/v1/matches/match-1/complete", `{"score_a":2,"score_b":1}`, "completed"},
 	}
 
 	for _, step := range steps {
-		req := httptest.NewRequest(http.MethodPost, step.path, nil)
+		var req *http.Request
+		if step.body == "" {
+			req = httptest.NewRequest(http.MethodPost, step.path, nil)
+		} else {
+			req = httptest.NewRequest(http.MethodPost, step.path, bytes.NewBufferString(step.body))
+			req.Header.Set("Content-Type", "application/json")
+		}
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, req)
 
@@ -508,6 +519,56 @@ func TestMatchHandler_Finalize_Returns200_WithMVPAndUpdatedRankings(t *testing.T
 	}
 	if _, hasB := rankings["p-b"]; !hasB {
 		t.Errorf("expected p-b to appear in updated_rankings, got %v", rankings)
+	}
+}
+
+func TestMatchHandler_Complete_Returns200_AndRecordsScore(t *testing.T) {
+	tr := buildTestRouter(t)
+	seedSquad(t, tr, entities.MatchStatusInProgress)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/complete",
+		bytes.NewBufferString(`{"score_a":3,"score_b":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp["status"] != "completed" {
+		t.Errorf("expected status completed, got %v", resp["status"])
+	}
+}
+
+func TestMatchHandler_Complete_Returns400_WhenScoreNegative(t *testing.T) {
+	tr := buildTestRouter(t)
+	seedSquad(t, tr, entities.MatchStatusInProgress)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/complete",
+		bytes.NewBufferString(`{"score_a":-1,"score_b":0}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchHandler_Complete_Returns400_WhenScoreMissing(t *testing.T) {
+	tr := buildTestRouter(t)
+	seedSquad(t, tr, entities.MatchStatusInProgress)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/complete",
+		bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d (body=%s)", rec.Code, rec.Body.String())
 	}
 }
 

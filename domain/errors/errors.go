@@ -18,6 +18,11 @@ var (
 	// ErrInvalidScore is returned when a vote score is outside [1, 5].
 	ErrInvalidScore = errors.New("invalid score")
 
+	// ErrInvalidMatchScore is returned when a match final score is
+	// recorded with a negative goal count for either team. Distinct from
+	// ErrInvalidScore (vote 1-5) so the two domains stay independent.
+	ErrInvalidMatchScore = errors.New("invalid match score")
+
 	// ErrInvalidDate is returned when a date is zero or in the past
 	// where a future date is required.
 	ErrInvalidDate = errors.New("invalid date")

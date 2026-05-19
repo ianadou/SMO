@@ -153,7 +153,7 @@ func TestPostgresMatchRepository_Finalize_PersistsMVPAndStatus(t *testing.T) {
 	if err := match.Start(); err != nil {
 		t.Fatalf("setup: Start: %v", err)
 	}
-	if err := match.Complete(); err != nil {
+	if err := match.Complete(2, 1); err != nil {
 		t.Fatalf("setup: Complete: %v", err)
 	}
 	if err := repo.UpdateStatus(ctx, match); err != nil {
@@ -218,7 +218,8 @@ func TestPostgresMatchRepository_Finalize_PersistsNonNilMVP(t *testing.T) {
 	for i, step := range []func() error{
 		match.Open,
 		func() error { return match.AssignTeams([]entities.PlayerID{"p-a"}, []entities.PlayerID{"p-b"}) },
-		match.MarkTeamsReady, match.Start, match.Complete,
+		match.MarkTeamsReady, match.Start,
+		func() error { return match.Complete(2, 1) },
 	} {
 		if err := step(); err != nil {
 			t.Fatalf("setup: transition %d: %v", i, err)

@@ -63,7 +63,7 @@ func TestMatch_HappyPathFullLifecycle(t *testing.T) {
 		t.Errorf("expected status in_progress, got %q", match.Status())
 	}
 
-	if err := match.Complete(); err != nil {
+	if err := match.Complete(2, 1); err != nil {
 		t.Fatalf("Complete failed: %v", err)
 	}
 	if match.Status() != MatchStatusCompleted {
@@ -111,7 +111,7 @@ func TestMatch_TransitionsRejectInvalidSourceStatus(t *testing.T) {
 		{name: "Open", allowedFrom: MatchStatusDraft, invoke: (*Match).Open},
 		{name: "MarkTeamsReady", allowedFrom: MatchStatusOpen, invoke: (*Match).MarkTeamsReady},
 		{name: "Start", allowedFrom: MatchStatusTeamsReady, invoke: (*Match).Start},
-		{name: "Complete", allowedFrom: MatchStatusInProgress, invoke: (*Match).Complete},
+		{name: "Complete", allowedFrom: MatchStatusInProgress, invoke: func(m *Match) error { return m.Complete(1, 0) }},
 		{name: "Finalize", allowedFrom: MatchStatusCompleted, invoke: func(m *Match) error { return m.Finalize(nil) }},
 	}
 
