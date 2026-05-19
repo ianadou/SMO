@@ -68,3 +68,27 @@ func TestAssignTeams_RejectsWhenNotOpen(t *testing.T) {
 
 	assert.ErrorIs(t, err, domainerrors.ErrTeamsNotEditable)
 }
+
+func TestAssignTeams_RejectsIntraTeamDuplicate(t *testing.T) {
+	m := openMatch(t)
+
+	err := m.AssignTeams([]PlayerID{"a", "a"}, []PlayerID{"b", "c"})
+
+	assert.ErrorIs(t, err, domainerrors.ErrInvalidAssignment)
+}
+
+func TestAssignTeams_RejectsImbalance_WhenTeamBLargerByTwo(t *testing.T) {
+	m := openMatch(t)
+
+	err := m.AssignTeams([]PlayerID{"a"}, []PlayerID{"b", "c", "d"})
+
+	assert.ErrorIs(t, err, domainerrors.ErrInvalidAssignment)
+}
+
+func TestAssignTeams_AllowsEqualSizeTeams(t *testing.T) {
+	m := openMatch(t)
+
+	err := m.AssignTeams([]PlayerID{"a", "b"}, []PlayerID{"c", "d"})
+
+	require.NoError(t, err)
+}
