@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	domainerrors "github.com/ianadou/smo/domain/errors"
 )
 
@@ -43,6 +46,10 @@ func TestMatch_HappyPathFullLifecycle(t *testing.T) {
 	}
 	if match.Status() != MatchStatusOpen {
 		t.Errorf("expected status open, got %q", match.Status())
+	}
+
+	if err := match.AssignTeams([]PlayerID{"a"}, []PlayerID{"b"}); err != nil {
+		t.Fatalf("AssignTeams failed: %v", err)
 	}
 
 	if err := match.MarkTeamsReady(); err != nil {
@@ -146,4 +153,27 @@ func TestMatch_TransitionsRejectInvalidSourceStatus(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestMarkTeamsReady_Rejected_WhenNoTeamsAssigned(t *testing.T) {
+	m, err := NewMatch("m1", "g1", "Match", "Hall", time.Now(), time.Now())
+	require.NoError(t, err)
+	require.NoError(t, m.Open())
+
+	err = m.MarkTeamsReady()
+
+	assert.ErrorIs(t, err, domainerrors.ErrTeamsRequired)
+	assert.Equal(t, MatchStatusOpen, m.Status())
+}
+
+func TestMarkTeamsReady_Succeeds_WhenTeamsAssigned(t *testing.T) {
+	m, err := NewMatch("m1", "g1", "Match", "Hall", time.Now(), time.Now())
+	require.NoError(t, err)
+	require.NoError(t, m.Open())
+	require.NoError(t, m.AssignTeams([]PlayerID{"a"}, []PlayerID{"b"}))
+
+	err = m.MarkTeamsReady()
+
+	require.NoError(t, err)
+	assert.Equal(t, MatchStatusTeamsReady, m.Status())
 }

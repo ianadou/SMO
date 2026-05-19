@@ -22,6 +22,9 @@ func (m *Match) MarkTeamsReady() error {
 	if m.status != MatchStatusOpen {
 		return fmt.Errorf("%w: cannot mark teams ready in status %q", domainerrors.ErrInvalidTransition, m.status)
 	}
+	if !m.HasTeams() {
+		return fmt.Errorf("%w: assign teams before marking ready", domainerrors.ErrTeamsRequired)
+	}
 	m.status = MatchStatusTeamsReady
 	return nil
 }
