@@ -38,8 +38,14 @@ type MatchRepository interface {
 
 	// ReplaceTeams atomically replaces the full team composition of the
 	// match (delete-all then insert) in a single transaction. The match
-	// row itself is not modified. Returns ErrMatchNotFound (wrapped) if
-	// the match does not exist.
+	// row itself is not modified.
+	//
+	// Callers are expected to have loaded the match via FindByID (which
+	// reports ErrMatchNotFound) and validated the composition on the
+	// entity, so this method does not re-check match existence. Passing a
+	// match with empty teams clears the stored composition. A row that
+	// references an unknown match or player surfaces as
+	// ErrReferencedEntityNotFound (wrapped).
 	ReplaceTeams(ctx context.Context, match *entities.Match) error
 
 	// Delete removes a match by its identifier.
