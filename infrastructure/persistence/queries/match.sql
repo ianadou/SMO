@@ -19,13 +19,31 @@ WHERE group_id = $1
 ORDER BY scheduled_at DESC;
 
 -- name: UpdateMatchStatus :one
--- Updates only the status column. The state machine on the Match entity
--- controls which status transitions are valid; this query trusts the
--- caller and just persists the new value.
+-- Persists the status and the final score. The state machine on the
+-- Match entity controls which transitions are valid; this query trusts
+-- the caller. Score is nil for every transition except complete (and
+-- finalize uses its own query, so a recorded score is never clobbered
+-- here).
 UPDATE matches
-SET status = $2
+SET status  = $2,
+    score_a = $3,
+    score_b = $4
 WHERE id = $1
 RETURNING *;
+
+-- name: GetLatestDecidedMatchByGroup :one
+-- Returns the group's most recent decided match (completed or closed,
+-- with a non-draw score), excluding a given match id, ordered by
+-- scheduled date. Feeds the "top player joins the previous winner" rule.
+SELECT * FROM matches
+WHERE group_id = $1
+  AND id <> $2
+  AND status IN ('completed', 'closed')
+  AND score_a IS NOT NULL
+  AND score_b IS NOT NULL
+  AND score_a <> score_b
+ORDER BY scheduled_at DESC
+LIMIT 1;
 
 -- name: FinalizeMatch :one
 -- Atomic finalize: sets the MVP and the new status (typically 'closed')

@@ -2,6 +2,7 @@ package strategies
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/ianadou/smo/domain/entities"
@@ -46,7 +47,7 @@ func TestRankingBasedStrategy_Assign_DistributesUsingSnakeDraft(t *testing.T) {
 
 	strategy := NewRankingBasedStrategy()
 
-	teamA, teamB, err := strategy.Assign(players)
+	teamA, teamB, err := strategy.Assign(players, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestRankingBasedStrategy_Assign_BalancesTotalRanking(t *testing.T) {
 
 	strategy := NewRankingBasedStrategy()
 
-	teamA, teamB, err := strategy.Assign(players)
+	teamA, teamB, err := strategy.Assign(players, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -99,13 +100,42 @@ func TestRankingBasedStrategy_Assign_BalancesTotalRanking(t *testing.T) {
 	}
 }
 
+func TestRankingBasedStrategy_Assign_SeedsTopPlayerOntoPreviousWinnerSide(t *testing.T) {
+	t.Parallel()
+
+	players := []*entities.Player{
+		newTestPlayerWithRanking(t, "top", 900),
+		newTestPlayerWithRanking(t, "p2", 500),
+		newTestPlayerWithRanking(t, "p3", 300),
+		newTestPlayerWithRanking(t, "p4", 100),
+	}
+	strategy := NewRankingBasedStrategy()
+	sideA, sideB := entities.TeamSideA, entities.TeamSideB
+
+	teamAWhenAWon, _, err := strategy.Assign(players, &sideA)
+	if err != nil {
+		t.Fatalf("Assign (A won) failed: %v", err)
+	}
+	if !slices.Contains(teamAWhenAWon, entities.PlayerID("top")) {
+		t.Errorf("previous winner A: expected top player in team A, got %v", teamAWhenAWon)
+	}
+
+	_, teamBWhenBWon, err := strategy.Assign(players, &sideB)
+	if err != nil {
+		t.Fatalf("Assign (B won) failed: %v", err)
+	}
+	if !slices.Contains(teamBWhenBWon, entities.PlayerID("top")) {
+		t.Errorf("previous winner B: expected top player in team B, got %v", teamBWhenBWon)
+	}
+}
+
 func TestRankingBasedStrategy_Assign_SplitsEvenCountInHalf(t *testing.T) {
 	t.Parallel()
 
 	players := buildTestPlayers(t, 10)
 	strategy := NewRankingBasedStrategy()
 
-	teamA, teamB, _ := strategy.Assign(players)
+	teamA, teamB, _ := strategy.Assign(players, nil)
 
 	if len(teamA) != 5 {
 		t.Errorf("expected team A size 5, got %d", len(teamA))
@@ -121,7 +151,7 @@ func TestRankingBasedStrategy_Assign_GivesExtraPlayerToTeamAOnOddCount(t *testin
 	players := buildTestPlayers(t, 5)
 	strategy := NewRankingBasedStrategy()
 
-	teamA, teamB, _ := strategy.Assign(players)
+	teamA, teamB, _ := strategy.Assign(players, nil)
 
 	if len(teamA) != 3 {
 		t.Errorf("expected team A size 3 (extra player), got %d", len(teamA))
@@ -147,7 +177,7 @@ func TestRankingBasedStrategy_Assign_DoesNotMutateInputSlice(t *testing.T) {
 	}
 
 	strategy := NewRankingBasedStrategy()
-	_, _, _ = strategy.Assign(players)
+	_, _, _ = strategy.Assign(players, nil)
 
 	for index, player := range players {
 		if player.ID() != originalIDs[index] {
@@ -165,7 +195,7 @@ func TestRankingBasedStrategy_Assign_ReturnsError_WhenTooFewPlayers(t *testing.T
 		players := buildTestPlayers(t, count)
 		strategy := NewRankingBasedStrategy()
 
-		teamA, teamB, err := strategy.Assign(players)
+		teamA, teamB, err := strategy.Assign(players, nil)
 
 		if teamA != nil || teamB != nil {
 			t.Errorf("expected nil teams on error for %d players", count)

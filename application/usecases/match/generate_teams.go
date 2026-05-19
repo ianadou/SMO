@@ -2,6 +2,7 @@ package match
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 
@@ -64,7 +65,12 @@ func (uc *GenerateTeamsUseCase) Execute(
 		return nil, err
 	}
 
-	teamA, teamB, err := strategy.Assign(players)
+	previousWinner, err := uc.previousWinner(ctx, match)
+	if err != nil {
+		return nil, err
+	}
+
+	teamA, teamB, err := strategy.Assign(players, previousWinner)
 	if err != nil {
 		return nil, fmt.Errorf("generate teams use case: assign: %w", err)
 	}
@@ -77,6 +83,20 @@ func (uc *GenerateTeamsUseCase) Execute(
 		return nil, fmt.Errorf("generate teams use case: persist teams: %w", err)
 	}
 	return match, nil
+}
+
+// previousWinner resolves the side that won the group's most recent
+// decided match. No prior decided match (ErrMatchNotFound) is the
+// expected first-match case and yields nil, not an error.
+func (uc *GenerateTeamsUseCase) previousWinner(ctx context.Context, m *entities.Match) (*entities.TeamSide, error) {
+	previous, err := uc.matchRepo.FindLatestDecidedByGroup(ctx, m.GroupID(), m.ID())
+	if errors.Is(err, domainerrors.ErrMatchNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("generate teams use case: find previous match: %w", err)
+	}
+	return previous.WinningSide(), nil
 }
 
 func (uc *GenerateTeamsUseCase) strategyByName(name string) (strategies.AssignmentStrategy, error) {

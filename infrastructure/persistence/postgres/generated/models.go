@@ -44,6 +44,8 @@ type Matches struct {
 	Status      string
 	CreatedAt   pgtype.Timestamptz
 	MvpPlayerID *string
+	ScoreA      *int32
+	ScoreB      *int32
 }
 
 type Organizers struct {

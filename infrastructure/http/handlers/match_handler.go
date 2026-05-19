@@ -160,9 +160,25 @@ func (h *MatchHandler) Start(c *gin.Context) {
 	h.runTransition(c, h.startMatch.Execute)
 }
 
-// Complete handles POST /api/matches/:id/complete.
+// Complete handles POST /api/matches/:id/complete. Unlike the other
+// transitions it carries a body: the final score, which is the result
+// that closes the match and feeds the next assignment's winner rule.
 func (h *MatchHandler) Complete(c *gin.Context) {
-	h.runTransition(c, h.completeMatch.Execute)
+	var req dto.CompleteMatchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+
+	m, err := h.completeMatch.Execute(c.Request.Context(),
+		entities.MatchID(c.Param("id")), *req.ScoreA, *req.ScoreB)
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		c.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.MatchResponseFromEntity(m))
 }
 
 // Participants handles GET /api/matches/:id/participants. Returns the

@@ -153,7 +153,8 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 	}, nil)
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/teams-ready", c.token, nil, nil)
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/start", c.token, nil, nil)
-	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/complete", c.token, nil, nil)
+	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/complete", c.token,
+		map[string]any{"score_a": 3, "score_b": 1}, nil)
 
 	// 7. Cast + read votes (only allowed once the match is completed).
 	var vote struct {
@@ -175,6 +176,114 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 
 	// 9. Finalize: closes the match, recomputes rankings from votes.
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/finalize", c.token, nil, nil)
+}
+
+// TestBuildRouter_ScoreAndPreviousWinnerFlow exercises MD2 end-to-end:
+// completing a match records a score that round-trips through GET, and a
+// later match in the same group seeds the top-ranked player onto the
+// side that won the previous match.
+func TestBuildRouter_ScoreAndPreviousWinnerFlow(t *testing.T) {
+	if sharedPool == nil {
+		t.Fatal("sharedPool is nil; TestMain did not run setupBootContainer")
+	}
+
+	router := buildRouter(sharedPool, nil, "test-jwt-secret-for-score-flow")
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	c := newAPIClient(server.URL)
+	c.postExpect(t, http.StatusCreated, "/api/v1/auth/register", "", map[string]any{
+		"email": "score@example.com", "password": "score-test-password", "display_name": "Score Tester",
+	}, nil)
+	var login struct {
+		Token string `json:"token"`
+	}
+	c.postExpect(t, http.StatusOK, "/api/v1/auth/login", "", map[string]any{
+		"email": "score@example.com", "password": "score-test-password",
+	}, &login)
+	c.token = login.Token
+
+	var group struct {
+		ID string `json:"id"`
+	}
+	c.postExpect(t, http.StatusCreated, "/api/v1/groups", c.token, map[string]any{"name": "Score Group"}, &group)
+
+	const topName = "Alex L."
+	specs := []struct {
+		name    string
+		ranking int
+	}{{topName, 40}, {"Inès R.", 30}, {"Théo B.", 20}, {"Marc R.", 10}}
+	playerIDs := make([]string, 0, len(specs))
+	for _, s := range specs {
+		var p struct {
+			ID string `json:"id"`
+		}
+		c.postExpect(t, http.StatusCreated, "/api/v1/players", c.token, map[string]any{
+			"group_id": group.ID, "name": s.name,
+		}, &p)
+		c.patchExpect(t, http.StatusOK, "/api/v1/players/"+p.ID+"/ranking", c.token,
+			map[string]any{"ranking": s.ranking}, nil)
+		playerIDs = append(playerIDs, p.ID)
+	}
+
+	playMatch := func(scheduled time.Time, scoreA, scoreB int) string {
+		var m struct {
+			ID string `json:"id"`
+		}
+		c.postExpect(t, http.StatusCreated, "/api/v1/matches", c.token, map[string]any{
+			"group_id": group.ID, "title": "M", "venue": "Stadium", "scheduled_at": scheduled,
+		}, &m)
+		c.postExpect(t, http.StatusOK, "/api/v1/matches/"+m.ID+"/open", c.token, nil, nil)
+		for _, pid := range playerIDs {
+			var inv struct {
+				PlainToken string `json:"plain_token"`
+			}
+			c.postExpect(t, http.StatusCreated, "/api/v1/invitations", c.token, map[string]any{
+				"match_id": m.ID, "player_id": pid,
+			}, &inv)
+			c.postExpect(t, http.StatusOK, "/api/v1/invitations/respond", "", map[string]any{
+				"token": inv.PlainToken, "answer": "yes",
+			}, nil)
+		}
+		c.postExpect(t, http.StatusOK, "/api/v1/matches/"+m.ID+"/teams/generate", c.token,
+			map[string]any{"strategy": "ranking"}, nil)
+		c.postExpect(t, http.StatusOK, "/api/v1/matches/"+m.ID+"/teams-ready", c.token, nil, nil)
+		c.postExpect(t, http.StatusOK, "/api/v1/matches/"+m.ID+"/start", c.token, nil, nil)
+		c.postExpect(t, http.StatusOK, "/api/v1/matches/"+m.ID+"/complete", c.token,
+			map[string]any{"score_a": scoreA, "score_b": scoreB}, nil)
+		return m.ID
+	}
+
+	// Match 1 played first (earlier scheduled_at); team B wins it.
+	m1 := playMatch(time.Date(2026, 6, 1, 19, 0, 0, 0, time.UTC), 0, 3)
+
+	// Score round-trips through GET /matches/:id.
+	var got struct {
+		ScoreA *int `json:"score_a"`
+		ScoreB *int `json:"score_b"`
+	}
+	c.getExpect(t, http.StatusOK, "/api/v1/matches/"+m1, "", &got)
+	if got.ScoreA == nil || got.ScoreB == nil || *got.ScoreA != 0 || *got.ScoreB != 3 {
+		t.Fatalf("expected persisted score 0-3, got %v-%v", got.ScoreA, got.ScoreB)
+	}
+
+	// Match 2 is later: its ranking generation must seed the top player
+	// (highest ranking) onto side B, since B won match 1.
+	m2 := playMatch(time.Date(2026, 7, 1, 19, 0, 0, 0, time.UTC), 1, 0)
+	var teams []struct {
+		PlayerName string `json:"player_name"`
+		Team       string `json:"team"`
+	}
+	c.getExpect(t, http.StatusOK, "/api/v1/matches/"+m2+"/teams", c.token, &teams)
+	topSide := ""
+	for _, member := range teams {
+		if member.PlayerName == topName {
+			topSide = member.Team
+		}
+	}
+	if topSide != "B" {
+		t.Fatalf("expected top player %q on side B (previous winner), got %q (teams=%+v)", topName, topSide, teams)
+	}
 }
 
 // TestBuildRouter_TeamAssignmentFlow exercises the MD1 team endpoints

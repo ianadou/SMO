@@ -21,6 +21,16 @@ const (
 // MatchID is the unique identifier of a Match.
 type MatchID string
 
+// TeamSide identifies one of the two teams of a match. The string
+// values match the "A"/"B" convention already used by MatchTeamMember.
+type TeamSide string
+
+// The two possible team sides of a match.
+const (
+	TeamSideA TeamSide = "A"
+	TeamSideB TeamSide = "B"
+)
+
 // Match represents a scheduled sports match within a group.
 //
 // A match has a lifecycle (see MatchStatus) that controls which operations
@@ -36,6 +46,8 @@ type Match struct {
 	mvpPlayerID *PlayerID
 	teamA       []PlayerID
 	teamB       []PlayerID
+	scoreA      *int
+	scoreB      *int
 	createdAt   time.Time
 }
 
@@ -53,6 +65,8 @@ type MatchSnapshot struct {
 	MVPPlayerID *PlayerID
 	TeamA       []PlayerID
 	TeamB       []PlayerID
+	ScoreA      *int
+	ScoreB      *int
 	CreatedAt   time.Time
 }
 
@@ -126,6 +140,8 @@ func RehydrateMatch(s MatchSnapshot) (*Match, error) {
 		mvpPlayerID: s.MVPPlayerID,
 		teamA:       clonePlayerIDs(s.TeamA),
 		teamB:       clonePlayerIDs(s.TeamB),
+		scoreA:      cloneIntPtr(s.ScoreA),
+		scoreB:      cloneIntPtr(s.ScoreB),
 		createdAt:   s.CreatedAt,
 	}, nil
 }
@@ -177,8 +193,38 @@ func (m *Match) HasTeams() bool {
 	return len(m.teamA) > 0 && len(m.teamB) > 0
 }
 
+// ScoreA returns team A's final goal count, or nil if the match has not
+// been completed yet.
+func (m *Match) ScoreA() *int { return cloneIntPtr(m.scoreA) }
+
+// ScoreB returns team B's final goal count, or nil if the match has not
+// been completed yet.
+func (m *Match) ScoreB() *int { return cloneIntPtr(m.scoreB) }
+
+// WinningSide derives which team won from the recorded score. It returns
+// nil when the match has no score yet or ended in a draw — in both cases
+// the "top player joins the previous winner" rule does not apply.
+func (m *Match) WinningSide() *TeamSide {
+	if m.scoreA == nil || m.scoreB == nil || *m.scoreA == *m.scoreB {
+		return nil
+	}
+	side := TeamSideA
+	if *m.scoreB > *m.scoreA {
+		side = TeamSideB
+	}
+	return &side
+}
+
 func clonePlayerIDs(src []PlayerID) []PlayerID {
 	out := make([]PlayerID, len(src))
 	copy(out, src)
 	return out
+}
+
+func cloneIntPtr(src *int) *int {
+	if src == nil {
+		return nil
+	}
+	v := *src
+	return &v
 }

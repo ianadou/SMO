@@ -26,6 +26,12 @@ type fakeMatchRepository struct {
 	// Call counters for assertions that a port method was actually
 	// invoked (guards against vacuous shared-pointer-mutation tests).
 	replaceTeamsCalls int
+
+	// latestDecided is returned by FindLatestDecidedByGroup. nil means
+	// "no previous decided match" (the use case treats ErrMatchNotFound
+	// as the first-match case), so the default keeps the snake draft
+	// unbiased unless a test wires a previous result.
+	latestDecided *entities.Match
 }
 
 func newFakeMatchRepository() *fakeMatchRepository {
@@ -114,6 +120,15 @@ func (r *fakeMatchRepository) ListTeamMembersWithPlayers(_ context.Context, matc
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.teamMembers[matchID], nil
+}
+
+func (r *fakeMatchRepository) FindLatestDecidedByGroup(_ context.Context, _ entities.GroupID, _ entities.MatchID) (*entities.Match, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.latestDecided == nil {
+		return nil, domainerrors.ErrMatchNotFound
+	}
+	return r.latestDecided, nil
 }
 
 func (r *fakeMatchRepository) Delete(_ context.Context, id entities.MatchID) error {

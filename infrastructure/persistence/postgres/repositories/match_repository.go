@@ -74,6 +74,7 @@ func (r *PostgresMatchRepository) FindByID(ctx context.Context, id entities.Matc
 			ID: match.ID(), GroupID: match.GroupID(), Title: match.Title(),
 			Venue: match.Venue(), ScheduledAt: match.ScheduledAt(),
 			Status: match.Status(), MVPPlayerID: match.MVP(),
+			ScoreA: match.ScoreA(), ScoreB: match.ScoreB(),
 			CreatedAt: match.CreatedAt(), TeamA: teamA, TeamB: teamB,
 		})
 		if rehErr != nil {
@@ -169,6 +170,28 @@ func (r *PostgresMatchRepository) ListTeamMembersWithPlayers(ctx context.Context
 		})
 	}
 	return out, nil
+}
+
+// FindLatestDecidedByGroup returns the group's most recent decided match
+// (completed/closed, non-draw), excluding excludeID. Reports
+// ErrMatchNotFound when none — the expected first-match case.
+func (r *PostgresMatchRepository) FindLatestDecidedByGroup(ctx context.Context, groupID entities.GroupID, excludeID entities.MatchID) (*entities.Match, error) {
+	row, err := r.queries.GetLatestDecidedMatchByGroup(ctx, generated.GetLatestDecidedMatchByGroupParams{
+		GroupID: string(groupID),
+		ID:      string(excludeID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("postgres match repository: latest decided match for group %q: %w", groupID, domainerrors.ErrMatchNotFound)
+		}
+		return nil, fmt.Errorf("postgres match repository: latest decided match for group %q: %w", groupID, err)
+	}
+
+	match, err := mappers.MatchToDomain(row)
+	if err != nil {
+		return nil, fmt.Errorf("postgres match repository: map match %q to domain: %w", row.ID, err)
+	}
+	return match, nil
 }
 
 // Delete removes a match by its identifier. Idempotent.

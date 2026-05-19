@@ -29,6 +29,8 @@ type MatchResponse struct {
 	Venue       string    `json:"venue"`
 	ScheduledAt time.Time `json:"scheduled_at"`
 	Status      string    `json:"status"`
+	ScoreA      *int      `json:"score_a"`
+	ScoreB      *int      `json:"score_b"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -42,8 +44,18 @@ func MatchResponseFromEntity(m *entities.Match) MatchResponse {
 		Venue:       m.Venue(),
 		ScheduledAt: m.ScheduledAt(),
 		Status:      string(m.Status()),
+		ScoreA:      m.ScoreA(),
+		ScoreB:      m.ScoreB(),
 		CreatedAt:   m.CreatedAt(),
 	}
+}
+
+// CompleteMatchRequest is the body of POST /api/v1/matches/:id/complete.
+// Scores are pointers so a 0-0 draw is distinguishable from a missing
+// field: "required" rejects nil (absent), "gte=0" rejects negatives.
+type CompleteMatchRequest struct {
+	ScoreA *int `json:"score_a" binding:"required,gte=0"`
+	ScoreB *int `json:"score_b" binding:"required,gte=0"`
 }
 
 // GenerateTeamsRequest is the body of POST /api/v1/matches/:id/teams/generate.

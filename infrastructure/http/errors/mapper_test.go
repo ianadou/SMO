@@ -51,6 +51,7 @@ func TestMapError_ValidationErrors(t *testing.T) {
 		{name: "invalid id", err: domainerrors.ErrInvalidID, wantStatus: http.StatusBadRequest, wantMessage: "invalid id"},
 		{name: "invalid name", err: domainerrors.ErrInvalidName, wantStatus: http.StatusBadRequest, wantMessage: "invalid name"},
 		{name: "invalid score", err: domainerrors.ErrInvalidScore, wantStatus: http.StatusBadRequest, wantMessage: "invalid score"},
+		{name: "invalid match score", err: domainerrors.ErrInvalidMatchScore, wantStatus: http.StatusBadRequest, wantMessage: "invalid match score"},
 		{name: "invalid date", err: domainerrors.ErrInvalidDate, wantStatus: http.StatusBadRequest, wantMessage: "invalid date"},
 		{name: "invalid status", err: domainerrors.ErrInvalidStatus, wantStatus: http.StatusBadRequest, wantMessage: "invalid status"},
 		{name: "invalid parameter", err: domainerrors.ErrInvalidParameter, wantStatus: http.StatusBadRequest, wantMessage: "invalid parameter"},

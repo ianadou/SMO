@@ -30,7 +30,12 @@ func NewRankingBasedStrategy() *RankingBasedStrategy {
 // Assign sorts the players by ranking descending and distributes them
 // using a snake draft. If the number of players is odd, team A receives
 // one extra player.
-func (s *RankingBasedStrategy) Assign(players []*entities.Player) ([]entities.PlayerID, []entities.PlayerID, error) {
+//
+// When previousWinner is set, the top-ranked player must land on that
+// side: the snake draft always places the top player on team A, so if
+// team B won the previous match the two teams are swapped. Swapping
+// preserves the snake-draft balance and only relabels the sides.
+func (s *RankingBasedStrategy) Assign(players []*entities.Player, previousWinner *entities.TeamSide) ([]entities.PlayerID, []entities.PlayerID, error) {
 	if len(players) < minPlayersForAssignment {
 		return nil, nil, fmt.Errorf("%w: need at least %d players, got %d", domainerrors.ErrInvalidAssignment, minPlayersForAssignment, len(players))
 	}
@@ -59,6 +64,10 @@ func (s *RankingBasedStrategy) Assign(players []*entities.Player) ([]entities.Pl
 		} else {
 			teamB = append(teamB, player.ID())
 		}
+	}
+
+	if previousWinner != nil && *previousWinner == entities.TeamSideB {
+		teamA, teamB = teamB, teamA
 	}
 
 	return teamA, teamB, nil

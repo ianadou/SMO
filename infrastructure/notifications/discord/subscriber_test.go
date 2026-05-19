@@ -81,7 +81,10 @@ func (r *fakeMatchRepo) ListByGroup(context.Context, entities.GroupID) ([]*entit
 func (r *fakeMatchRepo) UpdateStatus(context.Context, *entities.Match) error { return nil }
 func (r *fakeMatchRepo) Finalize(context.Context, *entities.Match) error     { return nil }
 func (r *fakeMatchRepo) ReplaceTeams(context.Context, *entities.Match) error { return nil }
-func (r *fakeMatchRepo) Delete(context.Context, entities.MatchID) error      { return nil }
+func (r *fakeMatchRepo) FindLatestDecidedByGroup(context.Context, entities.GroupID, entities.MatchID) (*entities.Match, error) {
+	return nil, domainerrors.ErrMatchNotFound
+}
+func (r *fakeMatchRepo) Delete(context.Context, entities.MatchID) error { return nil }
 func (r *fakeMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.MatchID) ([]entities.MatchTeamMember, error) {
 	return nil, nil
 }

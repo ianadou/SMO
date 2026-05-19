@@ -81,7 +81,7 @@ func TestManualAssignmentStrategy_Assign_ReturnsPredefinedTeams_WhenInputMatches
 		[]entities.PlayerID{"p-2", "p-4"},
 	)
 
-	teamA, teamB, err := strategy.Assign(players)
+	teamA, teamB, err := strategy.Assign(players, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestManualAssignmentStrategy_Assign_ReturnsError_WhenInputDoesNotMatch(t *t
 
 			strategy, _ := NewManualAssignmentStrategy(testCase.teamA, testCase.teamB)
 
-			teamA, teamB, err := strategy.Assign(testCase.players)
+			teamA, teamB, err := strategy.Assign(testCase.players, nil)
 
 			if teamA != nil || teamB != nil {
 				t.Errorf("expected nil teams on error, got A=%v B=%v", teamA, teamB)
@@ -153,12 +153,12 @@ func TestManualAssignmentStrategy_Assign_DefensiveCopyOnReturn(t *testing.T) {
 		[]entities.PlayerID{"p-2"},
 	)
 
-	teamA, _, _ := strategy.Assign(players)
+	teamA, _, _ := strategy.Assign(players, nil)
 
 	// Mutate the returned slice and verify the strategy state is unchanged.
 	teamA[0] = "HACKED"
 
-	teamAAgain, _, _ := strategy.Assign(players)
+	teamAAgain, _, _ := strategy.Assign(players, nil)
 	if teamAAgain[0] != "p-1" {
 		t.Errorf("expected strategy state to remain 'p-1', got %q", teamAAgain[0])
 	}

@@ -172,7 +172,8 @@ func TestBuildRouter_ErrorPaths(t *testing.T) {
 
 	t.Run("409: complete match while still in Draft returns 409", func(t *testing.T) {
 		c.expectStatus(t, http.MethodPost,
-			"/api/v1/matches/"+draftMatch.ID+"/complete", c.token, nil,
+			"/api/v1/matches/"+draftMatch.ID+"/complete", c.token,
+			map[string]any{"score_a": 1, "score_b": 0},
 			http.StatusConflict)
 	})
 }

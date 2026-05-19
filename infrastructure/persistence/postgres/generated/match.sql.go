@@ -16,7 +16,7 @@ INSERT INTO matches (
     id, group_id, title, venue, scheduled_at, status, created_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7
-) RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id
+) RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id, score_a, score_b
 `
 
 type CreateMatchParams struct {
@@ -52,6 +52,8 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		&i.Status,
 		&i.CreatedAt,
 		&i.MvpPlayerID,
+		&i.ScoreA,
+		&i.ScoreB,
 	)
 	return i, err
 }
@@ -70,7 +72,7 @@ UPDATE matches
 SET mvp_player_id = $2,
     status        = $3
 WHERE id = $1
-RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id
+RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id, score_a, score_b
 `
 
 type FinalizeMatchParams struct {
@@ -94,12 +96,52 @@ func (q *Queries) FinalizeMatch(ctx context.Context, arg FinalizeMatchParams) (M
 		&i.Status,
 		&i.CreatedAt,
 		&i.MvpPlayerID,
+		&i.ScoreA,
+		&i.ScoreB,
+	)
+	return i, err
+}
+
+const getLatestDecidedMatchByGroup = `-- name: GetLatestDecidedMatchByGroup :one
+SELECT id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id, score_a, score_b FROM matches
+WHERE group_id = $1
+  AND id <> $2
+  AND status IN ('completed', 'closed')
+  AND score_a IS NOT NULL
+  AND score_b IS NOT NULL
+  AND score_a <> score_b
+ORDER BY scheduled_at DESC
+LIMIT 1
+`
+
+type GetLatestDecidedMatchByGroupParams struct {
+	GroupID string
+	ID      string
+}
+
+// Returns the group's most recent decided match (completed or closed,
+// with a non-draw score), excluding a given match id, ordered by
+// scheduled date. Feeds the "top player joins the previous winner" rule.
+func (q *Queries) GetLatestDecidedMatchByGroup(ctx context.Context, arg GetLatestDecidedMatchByGroupParams) (Matches, error) {
+	row := q.db.QueryRow(ctx, getLatestDecidedMatchByGroup, arg.GroupID, arg.ID)
+	var i Matches
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Title,
+		&i.Venue,
+		&i.ScheduledAt,
+		&i.Status,
+		&i.CreatedAt,
+		&i.MvpPlayerID,
+		&i.ScoreA,
+		&i.ScoreB,
 	)
 	return i, err
 }
 
 const getMatchByID = `-- name: GetMatchByID :one
-SELECT id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id FROM matches WHERE id = $1
+SELECT id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id, score_a, score_b FROM matches WHERE id = $1
 `
 
 func (q *Queries) GetMatchByID(ctx context.Context, id string) (Matches, error) {
@@ -114,12 +156,14 @@ func (q *Queries) GetMatchByID(ctx context.Context, id string) (Matches, error) 
 		&i.Status,
 		&i.CreatedAt,
 		&i.MvpPlayerID,
+		&i.ScoreA,
+		&i.ScoreB,
 	)
 	return i, err
 }
 
 const listMatchesByGroupID = `-- name: ListMatchesByGroupID :many
-SELECT id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id FROM matches
+SELECT id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id, score_a, score_b FROM matches
 WHERE group_id = $1
 ORDER BY scheduled_at DESC
 `
@@ -144,6 +188,8 @@ func (q *Queries) ListMatchesByGroupID(ctx context.Context, groupID string) ([]M
 			&i.Status,
 			&i.CreatedAt,
 			&i.MvpPlayerID,
+			&i.ScoreA,
+			&i.ScoreB,
 		); err != nil {
 			return nil, err
 		}
@@ -157,21 +203,32 @@ func (q *Queries) ListMatchesByGroupID(ctx context.Context, groupID string) ([]M
 
 const updateMatchStatus = `-- name: UpdateMatchStatus :one
 UPDATE matches
-SET status = $2
+SET status  = $2,
+    score_a = $3,
+    score_b = $4
 WHERE id = $1
-RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id
+RETURNING id, group_id, title, venue, scheduled_at, status, created_at, mvp_player_id, score_a, score_b
 `
 
 type UpdateMatchStatusParams struct {
 	ID     string
 	Status string
+	ScoreA *int32
+	ScoreB *int32
 }
 
-// Updates only the status column. The state machine on the Match entity
-// controls which status transitions are valid; this query trusts the
-// caller and just persists the new value.
+// Persists the status and the final score. The state machine on the
+// Match entity controls which transitions are valid; this query trusts
+// the caller. Score is nil for every transition except complete (and
+// finalize uses its own query, so a recorded score is never clobbered
+// here).
 func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusParams) (Matches, error) {
-	row := q.db.QueryRow(ctx, updateMatchStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updateMatchStatus,
+		arg.ID,
+		arg.Status,
+		arg.ScoreA,
+		arg.ScoreB,
+	)
 	var i Matches
 	err := row.Scan(
 		&i.ID,
@@ -182,6 +239,8 @@ func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusPa
 		&i.Status,
 		&i.CreatedAt,
 		&i.MvpPlayerID,
+		&i.ScoreA,
+		&i.ScoreB,
 	)
 	return i, err
 }

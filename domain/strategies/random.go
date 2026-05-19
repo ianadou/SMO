@@ -33,7 +33,8 @@ func NewRandomAssignmentStrategy(rng *rand.Rand) (*RandomAssignmentStrategy, err
 
 // Assign shuffles the players and splits them in half. Team A gets the
 // first half (with one extra player on odd counts), team B gets the rest.
-func (s *RandomAssignmentStrategy) Assign(players []*entities.Player) ([]entities.PlayerID, []entities.PlayerID, error) {
+// previousWinner is ignored: random assignment carries no seeding bias.
+func (s *RandomAssignmentStrategy) Assign(players []*entities.Player, _ *entities.TeamSide) ([]entities.PlayerID, []entities.PlayerID, error) {
 	if len(players) < minPlayersForAssignment {
 		return nil, nil, fmt.Errorf("%w: need at least %d players, got %d", domainerrors.ErrInvalidAssignment, minPlayersForAssignment, len(players))
 	}

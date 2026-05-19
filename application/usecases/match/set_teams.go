@@ -55,7 +55,7 @@ func (uc *SetTeamsUseCase) Execute(ctx context.Context, matchID entities.MatchID
 	if err != nil {
 		return nil, fmt.Errorf("set teams use case: build manual: %w", err)
 	}
-	resolvedA, resolvedB, err := manual.Assign(players)
+	resolvedA, resolvedB, err := manual.Assign(players, nil)
 	if err != nil {
 		return nil, fmt.Errorf("set teams use case: validate partition: %w", err)
 	}

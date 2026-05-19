@@ -136,12 +136,15 @@ func TestCompleteMatchUseCase_Execute_TransitionsInProgressToCompleted(t *testin
 	seedMatchInStatus(t, repo, entities.MatchStatusInProgress)
 	useCase := NewCompleteMatchUseCase(repo)
 
-	match, err := useCase.Execute(context.Background(), "match-1")
+	match, err := useCase.Execute(context.Background(), "match-1", 3, 2)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 	if match.Status() != entities.MatchStatusCompleted {
 		t.Errorf("expected status completed, got %q", match.Status())
+	}
+	if match.ScoreA() == nil || *match.ScoreA() != 3 || match.ScoreB() == nil || *match.ScoreB() != 2 {
+		t.Errorf("expected recorded score 3-2, got %v-%v", match.ScoreA(), match.ScoreB())
 	}
 }
 
