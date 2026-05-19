@@ -232,6 +232,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 	invitationHandler := handlers.NewInvitationHandler(
 		invitation.NewCreateInvitationUseCase(&authRequiredFakeInvitationRepo{}, &authRequiredFakeMatchRepo{}, &authRequiredFakePlayerRepo{}, &noopTokenService{}, idGen, clock),
 		invitation.NewGetInvitationUseCase(&authRequiredFakeInvitationRepo{}),
+		invitation.NewGetInvitationContextUseCase(&authRequiredFakeInvitationRepo{}, &authRequiredFakeMatchRepo{}, &authRequiredFakeGroupRepo{}, &authRequiredFakeOrganizerRepo{}, &noopTokenService{}, clock),
 		invitation.NewListInvitationsByMatchUseCase(&authRequiredFakeInvitationRepo{}),
 		invitation.NewRespondToInvitationUseCase(&authRequiredFakeInvitationRepo{}, &authRequiredFakeMatchRepo{}, &noopTokenService{}, clock),
 	)

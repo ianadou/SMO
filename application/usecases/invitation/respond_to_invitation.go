@@ -68,7 +68,7 @@ func (uc *RespondToInvitationUseCase) Execute(
 		return nil, fmt.Errorf("respond to invitation use case: find match: %w", err)
 	}
 
-	if respondErr := inv.Respond(answer, uc.clock.Now(), attendanceLocked(match.Status())); respondErr != nil {
+	if respondErr := inv.Respond(answer, uc.clock.Now(), match.AttendanceLocked()); respondErr != nil {
 		return nil, fmt.Errorf("respond to invitation use case: respond: %w", respondErr)
 	}
 
@@ -77,12 +77,4 @@ func (uc *RespondToInvitationUseCase) Execute(
 	}
 
 	return inv, nil
-}
-
-// attendanceLocked reports whether the match has moved past the point
-// where a player can still change their attendance. Attendance is
-// changeable while the match is draft or open; from teams_ready onward
-// the rosters are being acted upon, so responses are frozen.
-func attendanceLocked(status entities.MatchStatus) bool {
-	return status != entities.MatchStatusDraft && status != entities.MatchStatusOpen
 }

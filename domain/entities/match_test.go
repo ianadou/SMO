@@ -49,6 +49,48 @@ func TestNewMatch_ReturnsMatch_WhenInputsAreValid(t *testing.T) {
 	}
 }
 
+func TestMatch_AttendanceLocked_DependsOnStatus(t *testing.T) {
+	t.Parallel()
+
+	scheduledAt := time.Date(2026, 6, 15, 19, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		status     MatchStatus
+		wantLocked bool
+	}{
+		{MatchStatusDraft, false},
+		{MatchStatusOpen, false},
+		{MatchStatusTeamsReady, true},
+		{MatchStatusInProgress, true},
+		{MatchStatusCompleted, true},
+		{MatchStatusClosed, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(string(tc.status), func(t *testing.T) {
+			t.Parallel()
+
+			match, err := RehydrateMatch(MatchSnapshot{
+				ID:          "match-1",
+				GroupID:     "group-1",
+				Title:       "Foot du jeudi soir",
+				Venue:       "Stade de Gerland, Lyon",
+				ScheduledAt: scheduledAt,
+				Status:      tc.status,
+				CreatedAt:   createdAt,
+			})
+			if err != nil {
+				t.Fatalf("expected no error, got: %v", err)
+			}
+
+			if got := match.AttendanceLocked(); got != tc.wantLocked {
+				t.Errorf("AttendanceLocked() for status %q = %v, want %v", tc.status, got, tc.wantLocked)
+			}
+		})
+	}
+}
+
 func TestNewMatch_TrimsTitleAndVenue(t *testing.T) {
 	t.Parallel()
 

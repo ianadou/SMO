@@ -1,8 +1,12 @@
 package dto
 
 import (
+	"fmt"
+	"strings"
 	"time"
+	"unicode"
 
+	"github.com/ianadou/smo/application/usecases/invitation"
 	"github.com/ianadou/smo/domain/entities"
 )
 
@@ -62,6 +66,102 @@ func ParticipantResponsesFromEntities(participants []entities.MatchParticipant) 
 		})
 	}
 	return out
+}
+
+// InvitationContextRequest is the body of POST /api/v1/invitations/context.
+// The token travels in the body (never the URL) because it is a bearer
+// capability and URLs leak into logs, history and referrers.
+type InvitationContextRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+// InvitationContextResponse is everything the player invitation page
+// needs to render. ConfirmedInitials deliberately replaces participant
+// names: the token bearer is unauthenticated, so confirmed teammates are
+// summarised by initials only, never by name. State is the single field
+// the frontend switches on; Response carries the invitee's own answer.
+type InvitationContextResponse struct {
+	OrganizerName     string    `json:"organizer_name"`
+	GroupName         string    `json:"group_name"`
+	MatchTitle        string    `json:"match_title"`
+	Venue             string    `json:"venue"`
+	ScheduledAt       time.Time `json:"scheduled_at"`
+	Capacity          string    `json:"capacity"`
+	ConfirmedCount    int       `json:"confirmed_count"`
+	MaxParticipants   int       `json:"max_participants"`
+	ConfirmedInitials []string  `json:"confirmed_initials"`
+	Response          string    `json:"response"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	State             string    `json:"state"`
+}
+
+// Invitation context states. Precedence is expired > locked >
+// respondable: an expired invitation can never be answered even on a
+// still-open match, and a locked match freezes answers regardless of
+// expiry.
+const (
+	invitationStateExpired     = "expired"
+	invitationStateLocked      = "locked"
+	invitationStateRespondable = "respondable"
+)
+
+// InvitationContextResponseFromContext projects the assembled use case
+// context into the wire shape, deriving the presentation-only fields
+// (capacity label, confirmed initials, coarse state).
+func InvitationContextResponseFromContext(c *invitation.PageContext) InvitationContextResponse {
+	initials := make([]string, 0, len(c.ConfirmedNames))
+	for _, name := range c.ConfirmedNames {
+		initials = append(initials, deriveInitials(name))
+	}
+
+	return InvitationContextResponse{
+		OrganizerName:     c.OrganizerName,
+		GroupName:         c.GroupName,
+		MatchTitle:        c.MatchTitle,
+		Venue:             c.Venue,
+		ScheduledAt:       c.ScheduledAt,
+		Capacity:          fmt.Sprintf("%d (%dv%d)", c.MaxParticipants, c.MaxParticipants/2, c.MaxParticipants/2),
+		ConfirmedCount:    len(c.ConfirmedNames),
+		MaxParticipants:   c.MaxParticipants,
+		ConfirmedInitials: initials,
+		Response:          string(c.Response),
+		ExpiresAt:         c.ExpiresAt,
+		State:             deriveInvitationState(c.Expired, c.Locked),
+	}
+}
+
+func deriveInvitationState(expired, locked bool) string {
+	switch {
+	case expired:
+		return invitationStateExpired
+	case locked:
+		return invitationStateLocked
+	default:
+		return invitationStateRespondable
+	}
+}
+
+// deriveInitials returns up to two uppercased initials (first and last
+// word) for a display name, so confirmed teammates can be shown as
+// avatars without exposing their names.
+func deriveInitials(name string) string {
+	words := strings.Fields(name)
+	if len(words) == 0 {
+		return ""
+	}
+
+	first := firstRuneUpper(words[0])
+	if len(words) == 1 {
+		return first
+	}
+	return first + firstRuneUpper(words[len(words)-1])
+}
+
+func firstRuneUpper(word string) string {
+	for _, r := range word {
+		return string(unicode.ToUpper(r))
+	}
+	return ""
 }
 
 // InvitationResponse is the standard invitation representation.

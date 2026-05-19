@@ -107,6 +107,29 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 	}
 	c.getExpect(t, http.StatusOK, "/api/v1/invitations/"+inv.ID, "", nil)
 	c.getExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/invitations", c.token, nil)
+
+	// 5b. Public context endpoint: the player resolves everything the
+	// invitation page needs from the token alone (no auth).
+	var invCtx struct {
+		OrganizerName  string `json:"organizer_name"`
+		GroupName      string `json:"group_name"`
+		Capacity       string `json:"capacity"`
+		ConfirmedCount int    `json:"confirmed_count"`
+		Response       string `json:"response"`
+		State          string `json:"state"`
+	}
+	c.postExpect(t, http.StatusOK, "/api/v1/invitations/context", "", map[string]any{
+		"token": inv.PlainToken,
+	}, &invCtx)
+	if invCtx.OrganizerName != "Flow Tester" || invCtx.GroupName != "Flow Group" ||
+		invCtx.Capacity != "10 (5v5)" || invCtx.State != "respondable" ||
+		invCtx.Response != "pending" || invCtx.ConfirmedCount != 0 {
+		t.Fatalf("unexpected invitation context: %+v", invCtx)
+	}
+	c.postExpect(t, http.StatusNotFound, "/api/v1/invitations/context", "", map[string]any{
+		"token": "unknown-token",
+	}, nil)
+
 	c.postExpect(t, http.StatusOK, "/api/v1/invitations/respond", "", map[string]any{
 		"token":  inv.PlainToken,
 		"answer": "yes",

@@ -29,14 +29,16 @@ func (r *fakeMatchRepo) seedMatch(t testHelper, id entities.MatchID, groupID ent
 	r.matches[id] = m
 }
 
-// seedMatchWithStatus seeds a match rehydrated directly into the given
-// status so invitation tests can drive the attendance-lock branch.
-func (r *fakeMatchRepo) seedMatchWithStatus(t testHelper, id entities.MatchID, groupID entities.GroupID, status entities.MatchStatus) {
+// seedMatchWithStatus seeds match "match-1" (group "group-1") rehydrated
+// directly into the given status so invitation tests can drive the
+// attendance-lock branch. The ids are fixed because every caller uses
+// the same pair; only the status varies.
+func (r *fakeMatchRepo) seedMatchWithStatus(t testHelper, status entities.MatchStatus) {
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	scheduled := now.Add(2 * 24 * time.Hour)
 	m, err := entities.RehydrateMatch(entities.MatchSnapshot{
-		ID:          id,
-		GroupID:     groupID,
+		ID:          "match-1",
+		GroupID:     "group-1",
 		Title:       "Match",
 		Venue:       "Venue",
 		ScheduledAt: scheduled,
@@ -46,7 +48,7 @@ func (r *fakeMatchRepo) seedMatchWithStatus(t testHelper, id entities.MatchID, g
 	if err != nil {
 		t.Fatalf("seedMatchWithStatus: %v", err)
 	}
-	r.matches[id] = m
+	r.matches["match-1"] = m
 }
 
 func (r *fakeMatchRepo) FindByID(_ context.Context, id entities.MatchID) (*entities.Match, error) {
