@@ -12,10 +12,10 @@ import (
 // InvitationToDomain converts a sqlc-generated Invitations row into a
 // domain Invitation entity.
 func InvitationToDomain(row generated.Invitations) (*entities.Invitation, error) {
-	var usedAtPtr *time.Time
-	if row.UsedAt.Valid {
-		t := row.UsedAt.Time
-		usedAtPtr = &t
+	var respondedAtPtr *time.Time
+	if row.RespondedAt.Valid {
+		t := row.RespondedAt.Time
+		respondedAtPtr = &t
 	}
 	return entities.NewInvitation(
 		entities.InvitationID(row.ID),
@@ -23,12 +23,16 @@ func InvitationToDomain(row generated.Invitations) (*entities.Invitation, error)
 		entities.PlayerID(row.PlayerID),
 		row.TokenHash,
 		row.ExpiresAt.Time,
-		usedAtPtr,
+		entities.InvitationResponse(row.Response),
+		respondedAtPtr,
 		row.CreatedAt.Time,
 	)
 }
 
-// InvitationToCreateParams converts a domain Invitation into create params.
+// InvitationToCreateParams converts a domain Invitation into create
+// params. New invitations are always created pending (response and
+// responded_at are fixed in the SQL), so only the immutable identity
+// fields are mapped here.
 func InvitationToCreateParams(inv *entities.Invitation) generated.CreateInvitationParams {
 	return generated.CreateInvitationParams{
 		ID:        string(inv.ID()),
@@ -36,24 +40,25 @@ func InvitationToCreateParams(inv *entities.Invitation) generated.CreateInvitati
 		PlayerID:  string(inv.PlayerID()),
 		TokenHash: inv.TokenHash(),
 		ExpiresAt: pgtype.Timestamptz{Time: inv.ExpiresAt(), Valid: true},
-		UsedAt:    usedAtToPg(inv.UsedAt()),
 		CreatedAt: pgtype.Timestamptz{Time: inv.CreatedAt(), Valid: true},
 	}
 }
 
-// InvitationToMarkAsUsedParams converts a domain Invitation into mark-as-used params.
-func InvitationToMarkAsUsedParams(inv *entities.Invitation) generated.MarkInvitationAsUsedParams {
-	return generated.MarkInvitationAsUsedParams{
-		ID:     string(inv.ID()),
-		UsedAt: usedAtToPg(inv.UsedAt()),
+// InvitationToUpdateResponseParams converts a domain Invitation into the
+// params for persisting its current response.
+func InvitationToUpdateResponseParams(inv *entities.Invitation) generated.UpdateInvitationResponseParams {
+	return generated.UpdateInvitationResponseParams{
+		ID:          string(inv.ID()),
+		Response:    string(inv.Response()),
+		RespondedAt: respondedAtToPg(inv.RespondedAt()),
 	}
 }
 
-// usedAtToPg converts an optional *time.Time into pgtype.Timestamptz.
+// respondedAtToPg converts an optional *time.Time into pgtype.Timestamptz.
 // Nil becomes the NULL representation.
-func usedAtToPg(usedAt *time.Time) pgtype.Timestamptz {
-	if usedAt == nil {
+func respondedAtToPg(respondedAt *time.Time) pgtype.Timestamptz {
+	if respondedAt == nil {
 		return pgtype.Timestamptz{Valid: false}
 	}
-	return pgtype.Timestamptz{Time: *usedAt, Valid: true}
+	return pgtype.Timestamptz{Time: *respondedAt, Valid: true}
 }

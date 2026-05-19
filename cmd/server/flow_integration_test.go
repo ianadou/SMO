@@ -92,8 +92,8 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/open", c.token, nil, nil)
 
-	// 5. Invitations: organizer creates one, a "player" accepts it via
-	// the public token endpoint.
+	// 5. Invitations: organizer creates one, a "player" confirms
+	// attendance via the public token endpoint.
 	var inv struct {
 		ID         string `json:"id"`
 		PlainToken string `json:"plain_token"`
@@ -107,8 +107,9 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 	}
 	c.getExpect(t, http.StatusOK, "/api/v1/invitations/"+inv.ID, "", nil)
 	c.getExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/invitations", c.token, nil)
-	c.postExpect(t, http.StatusOK, "/api/v1/invitations/accept", "", map[string]any{
-		"token": inv.PlainToken,
+	c.postExpect(t, http.StatusOK, "/api/v1/invitations/respond", "", map[string]any{
+		"token":  inv.PlainToken,
+		"answer": "yes",
 	}, nil)
 
 	// 6. Drive the match through the rest of the lifecycle.

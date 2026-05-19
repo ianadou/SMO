@@ -9,9 +9,9 @@ import (
 	"github.com/ianadou/smo/domain/entities"
 )
 
-func seedConfirmedInvitation(t *testing.T, repo *fakeInvitationRepository, id, matchID, playerID string, usedAt time.Time) {
+func seedConfirmedInvitation(t *testing.T, repo *fakeInvitationRepository, id, matchID, playerID string, confirmedAt time.Time) {
 	t.Helper()
-	createdAt := usedAt.Add(-time.Hour)
+	createdAt := confirmedAt.Add(-time.Hour)
 	expiresAt := createdAt.Add(2 * 24 * time.Hour)
 	inv, err := entities.NewInvitation(
 		entities.InvitationID(id),
@@ -19,7 +19,8 @@ func seedConfirmedInvitation(t *testing.T, repo *fakeInvitationRepository, id, m
 		entities.PlayerID(playerID),
 		"hash-"+id,
 		expiresAt,
-		&usedAt,
+		entities.InvitationResponseYes,
+		&confirmedAt,
 		createdAt,
 	)
 	if err != nil {
@@ -40,7 +41,7 @@ func TestListMatchParticipantsUseCase_Execute_ReturnsConfirmedOnly(t *testing.T)
 	createdAt := now.Add(-time.Hour)
 	pending, _ := entities.NewInvitation(
 		"inv-pending", "match-1", "ghost", "hash-pending",
-		now.Add(24*time.Hour), nil, createdAt,
+		now.Add(24*time.Hour), entities.InvitationResponsePending, nil, createdAt,
 	)
 	_ = repo.Save(context.Background(), pending)
 

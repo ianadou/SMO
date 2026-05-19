@@ -8,13 +8,13 @@ import (
 	domainerrors "github.com/ianadou/smo/domain/errors"
 )
 
-func TestNewInvitation_ReturnsInvitation_WhenInputsAreValid(t *testing.T) {
+func TestNewInvitation_ReturnsPendingInvitation_WhenInputsAreValid(t *testing.T) {
 	t.Parallel()
 
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(7 * 24 * time.Hour)
 
-	inv, err := NewInvitation("inv-1", "match-1", "p-1", "hash-abc-123", expiresAt, nil, createdAt)
+	inv, err := NewInvitation("inv-1", "match-1", "p-1", "hash-abc-123", expiresAt, InvitationResponsePending, nil, createdAt)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -33,30 +33,52 @@ func TestNewInvitation_ReturnsInvitation_WhenInputsAreValid(t *testing.T) {
 	if !inv.ExpiresAt().Equal(expiresAt) {
 		t.Errorf("expected expiresAt %v, got %v", expiresAt, inv.ExpiresAt())
 	}
-	if inv.UsedAt() != nil {
-		t.Errorf("expected nil UsedAt for new invitation, got %v", inv.UsedAt())
+	if inv.Response() != InvitationResponsePending {
+		t.Errorf("expected pending response, got %q", inv.Response())
 	}
-	if inv.IsUsed() {
-		t.Errorf("expected new invitation to not be used")
+	if inv.RespondedAt() != nil {
+		t.Errorf("expected nil RespondedAt for pending invitation, got %v", inv.RespondedAt())
+	}
+	if inv.IsConfirmed() {
+		t.Errorf("expected new invitation to not be confirmed")
 	}
 }
 
-func TestNewInvitation_AcceptsUsedAtWhenProvided(t *testing.T) {
+func TestNewInvitation_AcceptsSettledResponse_WhenRespondedAtProvided(t *testing.T) {
 	t.Parallel()
 
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(7 * 24 * time.Hour)
-	usedAt := createdAt.Add(2 * time.Hour)
+	respondedAt := createdAt.Add(2 * time.Hour)
 
-	inv, err := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, &usedAt, createdAt)
+	inv, err := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, InvitationResponseYes, &respondedAt, createdAt)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	if !inv.IsUsed() {
-		t.Errorf("expected invitation to be marked as used")
+	if !inv.IsConfirmed() {
+		t.Errorf("expected invitation to be confirmed when response is yes")
 	}
-	if inv.UsedAt() == nil || !inv.UsedAt().Equal(usedAt) {
-		t.Errorf("expected UsedAt %v, got %v", usedAt, inv.UsedAt())
+	if inv.RespondedAt() == nil || !inv.RespondedAt().Equal(respondedAt) {
+		t.Errorf("expected RespondedAt %v, got %v", respondedAt, inv.RespondedAt())
+	}
+}
+
+func TestNewInvitation_AllowsDeclinedResponse_WithRespondedAt(t *testing.T) {
+	t.Parallel()
+
+	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expiresAt := createdAt.Add(7 * 24 * time.Hour)
+	respondedAt := createdAt.Add(time.Hour)
+
+	inv, err := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, InvitationResponseNo, &respondedAt, createdAt)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if inv.IsConfirmed() {
+		t.Errorf("a declined invitation must not be confirmed")
+	}
+	if inv.Response() != InvitationResponseNo {
+		t.Errorf("expected response 'no', got %q", inv.Response())
 	}
 }
 
@@ -65,7 +87,7 @@ func TestInvitation_IsExpired(t *testing.T) {
 
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := time.Date(2026, 6, 8, 10, 0, 0, 0, time.UTC)
-	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, nil, createdAt)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, InvitationResponsePending, nil, createdAt)
 
 	cases := []struct {
 		name string
@@ -95,32 +117,38 @@ func TestNewInvitation_ReturnsError_WhenInputsAreInvalid(t *testing.T) {
 
 	validCreatedAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	validExpiresAt := validCreatedAt.Add(24 * time.Hour)
+	settledAt := validCreatedAt.Add(time.Hour)
 
 	cases := []struct {
-		name      string
-		id        InvitationID
-		matchID   MatchID
-		playerID  PlayerID
-		tokenHash string
-		expiresAt time.Time
-		createdAt time.Time
-		wantErr   error
+		name        string
+		id          InvitationID
+		matchID     MatchID
+		playerID    PlayerID
+		tokenHash   string
+		expiresAt   time.Time
+		response    InvitationResponse
+		respondedAt *time.Time
+		createdAt   time.Time
+		wantErr     error
 	}{
-		{name: "empty id", id: "", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
-		{name: "empty match id", id: "i-1", matchID: "", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
-		{name: "empty player id", id: "i-1", matchID: "m-1", playerID: "", tokenHash: "h", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
-		{name: "empty token hash", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "", expiresAt: validExpiresAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
-		{name: "zero createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, createdAt: time.Time{}, wantErr: domainerrors.ErrInvalidDate},
-		{name: "zero expiresAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: time.Time{}, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
-		{name: "expiresAt before createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validCreatedAt.Add(-time.Hour), createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
-		{name: "expiresAt equals createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validCreatedAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
+		{name: "empty id", id: "", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, response: InvitationResponsePending, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
+		{name: "empty match id", id: "i-1", matchID: "", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, response: InvitationResponsePending, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
+		{name: "empty player id", id: "i-1", matchID: "m-1", playerID: "", tokenHash: "h", expiresAt: validExpiresAt, response: InvitationResponsePending, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
+		{name: "empty token hash", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "", expiresAt: validExpiresAt, response: InvitationResponsePending, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidID},
+		{name: "zero createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, response: InvitationResponsePending, createdAt: time.Time{}, wantErr: domainerrors.ErrInvalidDate},
+		{name: "zero expiresAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: time.Time{}, response: InvitationResponsePending, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
+		{name: "expiresAt before createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validCreatedAt.Add(-time.Hour), response: InvitationResponsePending, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
+		{name: "expiresAt equals createdAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validCreatedAt, response: InvitationResponsePending, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidDate},
+		{name: "unknown response value", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, response: InvitationResponse("maybe"), createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidInvitationResponse},
+		{name: "pending with respondedAt set", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, response: InvitationResponsePending, respondedAt: &settledAt, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidInvitationResponse},
+		{name: "yes without respondedAt", id: "i-1", matchID: "m-1", playerID: "p-1", tokenHash: "h", expiresAt: validExpiresAt, response: InvitationResponseYes, respondedAt: nil, createdAt: validCreatedAt, wantErr: domainerrors.ErrInvalidInvitationResponse},
 	}
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			inv, err := NewInvitation(testCase.id, testCase.matchID, testCase.playerID, testCase.tokenHash, testCase.expiresAt, nil, testCase.createdAt)
+			inv, err := NewInvitation(testCase.id, testCase.matchID, testCase.playerID, testCase.tokenHash, testCase.expiresAt, testCase.response, testCase.respondedAt, testCase.createdAt)
 
 			if inv != nil {
 				t.Errorf("expected nil invitation, got %+v", inv)
@@ -132,65 +160,115 @@ func TestNewInvitation_ReturnsError_WhenInputsAreInvalid(t *testing.T) {
 	}
 }
 
-func TestInvitation_MarkAsUsed_SetsUsedAt(t *testing.T) {
+func TestInvitation_Respond_TransitionsResponse(t *testing.T) {
 	t.Parallel()
+
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(7 * 24 * time.Hour)
-	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, nil, createdAt)
+	respondAt := createdAt.Add(2 * time.Hour)
 
-	now := createdAt.Add(2 * time.Hour)
-	if err := inv.MarkAsUsed(now); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+	cases := []struct {
+		name          string
+		initialAnswer InvitationResponse
+		initialAt     *time.Time
+		answer        InvitationResponse
+		wantConfirmed bool
+		wantResponse  InvitationResponse
+	}{
+		{name: "pending to yes", initialAnswer: InvitationResponsePending, initialAt: nil, answer: InvitationResponseYes, wantConfirmed: true, wantResponse: InvitationResponseYes},
+		{name: "pending to no", initialAnswer: InvitationResponsePending, initialAt: nil, answer: InvitationResponseNo, wantConfirmed: false, wantResponse: InvitationResponseNo},
+		{name: "yes to no", initialAnswer: InvitationResponseYes, initialAt: &createdAt, answer: InvitationResponseNo, wantConfirmed: false, wantResponse: InvitationResponseNo},
+		{name: "no to yes", initialAnswer: InvitationResponseNo, initialAt: &createdAt, answer: InvitationResponseYes, wantConfirmed: true, wantResponse: InvitationResponseYes},
+		{name: "idempotent yes", initialAnswer: InvitationResponseYes, initialAt: &createdAt, answer: InvitationResponseYes, wantConfirmed: true, wantResponse: InvitationResponseYes},
+		{name: "idempotent no", initialAnswer: InvitationResponseNo, initialAt: &createdAt, answer: InvitationResponseNo, wantConfirmed: false, wantResponse: InvitationResponseNo},
 	}
-	if !inv.IsUsed() {
-		t.Error("expected invitation to be used after MarkAsUsed")
-	}
-	if inv.UsedAt() == nil || !inv.UsedAt().Equal(now) {
-		t.Errorf("expected UsedAt %v, got %v", now, inv.UsedAt())
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, testCase.initialAnswer, testCase.initialAt, createdAt)
+
+			err := inv.Respond(testCase.answer, respondAt, false)
+			if err != nil {
+				t.Fatalf("expected no error, got: %v", err)
+			}
+			if inv.Response() != testCase.wantResponse {
+				t.Errorf("expected response %q, got %q", testCase.wantResponse, inv.Response())
+			}
+			if inv.IsConfirmed() != testCase.wantConfirmed {
+				t.Errorf("expected IsConfirmed=%v, got %v", testCase.wantConfirmed, inv.IsConfirmed())
+			}
+			if inv.RespondedAt() == nil || !inv.RespondedAt().Equal(respondAt) {
+				t.Errorf("expected RespondedAt %v, got %v", respondAt, inv.RespondedAt())
+			}
+		})
 	}
 }
 
-func TestInvitation_MarkAsUsed_ReturnsErrInvitationAlreadyUsed_WhenAlreadyUsed(t *testing.T) {
+func TestInvitation_Respond_RejectsPendingAsAnswer(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expiresAt := createdAt.Add(7 * 24 * time.Hour)
-	firstUsedAt := createdAt.Add(1 * time.Hour)
-	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, &firstUsedAt, createdAt)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, InvitationResponsePending, nil, createdAt)
 
-	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))
+	err := inv.Respond(InvitationResponsePending, createdAt.Add(time.Hour), false)
 
-	if !errors.Is(err, domainerrors.ErrInvitationAlreadyUsed) {
-		t.Errorf("expected ErrInvitationAlreadyUsed, got %v", err)
+	if !errors.Is(err, domainerrors.ErrInvalidInvitationResponse) {
+		t.Errorf("expected ErrInvalidInvitationResponse, got %v", err)
 	}
 }
 
-func TestInvitation_MarkAsUsed_ReturnsErrInvitationExpired_WhenExpired(t *testing.T) {
+func TestInvitation_Respond_RejectsUnknownAnswer(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
-	expiresAt := createdAt.Add(1 * time.Hour)
-	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, nil, createdAt)
+	expiresAt := createdAt.Add(7 * 24 * time.Hour)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, InvitationResponsePending, nil, createdAt)
 
-	// now is past expiresAt.
-	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))
+	err := inv.Respond(InvitationResponse("perhaps"), createdAt.Add(time.Hour), false)
+
+	if !errors.Is(err, domainerrors.ErrInvalidInvitationResponse) {
+		t.Errorf("expected ErrInvalidInvitationResponse, got %v", err)
+	}
+}
+
+func TestInvitation_Respond_ReturnsErrInvitationExpired_WhenExpired(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expiresAt := createdAt.Add(time.Hour)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, InvitationResponsePending, nil, createdAt)
+
+	err := inv.Respond(InvitationResponseYes, createdAt.Add(2*time.Hour), false)
 
 	if !errors.Is(err, domainerrors.ErrInvitationExpired) {
 		t.Errorf("expected ErrInvitationExpired, got %v", err)
 	}
 }
 
-func TestInvitation_MarkAsUsed_PrefersAlreadyUsedOverExpired(t *testing.T) {
+func TestInvitation_Respond_ReturnsErrInvitationLocked_WhenLocked(t *testing.T) {
 	t.Parallel()
-	// An invitation that is both expired AND already used should report
-	// AlreadyUsed because that is the more informative error for the user.
 	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
-	expiresAt := createdAt.Add(1 * time.Hour)
-	firstUsedAt := createdAt.Add(30 * time.Minute)
-	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, &firstUsedAt, createdAt)
+	expiresAt := createdAt.Add(7 * 24 * time.Hour)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, InvitationResponsePending, nil, createdAt)
 
-	// Now is past expiresAt.
-	err := inv.MarkAsUsed(createdAt.Add(2 * time.Hour))
+	err := inv.Respond(InvitationResponseYes, createdAt.Add(time.Hour), true)
 
-	if !errors.Is(err, domainerrors.ErrInvitationAlreadyUsed) {
-		t.Errorf("expected ErrInvitationAlreadyUsed (priority), got %v", err)
+	if !errors.Is(err, domainerrors.ErrInvitationLocked) {
+		t.Errorf("expected ErrInvitationLocked, got %v", err)
+	}
+}
+
+func TestInvitation_Respond_PrefersExpiredOverLocked(t *testing.T) {
+	t.Parallel()
+	// Expired is the more actionable signal for the player: even if the
+	// match also locked attendance, the invitation itself is dead.
+	createdAt := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expiresAt := createdAt.Add(time.Hour)
+	inv, _ := NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, InvitationResponsePending, nil, createdAt)
+
+	err := inv.Respond(InvitationResponseYes, createdAt.Add(2*time.Hour), true)
+
+	if !errors.Is(err, domainerrors.ErrInvitationExpired) {
+		t.Errorf("expected ErrInvitationExpired (priority), got %v", err)
 	}
 }

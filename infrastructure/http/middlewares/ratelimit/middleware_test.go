@@ -49,13 +49,13 @@ func TestDefaultConfig_DoesNotIncludeVotesOrReads(t *testing.T) {
 		"/api/v1/matches/:id",
 	} {
 		if _, found := cfg[path]; found {
-			t.Errorf("%s should NOT be rate-limited; only login/register/accept-invitation are", path)
+			t.Errorf("%s should NOT be rate-limited; only login/register/respond-invitation are", path)
 		}
 	}
 	for _, path := range []string{
 		"/api/v1/auth/login",
 		"/api/v1/auth/register",
-		"/api/v1/invitations/accept",
+		"/api/v1/invitations/respond",
 	} {
 		if _, found := cfg[path]; !found {
 			t.Errorf("%s must be rate-limited", path)

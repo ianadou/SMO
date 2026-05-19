@@ -276,7 +276,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	createInvitationUC := invitationusecase.NewCreateInvitationUseCase(invitationRepo, matchRepo, playerRepo, tokenService, idGenerator, systemClock)
 	getInvitationUC := invitationusecase.NewGetInvitationUseCase(invitationRepo)
 	listInvitationsByMatchUC := invitationusecase.NewListInvitationsByMatchUseCase(invitationRepo)
-	acceptInvitationUC := invitationusecase.NewAcceptInvitationUseCase(invitationRepo, tokenService, systemClock)
+	respondToInvitationUC := invitationusecase.NewRespondToInvitationUseCase(invitationRepo, matchRepo, tokenService, systemClock)
 	listMatchParticipantsUC := invitationusecase.NewListMatchParticipantsUseCase(invitationRepo)
 
 	// Vote use cases.
@@ -369,7 +369,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	playerHandler := handlers.NewPlayerHandler(createPlayerUC, getPlayerUC, listPlayersByGroupUC, updatePlayerRankingUC)
 	playerHandler.Register(public, protected)
 
-	invitationHandler := handlers.NewInvitationHandler(createInvitationUC, getInvitationUC, listInvitationsByMatchUC, acceptInvitationUC)
+	invitationHandler := handlers.NewInvitationHandler(createInvitationUC, getInvitationUC, listInvitationsByMatchUC, respondToInvitationUC)
 	invitationHandler.Register(public, protected)
 
 	voteHandler := handlers.NewVoteHandler(castVoteUC, getVoteUC, listVotesByMatchUC)

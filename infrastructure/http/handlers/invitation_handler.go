@@ -16,7 +16,7 @@ type InvitationHandler struct {
 	createInvitation       *invitation.CreateInvitationUseCase
 	getInvitation          *invitation.GetInvitationUseCase
 	listInvitationsByMatch *invitation.ListInvitationsByMatchUseCase
-	acceptInvitation       *invitation.AcceptInvitationUseCase
+	respondToInvitation    *invitation.RespondToInvitationUseCase
 }
 
 // NewInvitationHandler builds an InvitationHandler.
@@ -24,22 +24,22 @@ func NewInvitationHandler(
 	createInvitation *invitation.CreateInvitationUseCase,
 	getInvitation *invitation.GetInvitationUseCase,
 	listInvitationsByMatch *invitation.ListInvitationsByMatchUseCase,
-	acceptInvitation *invitation.AcceptInvitationUseCase,
+	respondToInvitation *invitation.RespondToInvitationUseCase,
 ) *InvitationHandler {
 	return &InvitationHandler{
 		createInvitation:       createInvitation,
 		getInvitation:          getInvitation,
 		listInvitationsByMatch: listInvitationsByMatch,
-		acceptInvitation:       acceptInvitation,
+		respondToInvitation:    respondToInvitation,
 	}
 }
 
-// Register wires invitation routes. Token-authed actions (Accept) and
+// Register wires invitation routes. Token-authed actions (Respond) and
 // public reads of a single invitation go on `public`. Organizer-only
 // operations (Create, ListByMatch) go on `protected`.
 func (h *InvitationHandler) Register(public, protected *gin.RouterGroup) {
 	publicInvitations := public.Group("/invitations")
-	publicInvitations.POST("/accept", h.Accept)
+	publicInvitations.POST("/respond", h.Respond)
 	publicInvitations.GET("/:id", h.Get)
 
 	protected.POST("/invitations", h.Create)
@@ -104,19 +104,25 @@ func (h *InvitationHandler) ListByMatch(c *gin.Context) {
 	c.JSON(http.StatusOK, responses)
 }
 
-// Accept handles POST /api/invitations/accept.
-func (h *InvitationHandler) Accept(c *gin.Context) {
-	var req dto.AcceptInvitationRequest
+// Respond handles POST /api/invitations/respond. The player submits
+// their plain token and an answer ("yes" or "no"); the answer can be
+// changed until the match locks attendance.
+func (h *InvitationHandler) Respond(c *gin.Context) {
+	var req dto.RespondInvitationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: "invalid request body"})
 		return
 	}
 
-	inv, err := h.acceptInvitation.Execute(c.Request.Context(), req.Token)
+	inv, err := h.respondToInvitation.Execute(
+		c.Request.Context(),
+		req.Token,
+		entities.InvitationResponse(req.Answer),
+	)
 	if err != nil {
 		status, message := httperrors.MapError(err)
 		c.JSON(status, httperrors.ErrorResponse{Error: message})
 		return
 	}
-	c.JSON(http.StatusOK, dto.InvitationResponseFromEntity(inv))
+	c.JSON(http.StatusOK, dto.RespondInvitationResponseFromEntity(inv))
 }

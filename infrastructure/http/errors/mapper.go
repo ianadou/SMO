@@ -79,6 +79,8 @@ func mapValidationError(err error) (int, string, bool) {
 		return http.StatusBadRequest, "invalid password", true
 	case errors.Is(err, domainerrors.ErrInvalidWebhookURL):
 		return http.StatusBadRequest, "invalid webhook url", true
+	case errors.Is(err, domainerrors.ErrInvalidInvitationResponse):
+		return http.StatusBadRequest, "invalid invitation response", true
 	}
 	return 0, "", false
 }
@@ -102,8 +104,8 @@ func mapBusinessRuleError(err error) (int, string, bool) {
 		return http.StatusBadRequest, "player is not in this match", true
 	case errors.Is(err, domainerrors.ErrInvitationExpired):
 		return http.StatusGone, "invitation expired", true
-	case errors.Is(err, domainerrors.ErrInvitationAlreadyUsed):
-		return http.StatusConflict, "invitation already used", true
+	case errors.Is(err, domainerrors.ErrInvitationLocked):
+		return http.StatusConflict, "invitation can no longer be changed", true
 	case errors.Is(err, domainerrors.ErrAlreadyVoted):
 		return http.StatusConflict, "already voted for this player in this match", true
 	case errors.Is(err, domainerrors.ErrMatchNotCompleted):

@@ -170,8 +170,8 @@ func TestCreateInvitationUseCase_Execute_RejectsPlayerFromOtherGroup(t *testing.
 }
 
 // Sanity check on entities.MaxParticipantsPerMatch — referenced by the
-// next use case (AcceptInvitation match-full check) so a regression on
-// the constant fails this test loudly here.
+// respond-to-invitation capacity guard so a regression on the constant
+// fails this test loudly here.
 func TestMaxParticipantsPerMatch_IsTen(t *testing.T) {
 	t.Parallel()
 	if entities.MaxParticipantsPerMatch != 10 {

@@ -17,13 +17,15 @@ type Groups struct {
 }
 
 type Invitations struct {
-	ID        string
-	MatchID   string
-	TokenHash string
-	ExpiresAt pgtype.Timestamptz
-	UsedAt    pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
-	PlayerID  string
+	ID          string
+	MatchID     string
+	TokenHash   string
+	ExpiresAt   pgtype.Timestamptz
+	UsedAt      pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	PlayerID    string
+	Response    string
+	RespondedAt pgtype.Timestamptz
 }
 
 type Matches struct {

@@ -11,123 +11,195 @@ import (
 	domainerrors "github.com/ianadou/smo/domain/errors"
 )
 
-// setupAcceptTest creates a repo with an invitation whose hash matches
-// the given plain token, and returns the wired use case.
-func setupAcceptTest(t *testing.T, plain string, expiresAt time.Time, usedAt *time.Time, clockNow time.Time) *AcceptInvitationUseCase {
+// respondFixture wires a RespondToInvitationUseCase around a single
+// invitation whose hash matches plain, plus a match seeded in the given
+// status so the lock branch can be exercised.
+type respondFixture struct {
+	uc   *RespondToInvitationUseCase
+	repo *fakeInvitationRepository
+}
+
+func newRespondFixture(
+	t *testing.T,
+	plain string,
+	expiresAt time.Time,
+	response entities.InvitationResponse,
+	respondedAt *time.Time,
+	matchStatus entities.MatchStatus,
+	clockNow time.Time,
+) respondFixture {
 	t.Helper()
 	repo := newFakeInvitationRepository()
-	tokens := newFakeTokenService() // GenerateToken not used here
+	matchRepo := newFakeMatchRepo()
+	matchRepo.seedMatchWithStatus(t, "match-1", "group-1", matchStatus)
+	tokens := newFakeTokenService()
 	hash := tokens.HashToken(plain)
 
-	createdAt := expiresAt.Add(-2 * time.Hour) // must be before expiresAt
-	inv, err := entities.NewInvitation("inv-1", "match-1", "p-1", hash, expiresAt, usedAt, createdAt)
+	createdAt := expiresAt.Add(-7 * 24 * time.Hour)
+	inv, err := entities.NewInvitation("inv-1", "match-1", "p-1", hash, expiresAt, response, respondedAt, createdAt)
 	if err != nil {
 		t.Fatalf("setup: NewInvitation: %v", err)
 	}
 	_ = repo.Save(context.Background(), inv)
 
-	return NewAcceptInvitationUseCase(repo, tokens, newFakeClock(clockNow))
+	uc := NewRespondToInvitationUseCase(repo, matchRepo, tokens, newFakeClock(clockNow))
+	return respondFixture{uc: uc, repo: repo}
 }
 
-func TestAcceptInvitationUseCase_Execute_MarksInvitationAsUsed(t *testing.T) {
+func TestRespondToInvitationUseCase_Execute_ConfirmsAttendance_WhenAnswerIsYes(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expires := now.Add(24 * time.Hour)
-	uc := setupAcceptTest(t, "plain-token", expires, nil, now)
+	f := newRespondFixture(t, "tok", expires, entities.InvitationResponsePending, nil, entities.MatchStatusOpen, now)
 
-	inv, err := uc.Execute(context.Background(), "plain-token")
+	inv, err := f.uc.Execute(context.Background(), "tok", entities.InvitationResponseYes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !inv.IsUsed() {
-		t.Error("expected invitation to be used after Accept")
+	if !inv.IsConfirmed() {
+		t.Error("expected invitation to be confirmed after answering yes")
 	}
 }
 
-func TestAcceptInvitationUseCase_Execute_ReturnsErrInvitationNotFound_WhenTokenDoesNotMatch(t *testing.T) {
+func TestRespondToInvitationUseCase_Execute_RecordsDecline_WhenAnswerIsNo(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expires := now.Add(24 * time.Hour)
-	uc := setupAcceptTest(t, "real-token", expires, nil, now)
+	f := newRespondFixture(t, "tok", expires, entities.InvitationResponsePending, nil, entities.MatchStatusOpen, now)
 
-	_, err := uc.Execute(context.Background(), "wrong-token")
+	inv, err := f.uc.Execute(context.Background(), "tok", entities.InvitationResponseNo)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if inv.Response() != entities.InvitationResponseNo {
+		t.Errorf("expected response 'no', got %q", inv.Response())
+	}
+	if inv.IsConfirmed() {
+		t.Error("a declined invitation must not be confirmed")
+	}
+}
+
+func TestRespondToInvitationUseCase_Execute_ChangesYesToNo(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+	earlier := now.Add(-time.Hour)
+	f := newRespondFixture(t, "tok", expires, entities.InvitationResponseYes, &earlier, entities.MatchStatusOpen, now)
+
+	inv, err := f.uc.Execute(context.Background(), "tok", entities.InvitationResponseNo)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if inv.Response() != entities.InvitationResponseNo {
+		t.Errorf("expected response 'no' after change, got %q", inv.Response())
+	}
+}
+
+func TestRespondToInvitationUseCase_Execute_ChangesNoToYes(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+	earlier := now.Add(-time.Hour)
+	f := newRespondFixture(t, "tok", expires, entities.InvitationResponseNo, &earlier, entities.MatchStatusOpen, now)
+
+	inv, err := f.uc.Execute(context.Background(), "tok", entities.InvitationResponseYes)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !inv.IsConfirmed() {
+		t.Error("expected invitation to be confirmed after changing no->yes")
+	}
+}
+
+func TestRespondToInvitationUseCase_Execute_IsIdempotent_WhenSameAnswerRepeated(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+	earlier := now.Add(-time.Hour)
+	f := newRespondFixture(t, "tok", expires, entities.InvitationResponseYes, &earlier, entities.MatchStatusOpen, now)
+
+	inv, err := f.uc.Execute(context.Background(), "tok", entities.InvitationResponseYes)
+	if err != nil {
+		t.Fatalf("unexpected error on idempotent yes: %v", err)
+	}
+	if !inv.IsConfirmed() {
+		t.Error("expected invitation to remain confirmed")
+	}
+	if inv.RespondedAt() == nil || !inv.RespondedAt().Equal(now) {
+		t.Errorf("expected RespondedAt refreshed to %v, got %v", now, inv.RespondedAt())
+	}
+}
+
+func TestRespondToInvitationUseCase_Execute_ReturnsErrInvitationNotFound_WhenTokenDoesNotMatch(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+	f := newRespondFixture(t, "real-token", expires, entities.InvitationResponsePending, nil, entities.MatchStatusOpen, now)
+
+	_, err := f.uc.Execute(context.Background(), "wrong-token", entities.InvitationResponseYes)
 	if !errors.Is(err, domainerrors.ErrInvitationNotFound) {
 		t.Errorf("expected ErrInvitationNotFound, got %v", err)
 	}
 }
 
-func TestAcceptInvitationUseCase_Execute_ReturnsErrInvitationExpired(t *testing.T) {
+func TestRespondToInvitationUseCase_Execute_ReturnsErrInvitationExpired(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
-	// Expires in the past relative to now.
 	expiresInPast := now.Add(-time.Hour)
-	uc := setupAcceptTest(t, "plain-token", expiresInPast, nil, now)
+	f := newRespondFixture(t, "tok", expiresInPast, entities.InvitationResponsePending, nil, entities.MatchStatusOpen, now)
 
-	_, err := uc.Execute(context.Background(), "plain-token")
+	_, err := f.uc.Execute(context.Background(), "tok", entities.InvitationResponseYes)
 	if !errors.Is(err, domainerrors.ErrInvitationExpired) {
 		t.Errorf("expected ErrInvitationExpired, got %v", err)
 	}
 }
 
-func TestAcceptInvitationUseCase_Execute_ReturnsErrInvitationAlreadyUsed(t *testing.T) {
+func TestRespondToInvitationUseCase_Execute_ReturnsErrInvitationLocked_WhenMatchPastOpen(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expires := now.Add(24 * time.Hour)
-	usedAt := now.Add(-30 * time.Minute) // used earlier
-	uc := setupAcceptTest(t, "plain-token", expires, &usedAt, now)
 
-	_, err := uc.Execute(context.Background(), "plain-token")
-	if !errors.Is(err, domainerrors.ErrInvitationAlreadyUsed) {
-		t.Errorf("expected ErrInvitationAlreadyUsed, got %v", err)
+	for _, status := range []entities.MatchStatus{
+		entities.MatchStatusTeamsReady,
+		entities.MatchStatusInProgress,
+		entities.MatchStatusCompleted,
+		entities.MatchStatusClosed,
+	} {
+		t.Run(string(status), func(t *testing.T) {
+			t.Parallel()
+			f := newRespondFixture(t, "tok", expires, entities.InvitationResponsePending, nil, status, now)
+
+			_, err := f.uc.Execute(context.Background(), "tok", entities.InvitationResponseYes)
+
+			if !errors.Is(err, domainerrors.ErrInvitationLocked) {
+				t.Errorf("status %q: expected ErrInvitationLocked, got %v", status, err)
+			}
+		})
 	}
 }
 
-func TestAcceptInvitationUseCase_Execute_PropagatesPersistError(t *testing.T) {
+func TestRespondToInvitationUseCase_Execute_ReturnsErrMatchFull_WhenMatchAtCapacity(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expires := now.Add(24 * time.Hour)
-	persistErr := errors.New("disk full")
-
-	tokens := newFakeTokenService()
-	hash := tokens.HashToken("plain-token")
-	createdAt := expires.Add(-2 * time.Hour)
-	inv, err := entities.NewInvitation("inv-1", "match-1", "p-1", hash, expires, nil, createdAt)
-	if err != nil {
-		t.Fatalf("setup: %v", err)
-	}
-	repo := newFakeInvitationRepository()
-	_ = repo.Save(context.Background(), inv)
-	repo.markAsUsedErr = persistErr
-
-	_, execErr := NewAcceptInvitationUseCase(repo, tokens, newFakeClock(now)).
-		Execute(context.Background(), "plain-token")
-
-	if !errors.Is(execErr, persistErr) {
-		t.Errorf("expected wrapped persist error, got %v", execErr)
-	}
-}
-
-func TestAcceptInvitationUseCase_Execute_ReturnsErrMatchFull_WhenMatchAtCapacity(t *testing.T) {
-	t.Parallel()
-	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
-	expires := now.Add(24 * time.Hour)
-
-	tokens := newFakeTokenService()
-	hash := tokens.HashToken("plain-token")
-	createdAt := expires.Add(-2 * time.Hour)
+	createdAt := expires.Add(-7 * 24 * time.Hour)
 
 	repo := newFakeInvitationRepository()
+	matchRepo := newFakeMatchRepo()
+	matchRepo.seedMatchWithStatus(t, "match-1", "group-1", entities.MatchStatusOpen)
+	tokens := newFakeTokenService()
+	hash := tokens.HashToken("tok")
 
-	// Seed MaxParticipantsPerMatch confirmed invitations (used_at set).
 	for i := 0; i < entities.MaxParticipantsPerMatch; i++ {
-		usedAt := createdAt.Add(time.Duration(i) * time.Minute)
+		respondedAt := createdAt.Add(time.Duration(i) * time.Minute)
 		confirmed, err := entities.NewInvitation(
 			entities.InvitationID(fmt.Sprintf("inv-confirmed-%d", i)),
 			"match-1",
 			entities.PlayerID(fmt.Sprintf("player-%d", i)),
 			fmt.Sprintf("hash-%d", i),
 			expires,
-			&usedAt,
+			entities.InvitationResponseYes,
+			&respondedAt,
 			createdAt,
 		)
 		if err != nil {
@@ -136,63 +208,81 @@ func TestAcceptInvitationUseCase_Execute_ReturnsErrMatchFull_WhenMatchAtCapacity
 		_ = repo.Save(context.Background(), confirmed)
 	}
 
-	// And one fresh pending invitation that will try to accept (the 11th).
 	pending, err := entities.NewInvitation(
-		"inv-pending", "match-1", "player-late", hash, expires, nil, createdAt,
+		"inv-pending", "match-1", "player-late", hash, expires,
+		entities.InvitationResponsePending, nil, createdAt,
 	)
 	if err != nil {
 		t.Fatalf("seed pending: %v", err)
 	}
 	_ = repo.Save(context.Background(), pending)
 
-	uc := NewAcceptInvitationUseCase(repo, tokens, newFakeClock(now))
+	uc := NewRespondToInvitationUseCase(repo, matchRepo, tokens, newFakeClock(now))
 
-	_, execErr := uc.Execute(context.Background(), "plain-token")
+	_, execErr := uc.Execute(context.Background(), "tok", entities.InvitationResponseYes)
 
 	if !errors.Is(execErr, domainerrors.ErrMatchFull) {
 		t.Errorf("expected ErrMatchFull, got %v", execErr)
 	}
 }
 
-func TestAcceptInvitationUseCase_Execute_AllowsAcceptance_WhenBelowCapacity(t *testing.T) {
+func TestRespondToInvitationUseCase_Execute_AllowsConfirmation_WhenBelowCapacity(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
 	expires := now.Add(24 * time.Hour)
-
-	tokens := newFakeTokenService()
-	hash := tokens.HashToken("plain-token")
-	createdAt := expires.Add(-2 * time.Hour)
+	createdAt := expires.Add(-7 * 24 * time.Hour)
 
 	repo := newFakeInvitationRepository()
+	matchRepo := newFakeMatchRepo()
+	matchRepo.seedMatchWithStatus(t, "match-1", "group-1", entities.MatchStatusOpen)
+	tokens := newFakeTokenService()
+	hash := tokens.HashToken("tok")
 
-	// Seed (Max - 1) confirmed invitations: there is exactly one slot left.
 	for i := 0; i < entities.MaxParticipantsPerMatch-1; i++ {
-		usedAt := createdAt.Add(time.Duration(i) * time.Minute)
+		respondedAt := createdAt.Add(time.Duration(i) * time.Minute)
 		confirmed, _ := entities.NewInvitation(
 			entities.InvitationID(fmt.Sprintf("inv-confirmed-%d", i)),
 			"match-1",
 			entities.PlayerID(fmt.Sprintf("player-%d", i)),
 			fmt.Sprintf("hash-%d", i),
 			expires,
-			&usedAt,
+			entities.InvitationResponseYes,
+			&respondedAt,
 			createdAt,
 		)
 		_ = repo.Save(context.Background(), confirmed)
 	}
 
 	pending, _ := entities.NewInvitation(
-		"inv-pending", "match-1", "player-last", hash, expires, nil, createdAt,
+		"inv-pending", "match-1", "player-last", hash, expires,
+		entities.InvitationResponsePending, nil, createdAt,
 	)
 	_ = repo.Save(context.Background(), pending)
 
-	uc := NewAcceptInvitationUseCase(repo, tokens, newFakeClock(now))
+	uc := NewRespondToInvitationUseCase(repo, matchRepo, tokens, newFakeClock(now))
 
-	inv, execErr := uc.Execute(context.Background(), "plain-token")
+	inv, execErr := uc.Execute(context.Background(), "tok", entities.InvitationResponseYes)
 
 	if execErr != nil {
 		t.Fatalf("expected no error at capacity-1, got %v", execErr)
 	}
-	if !inv.IsUsed() {
-		t.Errorf("expected last-slot invitation to be marked used")
+	if !inv.IsConfirmed() {
+		t.Errorf("expected last-slot invitation to be confirmed")
+	}
+}
+
+func TestRespondToInvitationUseCase_Execute_PropagatesPersistError(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+	persistErr := errors.New("disk full")
+
+	f := newRespondFixture(t, "tok", expires, entities.InvitationResponsePending, nil, entities.MatchStatusOpen, now)
+	f.repo.respondErr = persistErr
+
+	_, execErr := f.uc.Execute(context.Background(), "tok", entities.InvitationResponseYes)
+
+	if !errors.Is(execErr, persistErr) {
+		t.Errorf("expected wrapped persist error, got %v", execErr)
 	}
 }

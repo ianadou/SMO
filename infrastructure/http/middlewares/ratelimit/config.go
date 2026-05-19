@@ -22,8 +22,8 @@ type Config map[string]RouteSpec
 // only a complementary layer against brute-force.
 func DefaultConfig() Config {
 	return Config{
-		"/api/v1/auth/login":         {Limit: 5, Window: 15 * time.Minute},
-		"/api/v1/auth/register":      {Limit: 3, Window: time.Hour},
-		"/api/v1/invitations/accept": {Limit: 10, Window: time.Minute},
+		"/api/v1/auth/login":          {Limit: 5, Window: 15 * time.Minute},
+		"/api/v1/auth/register":       {Limit: 3, Window: time.Hour},
+		"/api/v1/invitations/respond": {Limit: 10, Window: time.Minute},
 	}
 }

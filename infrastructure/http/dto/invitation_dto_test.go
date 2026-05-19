@@ -11,14 +11,34 @@ func TestInvitationResponseFromEntity_OmitsPlainToken(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Now()
 	expiresAt := createdAt.Add(5 * 24 * time.Hour)
-	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, nil, createdAt)
+	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, entities.InvitationResponsePending, nil, createdAt)
 
 	resp := InvitationResponseFromEntity(inv)
 	if resp.ID != "inv-1" {
 		t.Errorf("expected 'inv-1', got %q", resp.ID)
 	}
-	if resp.UsedAt != nil {
-		t.Errorf("expected nil UsedAt, got %v", resp.UsedAt)
+	if resp.Response != "pending" {
+		t.Errorf("expected response 'pending', got %q", resp.Response)
+	}
+	if resp.RespondedAt != nil {
+		t.Errorf("expected nil RespondedAt, got %v", resp.RespondedAt)
+	}
+}
+
+func TestRespondInvitationResponseFromEntity_ExposesResponseAndTimestamp(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Now()
+	expiresAt := createdAt.Add(5 * 24 * time.Hour)
+	respondedAt := createdAt.Add(time.Hour)
+	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, entities.InvitationResponseYes, &respondedAt, createdAt)
+
+	resp := RespondInvitationResponseFromEntity(inv)
+
+	if resp.Response != "yes" {
+		t.Errorf("expected response 'yes', got %q", resp.Response)
+	}
+	if resp.RespondedAt == nil || !resp.RespondedAt.Equal(respondedAt) {
+		t.Errorf("expected RespondedAt %v, got %v", respondedAt, resp.RespondedAt)
 	}
 }
 

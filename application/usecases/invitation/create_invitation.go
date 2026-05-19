@@ -105,6 +105,7 @@ func (uc *CreateInvitationUseCase) Execute(ctx context.Context, input CreateInvi
 		input.PlayerID,
 		hash,
 		expiresAt,
+		entities.InvitationResponsePending,
 		nil,
 		now,
 	)

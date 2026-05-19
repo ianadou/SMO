@@ -5,63 +5,84 @@ import (
 	"fmt"
 
 	"github.com/ianadou/smo/domain/entities"
-	domainerrors "github.com/ianadou/smo/domain/errors"
 	"github.com/ianadou/smo/domain/ports"
 )
 
-// AcceptInvitationUseCase consumes an invitation by its plain token.
-// The workflow is:
+// RespondToInvitationUseCase records (or changes) a player's answer to
+// an invitation identified by its plain token. The workflow is:
 //
-//  1. hash the plain token
-//  2. look up the invitation by hash
-//  3. count confirmed invitations for the same match; reject with
-//     ErrMatchFull if the count already reached MaxParticipantsPerMatch
-//     (FCFS policy — see ADR 0008)
-//  4. MarkAsUsed (validates not-used / not-expired on the entity)
-//  5. persist
-type AcceptInvitationUseCase struct {
-	repo   ports.InvitationRepository
-	tokens ports.InvitationTokenService
-	clock  ports.Clock
+//  1. hash the plain token, look up the invitation by hash
+//  2. load the match to decide whether attendance is locked
+//     (locked from teams_ready onward)
+//  3. apply the answer on the entity (enforces valid answer / not
+//     expired / not locked)
+//  4. persist through the capacity-guarded repository call, which
+//     atomically rejects with ErrMatchFull if confirming would exceed
+//     MaxParticipantsPerMatch (FCFS policy — see ADR 0008)
+//
+// Capacity is enforced only inside the repository transaction; the use
+// case never pre-counts, which is what removes the original
+// check-then-act race.
+type RespondToInvitationUseCase struct {
+	repo      ports.InvitationRepository
+	matchRepo ports.MatchRepository
+	tokens    ports.InvitationTokenService
+	clock     ports.Clock
 }
 
-// NewAcceptInvitationUseCase builds the use case.
-func NewAcceptInvitationUseCase(
+// NewRespondToInvitationUseCase builds the use case.
+func NewRespondToInvitationUseCase(
 	repo ports.InvitationRepository,
+	matchRepo ports.MatchRepository,
 	tokens ports.InvitationTokenService,
 	clock ports.Clock,
-) *AcceptInvitationUseCase {
-	return &AcceptInvitationUseCase{repo: repo, tokens: tokens, clock: clock}
+) *RespondToInvitationUseCase {
+	return &RespondToInvitationUseCase{
+		repo:      repo,
+		matchRepo: matchRepo,
+		tokens:    tokens,
+		clock:     clock,
+	}
 }
 
-// Execute accepts the invitation identified by the given plain token.
-// Returns ErrInvitationNotFound if no invitation matches the hash,
-// ErrInvitationExpired / ErrInvitationAlreadyUsed if the invitation
-// cannot be consumed, or ErrMatchFull if the match already reached
-// MaxParticipantsPerMatch confirmed invitations.
-func (uc *AcceptInvitationUseCase) Execute(ctx context.Context, plainToken string) (*entities.Invitation, error) {
+// Execute applies the answer to the invitation identified by the given
+// plain token. Returns ErrInvitationNotFound if no invitation matches
+// the hash, ErrInvalidInvitationResponse for an unsettable answer,
+// ErrInvitationExpired / ErrInvitationLocked if the answer cannot be
+// changed, or ErrMatchFull if confirming would exceed the participant
+// cap.
+func (uc *RespondToInvitationUseCase) Execute(
+	ctx context.Context,
+	plainToken string,
+	answer entities.InvitationResponse,
+) (*entities.Invitation, error) {
 	hash := uc.tokens.HashToken(plainToken)
 
 	inv, err := uc.repo.FindByTokenHash(ctx, hash)
 	if err != nil {
-		return nil, fmt.Errorf("accept invitation use case: find by hash: %w", err)
+		return nil, fmt.Errorf("respond to invitation use case: find by hash: %w", err)
 	}
 
-	confirmed, err := uc.repo.CountConfirmedByMatch(ctx, inv.MatchID())
+	match, err := uc.matchRepo.FindByID(ctx, inv.MatchID())
 	if err != nil {
-		return nil, fmt.Errorf("accept invitation use case: count confirmed: %w", err)
-	}
-	if confirmed >= entities.MaxParticipantsPerMatch {
-		return nil, fmt.Errorf("accept invitation use case: %w", domainerrors.ErrMatchFull)
+		return nil, fmt.Errorf("respond to invitation use case: find match: %w", err)
 	}
 
-	if markErr := inv.MarkAsUsed(uc.clock.Now()); markErr != nil {
-		return nil, fmt.Errorf("accept invitation use case: mark used: %w", markErr)
+	if respondErr := inv.Respond(answer, uc.clock.Now(), attendanceLocked(match.Status())); respondErr != nil {
+		return nil, fmt.Errorf("respond to invitation use case: respond: %w", respondErr)
 	}
 
-	if saveErr := uc.repo.MarkAsUsed(ctx, inv); saveErr != nil {
-		return nil, fmt.Errorf("accept invitation use case: persist: %w", saveErr)
+	if saveErr := uc.repo.RespondWithCapacityGuard(ctx, inv, entities.MaxParticipantsPerMatch); saveErr != nil {
+		return nil, fmt.Errorf("respond to invitation use case: persist: %w", saveErr)
 	}
 
 	return inv, nil
+}
+
+// attendanceLocked reports whether the match has moved past the point
+// where a player can still change their attendance. Attendance is
+// changeable while the match is draft or open; from teams_ready onward
+// the rosters are being acted upon, so responses are frozen.
+func attendanceLocked(status entities.MatchStatus) bool {
+	return status != entities.MatchStatusDraft && status != entities.MatchStatusOpen
 }

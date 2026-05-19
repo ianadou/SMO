@@ -75,7 +75,7 @@ func (r *fakeInvRepo) CountConfirmedByMatch(_ context.Context, matchID entities.
 	defer r.mu.Unlock()
 	count := 0
 	for _, inv := range r.invitations {
-		if inv.MatchID() == matchID && inv.IsUsed() {
+		if inv.MatchID() == matchID && inv.IsConfirmed() {
 			count++
 		}
 	}
@@ -87,18 +87,18 @@ func (r *fakeInvRepo) ListConfirmedParticipants(_ context.Context, matchID entit
 	defer r.mu.Unlock()
 	out := make([]entities.MatchParticipant, 0)
 	for _, inv := range r.invitations {
-		if inv.MatchID() == matchID && inv.IsUsed() {
+		if inv.MatchID() == matchID && inv.IsConfirmed() {
 			out = append(out, entities.MatchParticipant{
 				PlayerID:    inv.PlayerID(),
 				PlayerName:  "Fake " + string(inv.PlayerID()),
-				ConfirmedAt: *inv.UsedAt(),
+				ConfirmedAt: *inv.RespondedAt(),
 			})
 		}
 	}
 	return out, nil
 }
 
-func (r *fakeInvRepo) MarkAsUsed(_ context.Context, inv *entities.Invitation) error {
+func (r *fakeInvRepo) RespondWithCapacityGuard(_ context.Context, inv *entities.Invitation, _ int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.invitations[inv.ID()]; !ok {
@@ -173,7 +173,7 @@ func buildInvitationTestRouter(t *testing.T) *gin.Engine {
 		invitation.NewCreateInvitationUseCase(repo, invStubMatchRepo{}, invStubPlayerRepo{}, tokens, idGen, clock),
 		invitation.NewGetInvitationUseCase(repo),
 		invitation.NewListInvitationsByMatchUseCase(repo),
-		invitation.NewAcceptInvitationUseCase(repo, tokens, clock),
+		invitation.NewRespondToInvitationUseCase(repo, invStubMatchRepo{}, tokens, clock),
 	)
 
 	router := gin.New()
@@ -231,13 +231,12 @@ func TestInvitationHandler_Get_Returns404_WhenMissing(t *testing.T) {
 	}
 }
 
-func TestInvitationHandler_Accept_FullLifecycle(t *testing.T) {
-	// End-to-end: create → accept → verify used_at populated.
-	router := buildInvitationTestRouter(t)
-
-	// 1. Create.
-	createBody := `{"match_id":"match-1","player_id":"player-1"}`
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(createBody))
+// createInvitationAndToken creates an invitation through the HTTP API
+// and returns its one-time plain token.
+func createInvitationAndToken(t *testing.T, router *gin.Engine) string {
+	t.Helper()
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations",
+		bytes.NewBufferString(`{"match_id":"match-1","player_id":"player-1"}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRec := httptest.NewRecorder()
 	router.ServeHTTP(createRec, createReq)
@@ -248,32 +247,72 @@ func TestInvitationHandler_Accept_FullLifecycle(t *testing.T) {
 	if !ok || plainToken == "" {
 		t.Fatalf("no plain_token in create response: %v", createResp)
 	}
-
-	// 2. Accept with the plain token.
-	acceptBody := `{"token":"` + plainToken + `"}`
-	acceptReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations/accept", bytes.NewBufferString(acceptBody))
-	acceptReq.Header.Set("Content-Type", "application/json")
-	acceptRec := httptest.NewRecorder()
-	router.ServeHTTP(acceptRec, acceptReq)
-
-	if acceptRec.Code != http.StatusOK {
-		t.Fatalf("expected 200 on accept, got %d (body=%s)", acceptRec.Code, acceptRec.Body.String())
-	}
-	var acceptResp map[string]any
-	_ = json.Unmarshal(acceptRec.Body.Bytes(), &acceptResp)
-	if acceptResp["used_at"] == nil {
-		t.Error("expected used_at to be populated after accept")
-	}
+	return plainToken
 }
 
-func TestInvitationHandler_Accept_Returns404_WhenTokenInvalid(t *testing.T) {
-	router := buildInvitationTestRouter(t)
-
-	body := `{"token":"definitely-not-a-real-token"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations/accept", bytes.NewBufferString(body))
+func respond(t *testing.T, router *gin.Engine, token, answer string) *httptest.ResponseRecorder {
+	t.Helper()
+	body := `{"token":"` + token + `","answer":"` + answer + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations/respond", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestInvitationHandler_Respond_ConfirmsAttendance_WhenAnswerIsYes(t *testing.T) {
+	router := buildInvitationTestRouter(t)
+	token := createInvitationAndToken(t, router)
+
+	rec := respond(t, router, token, "yes")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 on respond, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp["response"] != "yes" {
+		t.Errorf("expected response 'yes', got %v", resp["response"])
+	}
+	if resp["responded_at"] == nil {
+		t.Error("expected responded_at to be populated after responding")
+	}
+}
+
+func TestInvitationHandler_Respond_AllowsChangingTheAnswer(t *testing.T) {
+	router := buildInvitationTestRouter(t)
+	token := createInvitationAndToken(t, router)
+
+	if rec := respond(t, router, token, "yes"); rec.Code != http.StatusOK {
+		t.Fatalf("first respond (yes) failed: %d (%s)", rec.Code, rec.Body.String())
+	}
+	rec := respond(t, router, token, "no")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 on changed answer, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp["response"] != "no" {
+		t.Errorf("expected response 'no' after change, got %v", resp["response"])
+	}
+}
+
+func TestInvitationHandler_Respond_Returns400_WhenAnswerInvalid(t *testing.T) {
+	router := buildInvitationTestRouter(t)
+	token := createInvitationAndToken(t, router)
+
+	rec := respond(t, router, token, "maybe")
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid answer, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestInvitationHandler_Respond_Returns404_WhenTokenInvalid(t *testing.T) {
+	router := buildInvitationTestRouter(t)
+
+	rec := respond(t, router, "definitely-not-a-real-token", "yes")
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("expected 404, got %d (body=%s)", rec.Code, rec.Body.String())

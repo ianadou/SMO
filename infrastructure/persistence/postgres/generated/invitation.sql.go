@@ -13,7 +13,7 @@ import (
 
 const countConfirmedInvitationsByMatchID = `-- name: CountConfirmedInvitationsByMatchID :one
 SELECT COUNT(*) FROM invitations
-WHERE match_id = $1 AND used_at IS NOT NULL
+WHERE match_id = $1 AND response = 'yes'
 `
 
 func (q *Queries) CountConfirmedInvitationsByMatchID(ctx context.Context, matchID string) (int64, error) {
@@ -24,9 +24,9 @@ func (q *Queries) CountConfirmedInvitationsByMatchID(ctx context.Context, matchI
 }
 
 const createInvitation = `-- name: CreateInvitation :one
-INSERT INTO invitations (id, match_id, player_id, token_hash, expires_at, used_at, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id
+INSERT INTO invitations (id, match_id, player_id, token_hash, expires_at, response, responded_at, created_at)
+VALUES ($1, $2, $3, $4, $5, 'pending', NULL, $6)
+RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at
 `
 
 type CreateInvitationParams struct {
@@ -35,7 +35,6 @@ type CreateInvitationParams struct {
 	PlayerID  string
 	TokenHash string
 	ExpiresAt pgtype.Timestamptz
-	UsedAt    pgtype.Timestamptz
 	CreatedAt pgtype.Timestamptz
 }
 
@@ -46,7 +45,6 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		arg.PlayerID,
 		arg.TokenHash,
 		arg.ExpiresAt,
-		arg.UsedAt,
 		arg.CreatedAt,
 	)
 	var i Invitations
@@ -58,6 +56,8 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		&i.UsedAt,
 		&i.CreatedAt,
 		&i.PlayerID,
+		&i.Response,
+		&i.RespondedAt,
 	)
 	return i, err
 }
@@ -72,7 +72,7 @@ func (q *Queries) DeleteInvitation(ctx context.Context, id string) error {
 }
 
 const getInvitationByID = `-- name: GetInvitationByID :one
-SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id FROM invitations WHERE id = $1
+SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at FROM invitations WHERE id = $1
 `
 
 func (q *Queries) GetInvitationByID(ctx context.Context, id string) (Invitations, error) {
@@ -86,12 +86,14 @@ func (q *Queries) GetInvitationByID(ctx context.Context, id string) (Invitations
 		&i.UsedAt,
 		&i.CreatedAt,
 		&i.PlayerID,
+		&i.Response,
+		&i.RespondedAt,
 	)
 	return i, err
 }
 
 const getInvitationByTokenHash = `-- name: GetInvitationByTokenHash :one
-SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id FROM invitations WHERE token_hash = $1
+SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at FROM invitations WHERE token_hash = $1
 `
 
 func (q *Queries) GetInvitationByTokenHash(ctx context.Context, tokenHash string) (Invitations, error) {
@@ -105,6 +107,8 @@ func (q *Queries) GetInvitationByTokenHash(ctx context.Context, tokenHash string
 		&i.UsedAt,
 		&i.CreatedAt,
 		&i.PlayerID,
+		&i.Response,
+		&i.RespondedAt,
 	)
 	return i, err
 }
@@ -114,19 +118,19 @@ SELECT
     invitations.id            AS invitation_id,
     invitations.player_id     AS player_id,
     players.name              AS player_name,
-    invitations.used_at       AS used_at
+    invitations.responded_at  AS responded_at
 FROM invitations
 JOIN players ON players.id = invitations.player_id
 WHERE invitations.match_id = $1
-  AND invitations.used_at IS NOT NULL
-ORDER BY invitations.used_at ASC
+  AND invitations.response = 'yes'
+ORDER BY invitations.responded_at ASC
 `
 
 type ListConfirmedParticipantsByMatchIDRow struct {
 	InvitationID string
 	PlayerID     string
 	PlayerName   string
-	UsedAt       pgtype.Timestamptz
+	RespondedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) ListConfirmedParticipantsByMatchID(ctx context.Context, matchID string) ([]ListConfirmedParticipantsByMatchIDRow, error) {
@@ -142,7 +146,7 @@ func (q *Queries) ListConfirmedParticipantsByMatchID(ctx context.Context, matchI
 			&i.InvitationID,
 			&i.PlayerID,
 			&i.PlayerName,
-			&i.UsedAt,
+			&i.RespondedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -155,7 +159,7 @@ func (q *Queries) ListConfirmedParticipantsByMatchID(ctx context.Context, matchI
 }
 
 const listInvitationsByMatchID = `-- name: ListInvitationsByMatchID :many
-SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id FROM invitations
+SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at FROM invitations
 WHERE match_id = $1
 ORDER BY created_at DESC
 `
@@ -177,6 +181,8 @@ func (q *Queries) ListInvitationsByMatchID(ctx context.Context, matchID string) 
 			&i.UsedAt,
 			&i.CreatedAt,
 			&i.PlayerID,
+			&i.Response,
+			&i.RespondedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -188,20 +194,31 @@ func (q *Queries) ListInvitationsByMatchID(ctx context.Context, matchID string) 
 	return items, nil
 }
 
-const markInvitationAsUsed = `-- name: MarkInvitationAsUsed :one
-UPDATE invitations
-SET used_at = $2
-WHERE id = $1
-RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id
+const lockMatchRow = `-- name: LockMatchRow :one
+SELECT id FROM matches WHERE id = $1 FOR UPDATE
 `
 
-type MarkInvitationAsUsedParams struct {
-	ID     string
-	UsedAt pgtype.Timestamptz
+func (q *Queries) LockMatchRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, lockMatchRow, id)
+	err := row.Scan(&id)
+	return id, err
 }
 
-func (q *Queries) MarkInvitationAsUsed(ctx context.Context, arg MarkInvitationAsUsedParams) (Invitations, error) {
-	row := q.db.QueryRow(ctx, markInvitationAsUsed, arg.ID, arg.UsedAt)
+const updateInvitationResponse = `-- name: UpdateInvitationResponse :one
+UPDATE invitations
+SET response = $2, responded_at = $3
+WHERE id = $1
+RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at
+`
+
+type UpdateInvitationResponseParams struct {
+	ID          string
+	Response    string
+	RespondedAt pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateInvitationResponse(ctx context.Context, arg UpdateInvitationResponseParams) (Invitations, error) {
+	row := q.db.QueryRow(ctx, updateInvitationResponse, arg.ID, arg.Response, arg.RespondedAt)
 	var i Invitations
 	err := row.Scan(
 		&i.ID,
@@ -211,6 +228,8 @@ func (q *Queries) MarkInvitationAsUsed(ctx context.Context, arg MarkInvitationAs
 		&i.UsedAt,
 		&i.CreatedAt,
 		&i.PlayerID,
+		&i.Response,
+		&i.RespondedAt,
 	)
 	return i, err
 }
