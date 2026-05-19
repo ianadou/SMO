@@ -90,4 +90,32 @@ describe('BaseModal', () => {
     await wrapper.get('dialog').trigger('click')
     expect(wrapper.emitted('close')).toBeUndefined()
   })
+
+  it('hides the close button and header in confirm variant', async () => {
+    const wrapper = await mountSuspended(BaseModal, {
+      props: { ...baseProps, open: true, variant: 'confirm' },
+      slots: slot,
+    })
+    expect(wrapper.find('button[aria-label="Fermer"]').exists()).toBe(false)
+    expect(wrapper.find('header').exists()).toBe(false)
+  })
+
+  it('renders a centered title in confirm variant', async () => {
+    const wrapper = await mountSuspended(BaseModal, {
+      props: { ...baseProps, open: true, variant: 'confirm' },
+      slots: slot,
+    })
+    const title = wrapper.find('h2')
+    expect(title.text()).toBe('Nouveau groupe')
+    expect(title.classes()).toContain('text-center')
+  })
+
+  it('still emits close on Escape (cancel) in confirm variant', async () => {
+    const wrapper = await mountSuspended(BaseModal, {
+      props: { ...baseProps, open: true, variant: 'confirm' },
+      slots: slot,
+    })
+    await wrapper.find('dialog').trigger('cancel')
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
 })
