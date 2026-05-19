@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { useTeamDrag } from './useTeamDrag'
 import type { TeamMemberDTO } from '~/types/matches'
@@ -68,6 +68,78 @@ describe('useTeamDrag.finishDrag', () => {
 
     expect(teamA.value.map((m) => m.player_id)).toEqual(['b1', 'a2'])
     expect(teamB.value.map((m) => m.player_id)).toEqual(['a1', 'b2'])
+    expect(drag.drag.value).toBeNull()
+  })
+})
+
+describe('useTeamDrag.onPointerDown', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    delete (document as unknown as { elementsFromPoint?: unknown })
+      .elementsFromPoint
+  })
+
+  function stubElementsFromPoint(result: Element[]) {
+    ;(
+      document as unknown as { elementsFromPoint: () => Element[] }
+    ).elementsFromPoint = () => result
+  }
+
+  function pointerEvent(type: string, x: number, y: number): PointerEvent {
+    const e = new Event(type) as PointerEvent
+    Object.assign(e, { clientX: x, clientY: y, pointerId: 1 })
+    return e
+  }
+
+  it('swaps on drop over another pion and removes its window listeners', () => {
+    const { teamA, teamB, drag } = setup()
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
+
+    const dropPion = document.createElement('div')
+    dropPion.className = 'md-pion'
+    dropPion.dataset.pionId = 'b1'
+    stubElementsFromPoint([dropPion])
+
+    const handle = document.createElement('div')
+    const down = {
+      preventDefault: () => {},
+      currentTarget: handle,
+      pointerId: 1,
+    } as unknown as PointerEvent
+
+    drag.onPointerDown(teamA.value[0]!, down)
+    expect(drag.drag.value?.id).toBe('a1')
+
+    window.dispatchEvent(pointerEvent('pointermove', 5, 5))
+    expect(drag.drag.value?.dropTargetId).toBe('b1')
+
+    window.dispatchEvent(pointerEvent('pointerup', 5, 5))
+
+    expect(teamA.value.map((m) => m.player_id)).toEqual(['b1', 'a2'])
+    expect(teamB.value.map((m) => m.player_id)).toEqual(['a1', 'b2'])
+    expect(drag.drag.value).toBeNull()
+    expect(removeSpy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+    expect(removeSpy).toHaveBeenCalledWith('pointerup', expect.any(Function))
+    expect(removeSpy).toHaveBeenCalledWith('pointercancel', expect.any(Function))
+  })
+
+  it('snaps back without swapping when released over empty space', () => {
+    const { teamA, teamB, drag } = setup()
+    stubElementsFromPoint([])
+
+    const handle = document.createElement('div')
+    const down = {
+      preventDefault: () => {},
+      currentTarget: handle,
+      pointerId: 1,
+    } as unknown as PointerEvent
+
+    drag.onPointerDown(teamA.value[0]!, down)
+    window.dispatchEvent(pointerEvent('pointermove', 5, 5))
+    window.dispatchEvent(pointerEvent('pointerup', 5, 5))
+
+    expect(teamA.value.map((m) => m.player_id)).toEqual(['a1', 'a2'])
+    expect(teamB.value.map((m) => m.player_id)).toEqual(['b1', 'b2'])
     expect(drag.drag.value).toBeNull()
   })
 })
