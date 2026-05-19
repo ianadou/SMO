@@ -206,6 +206,45 @@ func TestPostgresInvitationRepository_RespondWithCapacityGuard_AllowsChangingYes
 	}
 }
 
+func TestPostgresInvitationRepository_RespondWithCapacityGuard_ReturnsErrInvitationNotFound(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+
+	// Built but never saved: the match exists (FOR UPDATE succeeds) but
+	// the UPDATE matches zero invitation rows.
+	inv := buildTestInvitation(t, "inv-missing", "test-match", "hash")
+	_ = inv.Respond(entities.InvitationResponseYes, time.Now(), false)
+
+	err := repo.RespondWithCapacityGuard(ctx, inv, entities.MaxParticipantsPerMatch)
+	if !errors.Is(err, domainerrors.ErrInvitationNotFound) {
+		t.Fatalf("expected ErrInvitationNotFound, got %v", err)
+	}
+}
+
+func TestPostgresInvitationRepository_RespondWithCapacityGuard_ReconfirmYesIsNotBlockedWhenFull(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+
+	inv := buildTestInvitation(t, "inv-1", "test-match", "hash")
+	_ = repo.Save(ctx, inv)
+	_ = inv.Respond(entities.InvitationResponseYes, time.Now(), false)
+	if err := repo.RespondWithCapacityGuard(ctx, inv, 1); err != nil {
+		t.Fatalf("first yes (capacity 1): %v", err)
+	}
+
+	// The match is now "full" (1/1). Re-confirming yes on the same
+	// invitation must NOT be rejected: it already holds the slot.
+	_ = inv.Respond(entities.InvitationResponseYes, time.Now(), false)
+	if err := repo.RespondWithCapacityGuard(ctx, inv, 1); err != nil {
+		t.Fatalf("re-confirm yes must skip the capacity guard, got %v", err)
+	}
+
+	found, _ := repo.FindByID(ctx, "inv-1")
+	if !found.IsConfirmed() {
+		t.Error("expected invitation to remain confirmed after re-confirming")
+	}
+}
+
 func TestPostgresInvitationRepository_Delete_RemovesInvitation(t *testing.T) {
 	repo := newTestInvitationRepository(t)
 	ctx := context.Background()
