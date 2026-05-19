@@ -207,6 +207,26 @@ func TestRehydrateMatch_CarriesTeams_WhenSnapshotHasThem(t *testing.T) {
 	assert.True(t, m.HasTeams())
 }
 
+func TestMatch_TeamAccessors_ReturnDefensiveCopies(t *testing.T) {
+	inputA := []PlayerID{"p1", "p2"}
+	inputB := []PlayerID{"p3", "p4"}
+	m, err := RehydrateMatch(MatchSnapshot{
+		ID: "m1", GroupID: "g1", Title: "Match", Venue: "Hall",
+		ScheduledAt: time.Now(), Status: MatchStatusOpen, CreatedAt: time.Now(),
+		TeamA: inputA, TeamB: inputB,
+	})
+	require.NoError(t, err)
+
+	inputA[0] = "HACKED"
+
+	assert.Equal(t, []PlayerID{"p1", "p2"}, m.TeamA(), "mutating the input snapshot slice must not affect the entity")
+
+	got := m.TeamA()
+	got[0] = "HACKED"
+
+	assert.Equal(t, []PlayerID{"p1", "p2"}, m.TeamA(), "mutating a returned slice must not affect the entity")
+}
+
 func TestMatch_HasTeams_IsFalse_WhenNoTeamsAssigned(t *testing.T) {
 	m, err := NewMatch("m1", "g1", "Match", "Hall", time.Now(), time.Now())
 

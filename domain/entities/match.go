@@ -178,9 +178,6 @@ func (m *Match) HasTeams() bool {
 }
 
 func clonePlayerIDs(src []PlayerID) []PlayerID {
-	if len(src) == 0 {
-		return nil
-	}
 	out := make([]PlayerID, len(src))
 	copy(out, src)
 	return out
