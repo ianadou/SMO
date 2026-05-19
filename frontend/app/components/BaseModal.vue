@@ -5,7 +5,10 @@ const props = defineProps<{
   open: boolean
   title: string
   closeDisabled?: boolean
+  variant?: 'default' | 'confirm'
 }>()
+
+const isConfirm = computed(() => props.variant === 'confirm')
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -35,7 +38,7 @@ watch(
       if (!el.open) el.showModal()
       document.body.style.overflow = 'hidden'
       await nextTick()
-      el.querySelector<HTMLInputElement>('input, textarea, select')?.focus()
+      el.querySelector<HTMLElement>('input, textarea, select, button')?.focus()
     } else {
       if (el.open) el.close()
       document.body.style.overflow = ''
@@ -58,9 +61,13 @@ onUnmounted(() => {
   >
     <div
       v-if="open"
-      class="w-full max-w-[480px] bg-bg-base border border-border-default rounded-[var(--radius-lg)] p-6 shadow-elevated"
+      class="w-full bg-bg-base border border-border-default rounded-[var(--radius-lg)] shadow-elevated"
+      :class="isConfirm ? 'max-w-[380px] p-6 pb-4 flex flex-col gap-5' : 'max-w-[480px] p-6'"
     >
-      <header class="flex items-start justify-between gap-3 mb-5">
+      <header
+        v-if="!isConfirm"
+        class="flex items-start justify-between gap-3 mb-5"
+      >
         <h2
           :id="titleId"
           class="text-xl font-semibold tracking-[-0.01em] text-fg-default m-0"
@@ -77,6 +84,14 @@ onUnmounted(() => {
           <X :size="18" />
         </button>
       </header>
+
+      <h2
+        v-else
+        :id="titleId"
+        class="text-xl font-semibold tracking-[-0.01em] text-fg-default text-center m-0"
+      >
+        {{ title }}
+      </h2>
 
       <slot />
     </div>
