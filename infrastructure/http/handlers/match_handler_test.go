@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -183,6 +184,7 @@ type testRouter struct {
 	matchRepo  *fakeMatchRepo
 	voteRepo   *finalizeFakeVoteRepo
 	playerRepo *finalizeFakePlayerRepo
+	invRepo    *fakeInvRepo
 }
 
 // buildTestRouter builds a router pre-wired with the Match handler and
@@ -195,6 +197,7 @@ func buildTestRouter(t *testing.T) *testRouter {
 	matchRepo := newFakeMatchRepo()
 	voteRepo := newFinalizeFakeVoteRepo()
 	playerRepo := newFinalizeFakePlayerRepo()
+	invRepo := newFakeInvRepo()
 	idGen := &fixedIDGen{id: "generated-id"}
 	clock := &fixedClock{now: time.Date(2026, 4, 12, 10, 0, 0, 0, time.UTC)}
 
@@ -212,13 +215,16 @@ func buildTestRouter(t *testing.T) *testRouter {
 		StartMatch:            match.NewStartMatchUseCase(matchRepo),
 		CompleteMatch:         match.NewCompleteMatchUseCase(matchRepo),
 		FinalizeMatch:         match.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, calculator),
-		ListMatchParticipants: invitation.NewListMatchParticipantsUseCase(newFakeInvRepo()),
+		ListMatchParticipants: invitation.NewListMatchParticipantsUseCase(invRepo),
+		GenerateTeams:         match.NewGenerateTeamsUseCase(matchRepo, invRepo, playerRepo, clock),
+		SetTeams:              match.NewSetTeamsUseCase(matchRepo, invRepo),
+		GetMatchTeams:         match.NewGetMatchTeamsUseCase(matchRepo),
 	})
 
 	router := gin.New()
 	api := router.Group("/api/v1")
 	handler.Register(api, api)
-	return &testRouter{router: router, matchRepo: matchRepo, voteRepo: voteRepo, playerRepo: playerRepo}
+	return &testRouter{router: router, matchRepo: matchRepo, voteRepo: voteRepo, playerRepo: playerRepo, invRepo: invRepo}
 }
 
 func seedMatch(t *testing.T, repo *fakeMatchRepo) *entities.Match {
@@ -239,6 +245,58 @@ func seedMatch(t *testing.T, repo *fakeMatchRepo) *entities.Match {
 	}
 	_ = repo.Save(context.Background(), m)
 	return m
+}
+
+// squadSize is the fixed number of confirmed participants seedSquad
+// registers: four players, the smallest set that yields a balanced 2v2
+// and exercises every team endpoint without special-casing odd splits.
+const squadSize = 4
+
+// seedSquad rehydrates a match (no teams yet) in the given status and
+// registers squadSize confirmed participants: a Player in the player
+// repo and a confirmed Invitation in the invitation repo for each. It
+// returns the participant player IDs in seeding order.
+func seedSquad(t *testing.T, tr *testRouter, status entities.MatchStatus) []entities.PlayerID {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Date(2026, 4, 10, 12, 0, 0, 0, time.UTC)
+
+	m, err := entities.RehydrateMatch(entities.MatchSnapshot{
+		ID:          "match-1",
+		GroupID:     "group-1",
+		Title:       "Test",
+		Venue:       "Venue",
+		ScheduledAt: now.Add(24 * time.Hour),
+		Status:      status,
+		CreatedAt:   now,
+	})
+	if err != nil {
+		t.Fatalf("seedSquad: rehydrate match: %v", err)
+	}
+	_ = tr.matchRepo.Save(ctx, m)
+
+	ids := make([]entities.PlayerID, 0, squadSize)
+	for i := 1; i <= squadSize; i++ {
+		pid := entities.PlayerID(fmt.Sprintf("p%d", i))
+		player, perr := entities.NewPlayer(pid, "group-1", fmt.Sprintf("Player %d", i), 1000)
+		if perr != nil {
+			t.Fatalf("seedSquad: new player %q: %v", pid, perr)
+		}
+		_ = tr.playerRepo.Save(ctx, player)
+
+		respondedAt := now
+		inv, ierr := entities.NewInvitation(
+			entities.InvitationID(fmt.Sprintf("inv-%d", i)),
+			"match-1", pid, fmt.Sprintf("hash-%d", i),
+			now.Add(48*time.Hour), entities.InvitationResponseYes, &respondedAt, now,
+		)
+		if ierr != nil {
+			t.Fatalf("seedSquad: new invitation for %q: %v", pid, ierr)
+		}
+		_ = tr.invRepo.Save(ctx, inv)
+		ids = append(ids, pid)
+	}
+	return ids
 }
 
 // --- tests ---------------------------------------------------------------
@@ -450,6 +508,96 @@ func TestMatchHandler_Finalize_Returns200_WithMVPAndUpdatedRankings(t *testing.T
 	}
 	if _, hasB := rankings["p-b"]; !hasB {
 		t.Errorf("expected p-b to appear in updated_rankings, got %v", rankings)
+	}
+}
+
+func TestMatchHandler_GenerateTeams_Returns200_WithTeamComposition(t *testing.T) {
+	tr := buildTestRouter(t)
+	seedSquad(t, tr, entities.MatchStatusOpen)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/teams/generate",
+		bytes.NewBufferString(`{"strategy":"random"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var members []map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &members)
+	if len(members) != 4 {
+		t.Errorf("expected 4 team members, got %d (body=%s)", len(members), rec.Body.String())
+	}
+}
+
+func TestMatchHandler_GenerateTeams_Returns409_WhenMatchNotOpen(t *testing.T) {
+	tr := buildTestRouter(t)
+	// Squad confirmed so the strategy succeeds; the draft status is what
+	// must trigger the 409 (teams not editable outside open).
+	seedSquad(t, tr, entities.MatchStatusDraft)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/teams/generate",
+		bytes.NewBufferString(`{"strategy":"random"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("expected 409, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchHandler_GenerateTeams_Returns400_WhenStrategyUnknown(t *testing.T) {
+	tr := buildTestRouter(t)
+	seedSquad(t, tr, entities.MatchStatusOpen)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/matches/match-1/teams/generate",
+		bytes.NewBufferString(`{"strategy":"telepathy"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchHandler_SetTeams_Returns200_WhenPartitionIsValid(t *testing.T) {
+	tr := buildTestRouter(t)
+	ids := seedSquad(t, tr, entities.MatchStatusOpen)
+
+	body := fmt.Sprintf(`{"team_a":[%q,%q],"team_b":[%q,%q]}`, ids[0], ids[1], ids[2], ids[3])
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/matches/match-1/teams",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var members []map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &members)
+	if len(members) != 4 {
+		t.Errorf("expected 4 team members, got %d", len(members))
+	}
+}
+
+func TestMatchHandler_GetTeams_Returns200_WithJSONArray(t *testing.T) {
+	tr := buildTestRouter(t)
+	seedSquad(t, tr, entities.MatchStatusOpen)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/matches/match-1/teams", nil)
+	rec := httptest.NewRecorder()
+	tr.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp []any
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Errorf("expected JSON array, got %s", rec.Body.String())
 	}
 }
 

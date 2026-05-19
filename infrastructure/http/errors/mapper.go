@@ -25,6 +25,9 @@ func MapError(err error) (int, string) {
 	if status, message, matched := mapBusinessRuleError(err); matched {
 		return status, message
 	}
+	if status, message, matched := mapTeamStateError(err); matched {
+		return status, message
+	}
 	if status, message, matched := mapAuthError(err); matched {
 		return status, message
 	}
@@ -112,6 +115,21 @@ func mapBusinessRuleError(err error) (int, string, bool) {
 		return http.StatusConflict, "match is not completed", true
 	case errors.Is(err, domainerrors.ErrEmailAlreadyExists):
 		return http.StatusConflict, "email already exists", true
+	}
+	return 0, "", false
+}
+
+// mapTeamStateError handles the two team-composition state errors. They
+// are split out of mapBusinessRuleError so each category helper stays
+// within the project cyclomatic-complexity limit. Both map to 409: the
+// request is valid but the match is in a state where team composition
+// cannot change (frozen from teams_ready onward) or must exist first.
+func mapTeamStateError(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, domainerrors.ErrTeamsNotEditable):
+		return http.StatusConflict, "teams can only be edited while the match is open", true
+	case errors.Is(err, domainerrors.ErrTeamsRequired):
+		return http.StatusConflict, "teams must be assigned before marking ready", true
 	}
 	return 0, "", false
 }

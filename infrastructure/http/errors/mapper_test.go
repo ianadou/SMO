@@ -88,6 +88,8 @@ func TestMapError_BusinessRuleErrors(t *testing.T) {
 	}{
 		{name: "invalid transition", err: domainerrors.ErrInvalidTransition, wantStatus: http.StatusConflict, wantMessage: "operation not allowed in current state"},
 		{name: "invalid assignment", err: domainerrors.ErrInvalidAssignment, wantStatus: http.StatusBadRequest, wantMessage: "invalid team assignment"},
+		{name: "teams not editable", err: domainerrors.ErrTeamsNotEditable, wantStatus: http.StatusConflict, wantMessage: "teams can only be edited while the match is open"},
+		{name: "teams required", err: domainerrors.ErrTeamsRequired, wantStatus: http.StatusConflict, wantMessage: "teams must be assigned before marking ready"},
 		{name: "self vote", err: domainerrors.ErrSelfVote, wantStatus: http.StatusBadRequest, wantMessage: "cannot vote for yourself"},
 		{name: "match full", err: domainerrors.ErrMatchFull, wantStatus: http.StatusConflict, wantMessage: "match is full"},
 		{name: "team full", err: domainerrors.ErrTeamFull, wantStatus: http.StatusConflict, wantMessage: "team is full"},

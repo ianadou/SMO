@@ -24,6 +24,9 @@ type MatchHandler struct {
 	completeMatch         *match.CompleteMatchUseCase
 	finalizeMatch         *match.FinalizeMatchUseCase
 	listMatchParticipants *invitation.ListMatchParticipantsUseCase
+	generateTeams         *match.GenerateTeamsUseCase
+	setTeams              *match.SetTeamsUseCase
+	getMatchTeams         *match.GetMatchTeamsUseCase
 }
 
 // MatchHandlerDeps groups the use cases a MatchHandler needs, so the
@@ -38,6 +41,9 @@ type MatchHandlerDeps struct {
 	CompleteMatch         *match.CompleteMatchUseCase
 	FinalizeMatch         *match.FinalizeMatchUseCase
 	ListMatchParticipants *invitation.ListMatchParticipantsUseCase
+	GenerateTeams         *match.GenerateTeamsUseCase
+	SetTeams              *match.SetTeamsUseCase
+	GetMatchTeams         *match.GetMatchTeamsUseCase
 }
 
 // NewMatchHandler builds a MatchHandler with the full set of use cases.
@@ -52,6 +58,9 @@ func NewMatchHandler(deps MatchHandlerDeps) *MatchHandler {
 		completeMatch:         deps.CompleteMatch,
 		finalizeMatch:         deps.FinalizeMatch,
 		listMatchParticipants: deps.ListMatchParticipants,
+		generateTeams:         deps.GenerateTeams,
+		setTeams:              deps.SetTeams,
+		getMatchTeams:         deps.GetMatchTeams,
 	}
 }
 
@@ -69,6 +78,9 @@ func (h *MatchHandler) Register(public, protected *gin.RouterGroup) {
 	protectedMatches.POST("/:id/start", h.Start)
 	protectedMatches.POST("/:id/complete", h.Complete)
 	protectedMatches.POST("/:id/finalize", h.Finalize)
+	protectedMatches.POST("/:id/teams/generate", h.GenerateTeams)
+	protectedMatches.PUT("/:id/teams", h.SetTeams)
+	protectedMatches.GET("/:id/teams", h.GetTeams)
 
 	// Participants of a match are NOT public: §3 Personas decided that an
 	// invited player must not see other matches' rosters. Until the
@@ -180,6 +192,82 @@ func (h *MatchHandler) Finalize(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.FinalizeMatchResponseFromOutput(out))
+}
+
+// GenerateTeams handles POST /api/matches/:id/teams/generate. It builds
+// the two teams from the confirmed participants using the requested
+// strategy and returns the resulting composition (ids only).
+func (h *MatchHandler) GenerateTeams(c *gin.Context) {
+	var req dto.GenerateTeamsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+
+	m, err := h.generateTeams.Execute(c.Request.Context(), entities.MatchID(c.Param("id")), req.Strategy)
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		c.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.TeamMemberResponsesFromEntities(teamMembersOf(m)))
+}
+
+// SetTeams handles PUT /api/matches/:id/teams. It applies an explicit
+// organizer-provided partition of the confirmed participants.
+func (h *MatchHandler) SetTeams(c *gin.Context) {
+	var req dto.SetTeamsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+
+	m, err := h.setTeams.Execute(c.Request.Context(), entities.MatchID(c.Param("id")),
+		toPlayerIDs(req.TeamA), toPlayerIDs(req.TeamB))
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		c.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.TeamMemberResponsesFromEntities(teamMembersOf(m)))
+}
+
+// GetTeams handles GET /api/matches/:id/teams. It returns the team
+// membership with display names resolved via the JOIN read model.
+func (h *MatchHandler) GetTeams(c *gin.Context) {
+	members, err := h.getMatchTeams.Execute(c.Request.Context(), entities.MatchID(c.Param("id")))
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		c.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.TeamMemberResponsesFromEntities(members))
+}
+
+func toPlayerIDs(ids []string) []entities.PlayerID {
+	out := make([]entities.PlayerID, len(ids))
+	for i, id := range ids {
+		out[i] = entities.PlayerID(id)
+	}
+	return out
+}
+
+// teamMembersOf flattens a match's two rosters into the read-model
+// shape. Names are left empty: generate/set echo back ids only, and the
+// frontend refetches GET /teams for display names. Slot is the index of
+// the player within its team.
+func teamMembersOf(m *entities.Match) []entities.MatchTeamMember {
+	out := make([]entities.MatchTeamMember, 0, len(m.TeamA())+len(m.TeamB()))
+	for i, id := range m.TeamA() {
+		out = append(out, entities.MatchTeamMember{PlayerID: id, Team: "A", Slot: i})
+	}
+	for i, id := range m.TeamB() {
+		out = append(out, entities.MatchTeamMember{PlayerID: id, Team: "B", Slot: i})
+	}
+	return out
 }
 
 // runTransition is the shared body of all five transition handlers.
