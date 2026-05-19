@@ -42,6 +42,7 @@ type Querier interface {
 	DeleteGroup(ctx context.Context, id string) error
 	DeleteInvitation(ctx context.Context, id string) error
 	DeleteMatch(ctx context.Context, id string) error
+	DeleteMatchTeamMembers(ctx context.Context, matchID string) error
 	DeletePlayer(ctx context.Context, id string) error
 	DeleteVote(ctx context.Context, id string) error
 	// Atomic finalize: sets the MVP and the new status (typically 'closed')
@@ -60,9 +61,15 @@ type Querier interface {
 	GetOrganizerByID(ctx context.Context, id string) (Organizers, error)
 	GetPlayerByID(ctx context.Context, id string) (Players, error)
 	GetVoteByID(ctx context.Context, id string) (Votes, error)
+	InsertMatchTeamMember(ctx context.Context, arg InsertMatchTeamMemberParams) error
 	ListConfirmedParticipantsByMatchID(ctx context.Context, matchID string) ([]ListConfirmedParticipantsByMatchIDRow, error)
 	ListGroupsByOrganizerID(ctx context.Context, organizerID string) ([]Groups, error)
 	ListInvitationsByMatchID(ctx context.Context, matchID string) ([]Invitations, error)
+	// Raw membership rows for a match, ordered for deterministic rehydration.
+	ListMatchTeamMembers(ctx context.Context, matchID string) ([]MatchTeamMembers, error)
+	// Read model: team membership joined with player display data, used by
+	// GetMatchTeamsUseCase to render the DS field/present list.
+	ListMatchTeamMembersWithPlayers(ctx context.Context, matchID string) ([]ListMatchTeamMembersWithPlayersRow, error)
 	// Returns all matches for a group, ordered by scheduled date descending
 	// so upcoming and recent matches appear first.
 	ListMatchesByGroupID(ctx context.Context, groupID string) ([]Matches, error)

@@ -28,6 +28,13 @@ type Invitations struct {
 	RespondedAt pgtype.Timestamptz
 }
 
+type MatchTeamMembers struct {
+	MatchID  string
+	PlayerID string
+	Team     string
+	Slot     int32
+}
+
 type Matches struct {
 	ID          string
 	GroupID     string
