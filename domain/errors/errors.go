@@ -65,6 +65,15 @@ var (
 	// produce a valid team distribution from the given input.
 	ErrInvalidAssignment = errors.New("invalid assignment")
 
+	// ErrTeamsNotEditable is returned when a team-composition change is
+	// attempted while the match is not in the open status (teams are frozen
+	// from teams_ready onward).
+	ErrTeamsNotEditable = errors.New("teams not editable")
+
+	// ErrTeamsRequired is returned when a match is asked to transition to
+	// teams_ready before any teams have been assigned.
+	ErrTeamsRequired = errors.New("teams required")
+
 	// ErrMatchFull is returned when trying to add a player to a match
 	// that already has the maximum number of participants.
 	ErrMatchFull = errors.New("match is full")
