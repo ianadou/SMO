@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { passwordStrengthLabel, type StrengthLevel } from '~/utils/password'
+import { MIN_PASSWORD_LENGTH, passwordStrengthLabel, type StrengthLevel } from '~/utils/password'
 
 const props = defineProps<{ level: StrengthLevel }>()
 
@@ -42,7 +42,7 @@ const labelColor = computed(() => {
       />
     </div>
     <div class="flex items-center justify-between mt-2 text-[12px] leading-[1.3]">
-      <span class="text-fg-muted">Au moins 8 caractères</span>
+      <span class="text-fg-muted">Au moins {{ MIN_PASSWORD_LENGTH }} caractères</span>
       <span :class="[labelColor, 'font-mono']">{{ passwordStrengthLabel(level) }}</span>
     </div>
   </div>

@@ -2,6 +2,8 @@ const STRENGTH_LABELS = ['', 'Faible', 'Moyen', 'Fort', 'Très fort'] as const
 
 export type StrengthLevel = 0 | 1 | 2 | 3 | 4
 
+export const MIN_PASSWORD_LENGTH = 12
+
 export function passwordStrength(value: string): StrengthLevel {
   if (!value) return 0
   const classes
@@ -9,9 +11,9 @@ export function passwordStrength(value: string): StrengthLevel {
     + (/[A-Z]/.test(value) ? 1 : 0)
     + (/[0-9]/.test(value) ? 1 : 0)
     + (/[^A-Za-z0-9]/.test(value) ? 1 : 0)
-  if (value.length < 8) return 1
-  if (value.length >= 12 && classes >= 3) return 4
-  if (classes >= 2 && value.length >= 8) return 3
+  if (value.length < MIN_PASSWORD_LENGTH) return 1
+  if (classes >= 3) return 4
+  if (classes >= 2) return 3
   return 2
 }
 
