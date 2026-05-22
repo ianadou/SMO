@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue'
 import { ApiError, useApi } from './useApi'
+import { useToast } from './useToast'
 import { deriveScreen } from '~/utils/teamComposition'
+import { toFriendlyError } from '~/utils/errorMessages'
 import type { MatchDTO, MatchScreen, TeamMemberDTO } from '~/types/matches'
 
 export interface MatchApi {
@@ -14,12 +16,20 @@ export function useMatchDetail(matchId: string, api: MatchApi = useApi()) {
   const members = ref<TeamMemberDTO[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const toast = useToast()
 
   const screen = computed<MatchScreen>(() =>
     match.value
       ? deriveScreen(match.value.status, members.value.length > 0)
       : 'setup-draft',
   )
+
+  function reportError(err: unknown, fallbackTitle: string) {
+    const friendly = toFriendlyError(err)
+    toast.error(friendly.title ?? fallbackTitle, friendly.message)
+    error.value =
+      err instanceof ApiError ? err.publicMessage : friendly.message ?? fallbackTitle
+  }
 
   async function load() {
     loading.value = true
@@ -32,35 +42,42 @@ export function useMatchDetail(matchId: string, api: MatchApi = useApi()) {
       match.value = loaded
       members.value = team ?? []
     } catch (err) {
-      error.value =
-        err instanceof ApiError ? err.publicMessage : 'Une erreur est survenue.'
+      reportError(err, 'Chargement impossible')
     } finally {
       loading.value = false
     }
   }
 
-  async function mutate(run: () => Promise<unknown>) {
+  async function mutate(run: () => Promise<unknown>, fallbackTitle = 'Action impossible') {
     loading.value = true
     error.value = null
     try {
       await run()
     } catch (err) {
-      error.value =
-        err instanceof ApiError ? err.publicMessage : 'Une erreur est survenue.'
+      reportError(err, fallbackTitle)
       loading.value = false
       return
     }
     await load()
   }
 
-  function openMatch() {
-    return mutate(() => api.post(`/matches/${matchId}/open`, {}))
+  async function autoGenerate() {
+    try {
+      await api.post(`/matches/${matchId}/teams/generate`, { strategy: 'ranking' })
+    } catch {
+      await api.post(`/matches/${matchId}/teams/generate`, { strategy: 'random' })
+    }
   }
 
-  function generate(strategy: 'random' | 'ranking') {
-    return mutate(() =>
-      api.post(`/matches/${matchId}/teams/generate`, { strategy }),
-    )
+  function openMatch() {
+    return mutate(async () => {
+      await api.post(`/matches/${matchId}/open`, {})
+      await autoGenerate()
+    })
+  }
+
+  function generate() {
+    return mutate(autoGenerate)
   }
 
   function validateTeams(teamA: string[], teamB: string[]) {

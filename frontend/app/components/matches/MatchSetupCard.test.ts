@@ -14,18 +14,14 @@ describe('MatchSetupCard', () => {
     expect(wrapper.emitted('open')).toHaveLength(1)
   })
 
-  it('emits generate with the selected strategy', async () => {
+  it('emits generate without arguments', async () => {
     const wrapper = await mountSuspended(MatchSetupCard, {
       props: { kind: 'generate' },
     })
 
     await wrapper.find('.md-setup-btn').trigger('click')
-    expect(wrapper.emitted('generate')![0]).toEqual(['ranking'])
-
-    const buttons = wrapper.findAll('.md-seg button')
-    await buttons[0]!.trigger('click')
-    await wrapper.find('.md-setup-btn').trigger('click')
-    expect(wrapper.emitted('generate')![1]).toEqual(['random'])
+    expect(wrapper.emitted('generate')).toHaveLength(1)
+    expect(wrapper.emitted('generate')![0]).toEqual([])
   })
 
   it('disables the action while busy', async () => {
