@@ -1,54 +1,99 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowLeft, MoreVertical } from 'lucide-vue-next'
-import type { MatchDTO } from '~/types/matches'
+import { ArrowLeft, MapPin, MoreVertical } from 'lucide-vue-next'
+import TeamMatchupCard from './TeamMatchupCard.vue'
+import type { MatchDTO, MatchStatus } from '~/types/matches'
 
 const props = defineProps<{ match: MatchDTO }>()
 const emit = defineEmits<{ back: [] }>()
 
-const hasScore = computed(
-  () => props.match.score_a != null && props.match.score_b != null,
-)
+const cardStatus = computed<'upcoming' | 'live' | 'finished' | 'closed'>(() => {
+  switch (props.match.status) {
+    case 'in_progress':
+      return 'live'
+    case 'completed':
+      return 'finished'
+    case 'closed':
+      return 'closed'
+    default:
+      return 'upcoming'
+  }
+})
 
-const meta = computed(() => {
-  const d = new Date(props.match.scheduled_at)
-  const date = d.toLocaleDateString('fr-FR', {
+const winner = computed<'red' | 'green' | undefined>(() => {
+  const a = props.match.score_a
+  const b = props.match.score_b
+  if (a == null || b == null) return undefined
+  if (a > b) return 'red'
+  if (b > a) return 'green'
+  return undefined
+})
+
+const scheduled = computed(() => new Date(props.match.scheduled_at))
+
+const dateLabel = computed(() => {
+  const d = scheduled.value
+  const raw = d.toLocaleDateString('fr-FR', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   })
-  const time = d.toLocaleTimeString('fr-FR', {
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+})
+
+const timeLabel = computed(() =>
+  scheduled.value.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
-  })
-  return `${date} · ${time} · ${props.match.venue}`
-})
+  }),
+)
 </script>
 
 <template>
-  <div class="md-header">
-    <button class="md-icon-btn" aria-label="Retour" @click="emit('back')">
-      <ArrowLeft :size="22" />
-    </button>
-    <div class="md-header-mid">
-      <div class="md-vscard">
-        <div class="md-vscard-team">
-          <div class="md-vscard-jersey is-red" />
-          <span class="md-vscard-label">Équipe rouge</span>
-        </div>
-        <div class="md-vscard-center">
-          <template v-if="hasScore">{{ match.score_a }} – {{ match.score_b }}</template>
-          <template v-else>VS</template>
-        </div>
-        <div class="md-vscard-team">
-          <div class="md-vscard-jersey is-green" />
-          <span class="md-vscard-label">Équipe verte</span>
-        </div>
+  <header class="md-header-block">
+    <div class="md-header">
+      <button class="md-icon-btn" aria-label="Retour" @click="emit('back')">
+        <ArrowLeft :size="22" />
+      </button>
+      <div class="md-header-mid md-match-card">
+        <TeamMatchupCard
+          :status="cardStatus"
+          :date-label="dateLabel"
+          :time-label="timeLabel"
+          :winner="winner"
+        />
       </div>
-      <div class="md-vscard-meta">{{ match.title }} · {{ meta }}</div>
+      <button class="md-icon-btn" aria-label="Plus d'options">
+        <MoreVertical :size="22" />
+      </button>
     </div>
-    <button class="md-icon-btn" aria-label="Plus d'options">
-      <MoreVertical :size="22" />
-    </button>
-  </div>
+    <div class="md-header-venue">
+      <MapPin :size="14" />
+      <span>{{ match.venue }}</span>
+    </div>
+  </header>
 </template>
+
+<style scoped>
+.md-header-mid { flex: 1; min-width: 0; }
+.md-match-card :deep(.mc) {
+  padding: var(--space-3);
+  gap: var(--space-2);
+}
+.md-match-card :deep(.mc-team-label) { font-size: 12px; }
+.md-match-card :deep(.mc-center-vs) { font-size: 22px; }
+.md-match-card :deep(.sjersey) { width: 36px !important; height: 36px !important; }
+.md-match-card :deep(.mc-center-trophy) { width: 28px !important; height: 28px !important; }
+
+.md-header-block { display: flex; flex-direction: column; }
+.md-header-venue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 var(--space-3) var(--space-2);
+  font-size: 12px;
+  color: var(--color-fg-muted);
+}
+.md-header-venue :deep(svg) { color: var(--color-fg-subtle); }
+</style>
