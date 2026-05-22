@@ -1,75 +1,78 @@
 <script setup lang="ts">
-import { ChevronRight, MapPin, Calendar } from 'lucide-vue-next'
+import { computed } from 'vue'
+import TeamMatchupCard from '~/components/matches/TeamMatchupCard.vue'
 import type { MatchStatus } from '~/types/matches'
 
-defineProps<{
+const props = defineProps<{
   id: string
-  title: string
-  venue: string
   scheduledAt: string
   status: MatchStatus
+  scoreA?: number | null
+  scoreB?: number | null
 }>()
 
-const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
-  day: 'numeric',
-  month: 'long',
-  hour: '2-digit',
-  minute: '2-digit',
+const cardStatus = computed<'upcoming' | 'live' | 'finished' | 'closed'>(() => {
+  switch (props.status) {
+    case 'in_progress':
+      return 'live'
+    case 'completed':
+      return 'finished'
+    case 'closed':
+      return 'closed'
+    default:
+      return 'upcoming'
+  }
 })
 
-function formatScheduled(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return dateFormatter.format(date)
-}
+const winner = computed<'red' | 'green' | undefined>(() => {
+  if (props.scoreA == null || props.scoreB == null) return undefined
+  if (props.scoreA > props.scoreB) return 'red'
+  if (props.scoreA < props.scoreB) return 'green'
+  return undefined
+})
 
-const statusLabels: Record<MatchStatus, string> = {
-  draft: 'Brouillon',
-  open: 'Ouvert',
-  teams_ready: 'Équipes prêtes',
-  in_progress: 'En cours',
-  completed: 'Terminé',
-  closed: 'Clôturé',
-}
+const scheduled = computed(() => new Date(props.scheduledAt))
 
-const statusClasses: Record<MatchStatus, string> = {
-  draft: 'bg-bg-base text-fg-muted',
-  open: 'bg-action-primary/15 text-action-primary',
-  teams_ready: 'bg-action-primary/15 text-action-primary',
-  in_progress: 'bg-team-green/15 text-team-green',
-  completed: 'bg-bg-base text-fg-muted',
-  closed: 'bg-bg-base text-fg-muted',
-}
+const dateLabel = computed(() => {
+  const raw = scheduled.value.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+})
+
+const timeLabel = computed(() =>
+  scheduled.value.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+)
 </script>
 
 <template>
-  <NuxtLink
-    :to="`/matches/${id}`"
-    class="flex flex-col gap-3 w-full text-left bg-bg-elevated rounded-[var(--radius-lg)] p-4 text-fg-default font-sans no-underline transition-colors duration-150 hover:bg-[#1F252D] active:bg-[#161B22] focus-visible:outline-none focus-visible:[box-shadow:0_0_0_2px_var(--color-bg-base),0_0_0_4px_rgba(32,128,255,0.45)]"
-  >
-    <div class="flex items-center justify-between gap-3">
-      <div class="text-[18px] leading-[1.25] font-semibold tracking-[-0.01em] text-fg-default truncate">
-        {{ title }}
-      </div>
-      <ChevronRight :size="18" class="text-fg-muted flex-shrink-0" />
-    </div>
-
-    <div class="flex items-center gap-4 text-sm text-fg-muted flex-wrap">
-      <span class="inline-flex items-center gap-1.5">
-        <Calendar :size="14" />
-        <span>{{ formatScheduled(scheduledAt) }}</span>
-      </span>
-      <span class="inline-flex items-center gap-1.5">
-        <MapPin :size="14" />
-        <span class="truncate">{{ venue }}</span>
-      </span>
-    </div>
-
-    <span
-      class="inline-flex self-start items-center px-2 py-1 rounded-md text-xs font-medium"
-      :class="statusClasses[status]"
-    >
-      {{ statusLabels[status] }}
-    </span>
+  <NuxtLink :to="`/matches/${id}`" class="match-card-link" :aria-label="`Match du ${dateLabel}`">
+    <TeamMatchupCard
+      :status="cardStatus"
+      :date-label="dateLabel"
+      :time-label="timeLabel"
+      :winner="winner"
+    />
   </NuxtLink>
 </template>
+
+<style scoped>
+.match-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-lg);
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+.match-card-link:hover :deep(.mc) { background: #1F252D; }
+.match-card-link:active { transform: scale(0.995); }
+.match-card-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-bg-base), 0 0 0 4px rgba(32, 128, 255, 0.45);
+}
+</style>

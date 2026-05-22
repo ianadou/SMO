@@ -2,10 +2,11 @@
 import { Plus, ArrowLeft, Webhook } from 'lucide-vue-next'
 import CardSkeleton from '~/components/groups/CardSkeleton.vue'
 import MatchCard from '~/components/groups/MatchCard.vue'
+import NextMatchSection from '~/components/groups/NextMatchSection.vue'
 import CreateMatchModal from '~/components/groups/CreateMatchModal.vue'
 import Wordmark from '~/components/Wordmark.vue'
 import type { GroupDTO } from '~/types/groups'
-import type { MatchDTO } from '~/types/matches'
+import type { MatchDTO, MatchStatus } from '~/types/matches'
 import { ApiError } from '~/composables/useApi'
 
 definePageMeta({ layout: false, middleware: 'auth' })
@@ -59,6 +60,21 @@ async function onMatchCreated(created: MatchDTO) {
   matches.value = [created, ...matches.value]
 }
 
+const SPOTLIGHT_STATUSES: MatchStatus[] = ['open', 'teams_ready', 'in_progress']
+
+const nextMatch = computed<MatchDTO | null>(() => {
+  const upcoming = matches.value
+    .filter((m) => SPOTLIGHT_STATUSES.includes(m.status))
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+  return upcoming[0] ?? null
+})
+
+const otherMatches = computed<MatchDTO[]>(() =>
+  matches.value
+    .filter((m) => !nextMatch.value || m.id !== nextMatch.value.id)
+    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()),
+)
+
 onMounted(loadAll)
 </script>
 
@@ -108,9 +124,13 @@ onMounted(loadAll)
         </p>
       </div>
 
+      <div v-if="nextMatch" class="px-5 pb-6">
+        <NextMatchSection :match="nextMatch" />
+      </div>
+
       <div class="px-5 pb-3">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-fg-muted m-0">
-          Matchs
+          {{ nextMatch ? 'Autres matchs' : 'Matchs' }}
         </h2>
       </div>
 
@@ -135,7 +155,7 @@ onMounted(loadAll)
         </div>
 
         <div
-          v-else-if="matches.length === 0"
+          v-else-if="otherMatches.length === 0 && !nextMatch"
           class="flex flex-col items-center text-center px-6 py-10 gap-2"
         >
           <p class="text-fg-default font-medium">Pas encore de match</p>
@@ -144,15 +164,22 @@ onMounted(loadAll)
           </p>
         </div>
 
+        <div
+          v-else-if="otherMatches.length === 0"
+          class="flex flex-col items-center text-center px-6 py-6 gap-1"
+        >
+          <p class="text-fg-muted text-sm">Aucun match passé pour l'instant.</p>
+        </div>
+
         <MatchCard
-          v-for="match in matches"
+          v-for="match in otherMatches"
           v-else
           :id="match.id"
           :key="match.id"
-          :title="match.title"
-          :venue="match.venue"
           :scheduled-at="match.scheduled_at"
           :status="match.status"
+          :score-a="match.score_a"
+          :score-b="match.score_b"
         />
       </div>
 
