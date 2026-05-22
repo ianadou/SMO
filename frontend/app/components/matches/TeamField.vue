@@ -32,11 +32,11 @@ onBeforeUnmount(() => observer?.disconnect())
 
 function buildSlots(side: 'red' | 'green') {
   const rows = [
-    { depth: 0.08, cross: 0 },
-    { depth: 0.3, cross: -0.15 },
-    { depth: 0.3, cross: 0.15 },
-    { depth: 0.46, cross: -0.2 },
-    { depth: 0.46, cross: 0.2 },
+    { depth: 0.13, cross: 0 },
+    { depth: 0.3, cross: -0.18 },
+    { depth: 0.3, cross: 0.18 },
+    { depth: 0.45, cross: -0.22 },
+    { depth: 0.45, cross: 0.22 },
   ]
   return rows.map(({ depth, cross }) => {
     if (orientation.value === 'portrait') {
