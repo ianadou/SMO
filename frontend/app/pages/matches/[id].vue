@@ -60,8 +60,6 @@ function validate() {
     </div>
 
     <template v-else-if="match">
-      <div v-if="error" class="md-banner" role="alert">{{ error }}</div>
-
       <MatchSetupCard
         v-if="screen === 'setup-draft'"
         kind="draft"
@@ -73,7 +71,7 @@ function validate() {
         v-else-if="screen === 'setup-generate'"
         kind="generate"
         :busy="loading"
-        @generate="(s) => detail.generate(s)"
+        @generate="detail.generate()"
       />
 
       <template v-else>
