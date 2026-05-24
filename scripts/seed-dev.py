@@ -23,10 +23,13 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 API_BASE = "http://localhost:8081/api/v1"
+DEFAULT_VENUE = "Salle Pierre Mendès"
 
+ORGANIZER_EMAIL = "demo@smo.local"
+ORGANIZER_DEV_SECRET = "DemoPass1234!"  # noqa: S105 — local dev seed only
 ORGANIZER = {
-    "email": "demo@smo.local",
-    "password": "DemoPass1234!",
+    "email": ORGANIZER_EMAIL,
+    "password": ORGANIZER_DEV_SECRET,
     "display_name": "Demo Organizer",
 }
 
@@ -130,7 +133,7 @@ def invite_and_confirm(token: str, match_id: str, player_id: str) -> None:
     if status not in (200, 201):
         sys.exit(f"create invitation failed: {status} {body}")
     plain = body["plain_token"]
-    for attempt in range(6):
+    for _ in range(6):
         status, body = http("POST", "/invitations/respond", {
             "token": plain, "answer": "yes",
         })
@@ -140,7 +143,7 @@ def invite_and_confirm(token: str, match_id: str, player_id: str) -> None:
             time.sleep(1.0)
             continue
         sys.exit(f"respond invitation failed: {status} {body}")
-    sys.exit(f"respond invitation rate-limited too long")
+    sys.exit("respond invitation rate-limited too long")
 
 
 def open_match(token: str, match_id: str) -> None:
@@ -192,14 +195,12 @@ def main() -> None:
         hour=19, minute=30, second=0,
     )
 
-    # Match A — draft, no participants
     match_a = create_match(token, group_id, "matche A (brouillon)",
-                           "Salle Pierre Mendès", thursday + timedelta(days=21))
+                           DEFAULT_VENUE, thursday + timedelta(days=21))
     print(f"[seed] draft match: {match_a['id']}")
 
-    # Match B — open with auto-generated teams (only 10 confirmed)
     match_b = create_match(token, group_id, "matche B (composition)",
-                           "Salle Pierre Mendès", thursday + timedelta(days=14))
+                           DEFAULT_VENUE, thursday + timedelta(days=14))
     flush_rate_limit()
     for p in players[:10]:
         invite_and_confirm(token, match_b["id"], p["id"])
@@ -207,9 +208,8 @@ def main() -> None:
     generate_teams(token, match_b["id"], "random")
     print(f"[seed] composition match: {match_b['id']}")
 
-    # Match C — completed with score (équipe rouge wins)
     match_c = create_match(token, group_id, "matche C (terminé)",
-                           "Salle Pierre Mendès", thursday + timedelta(days=7))
+                           DEFAULT_VENUE, thursday + timedelta(days=7))
     flush_rate_limit()
     for p in players[:10]:
         invite_and_confirm(token, match_c["id"], p["id"])
@@ -221,12 +221,12 @@ def main() -> None:
     print(f"[seed] completed match: {match_c['id']}")
 
     print("\n[seed] visual URLs:")
-    print(f"  groups list   : http://localhost:3000/groups")
+    print("  groups list   : http://localhost:3000/groups")
     print(f"  group detail  : http://localhost:3000/groups/{group_id}")
     print(f"  match draft   : http://localhost:3000/matches/{match_a['id']}")
     print(f"  match compo   : http://localhost:3000/matches/{match_b['id']}")
     print(f"  match finished: http://localhost:3000/matches/{match_c['id']}")
-    print(f"\n[seed] credentials: {ORGANIZER['email']} / {ORGANIZER['password']}")
+    print(f"\n[seed] credentials: {ORGANIZER_EMAIL} / {ORGANIZER_DEV_SECRET}")
 
 
 if __name__ == "__main__":
