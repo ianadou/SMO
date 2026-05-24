@@ -5,7 +5,7 @@ import PrimaryButton from '~/components/login/PrimaryButton.vue'
 import InlineError from '~/components/login/InlineError.vue'
 import StrengthMeter from '~/components/register/StrengthMeter.vue'
 import CguCheckbox from '~/components/register/CguCheckbox.vue'
-import { isEmailFormat, passwordStrength } from '~/utils/password'
+import { MIN_PASSWORD_LENGTH, isEmailFormat, passwordStrength } from '~/utils/password'
 import { ApiError } from '~/composables/useApi'
 
 definePageMeta({ layout: false })
@@ -14,7 +14,7 @@ useHead({ title: 'Créer un compte — SMO' })
 
 const NAME_MIN = 2
 const NAME_MAX = 50
-const PASSWORD_MIN = 8
+const PASSWORD_MIN = MIN_PASSWORD_LENGTH
 
 const auth = useAuthStore()
 
