@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { ArrowLeft, MapPin, MoreVertical } from 'lucide-vue-next'
 import TeamMatchupCard from './TeamMatchupCard.vue'
-import type { MatchDTO, MatchStatus } from '~/types/matches'
+import type { MatchDTO } from '~/types/matches'
 
 const props = defineProps<{ match: MatchDTO }>()
 const emit = defineEmits<{ back: [] }>()

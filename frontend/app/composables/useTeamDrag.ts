@@ -78,10 +78,9 @@ export function useTeamDrag(
       const dy = e.clientY - rect.top - rect.height / 2
       let dropTargetId: string | null = null
       for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
-        const candidate = (el as HTMLElement).closest?.('.md-pion') as
-          | HTMLElement
-          | null
-        if (candidate && candidate.dataset.pionId !== player.player_id) {
+        if (!(el instanceof Element)) continue
+        const candidate = el.closest('.md-pion')
+        if (candidate instanceof HTMLElement && candidate.dataset.pionId !== player.player_id) {
           dropTargetId = candidate.dataset.pionId ?? null
           break
         }
