@@ -13,7 +13,7 @@ const iconFor = {
 </script>
 
 <template>
-  <div class="toast-stack" role="region" aria-live="polite" aria-label="Notifications">
+  <section class="toast-stack" aria-live="polite" aria-label="Notifications">
     <TransitionGroup name="toast" tag="div" class="toast-stack-inner">
       <div
         v-for="toast in toasts"
@@ -31,7 +31,7 @@ const iconFor = {
         </button>
       </div>
     </TransitionGroup>
-  </div>
+  </section>
 </template>
 
 <style scoped>

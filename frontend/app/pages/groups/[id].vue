@@ -60,11 +60,11 @@ async function onMatchCreated(created: MatchDTO) {
   matches.value = [created, ...matches.value]
 }
 
-const SPOTLIGHT_STATUSES: MatchStatus[] = ['open', 'teams_ready', 'in_progress']
+const SPOTLIGHT_STATUSES = new Set<MatchStatus>(['open', 'teams_ready', 'in_progress'])
 
 const nextMatch = computed<MatchDTO | null>(() => {
   const upcoming = matches.value
-    .filter((m) => SPOTLIGHT_STATUSES.includes(m.status))
+    .filter((m) => SPOTLIGHT_STATUSES.has(m.status))
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
   return upcoming[0] ?? null
 })
