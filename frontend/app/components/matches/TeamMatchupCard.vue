@@ -150,7 +150,7 @@ button.mc:focus-visible {
   font-size: 13px; line-height: 1.2;
   white-space: nowrap;
 }
-.mc-pill-live { background: rgba(32, 128, 255, 0.2); color: #CFE0FF; }
+.mc-pill-live { background: #1d3061; color: #d4e2ff; }
 .mc-pill-live .mc-dot {
   width: 6px; height: 6px; border-radius: 999px;
   background: var(--color-action-primary, #2080ff);
