@@ -71,6 +71,9 @@ jobs:
           format: sarif
           output: trivy-fs.sarif
           severity: CRITICAL,HIGH
+          # Without this, the sarif format ignores the severity filter and
+          # reports every severity, so exit-code fires on LOW/MEDIUM too.
+          limit-severities-for-sarif: true
           # Blocking. Baseline was clean when this was flipped from
           # non-blocking; new CRITICAL/HIGH findings now break the PR.
           # Renovate keeps base images and Go modules patched, so the
@@ -78,7 +81,7 @@ jobs:
           exit-code: '1'
       - name: Upload filesystem SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: ${{ always() && hashFiles('trivy-fs.sarif') != '' }}
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
@@ -97,10 +100,11 @@ jobs:
           format: sarif
           output: trivy-image.sarif
           severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
           exit-code: '1'
       - name: Upload image SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: ${{ always() && hashFiles('trivy-image.sarif') != '' }}
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image
