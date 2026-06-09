@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import MatchVsHeader from '~/components/matches/MatchVsHeader.vue'
 import TeamField from '~/components/matches/TeamField.vue'
 import PresentList from '~/components/matches/PresentList.vue'
@@ -30,6 +30,12 @@ watch(
     green.value = split.teamB
   },
   { immediate: true },
+)
+
+const readonlyStateLabel = computed(() =>
+  match.value?.status === 'in_progress'
+    ? 'Match en cours · lecture seule'
+    : 'Équipes validées · lecture seule',
 )
 
 useHead(() => ({
@@ -80,7 +86,7 @@ function validate() {
             <span>Composition</span>
             <span class="md-field-meta-state">
               <template v-if="screen === 'composition'">Glisse pour échanger</template>
-              <template v-else-if="screen === 'finished'">Match terminé · lecture seule</template>
+              <template v-else-if="screen === 'finished'">{{ readonlyStateLabel }}</template>
               <template v-else>Clôturé</template>
             </span>
           </div>
