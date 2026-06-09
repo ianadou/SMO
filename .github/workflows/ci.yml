@@ -39,7 +39,7 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.11
+          version: v2.12.2
   hadolint:
     name: Hadolint
     runs-on: ubuntu-latest
@@ -47,7 +47,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
       - name: Run hadolint on Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile
           # DL3059 (consecutive RUN instructions) is intentionally
