@@ -56,9 +56,10 @@ export function useMatchDetail(matchId: string, api: MatchApi = useApi()) {
     } catch (err) {
       reportError(err, fallbackTitle)
       loading.value = false
-      return
+      return false
     }
     await load()
+    return true
   }
 
   async function autoGenerate() {
@@ -80,14 +81,17 @@ export function useMatchDetail(matchId: string, api: MatchApi = useApi()) {
     return mutate(autoGenerate)
   }
 
-  function validateTeams(teamA: string[], teamB: string[]) {
-    return mutate(async () => {
+  async function validateTeams(teamA: string[], teamB: string[]) {
+    const ok = await mutate(async () => {
       await api.put(`/matches/${matchId}/teams`, {
         team_a: teamA,
         team_b: teamB,
       })
       await api.post(`/matches/${matchId}/teams-ready`, {})
     })
+    if (ok) {
+      toast.success('Équipes validées', 'La composition est verrouillée.')
+    }
   }
 
   return {
