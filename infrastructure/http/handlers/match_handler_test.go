@@ -95,6 +95,10 @@ func (r *fakeMatchRepo) ListTeamMembersWithPlayers(context.Context, entities.Mat
 	return nil, nil
 }
 
+func (r *fakeMatchRepo) CountClosedMatchesTogether(context.Context, entities.GroupID, entities.PlayerID, []entities.PlayerID) (map[entities.PlayerID]int, error) {
+	return map[entities.PlayerID]int{}, nil
+}
+
 func (r *fakeMatchRepo) FindLatestDecidedByGroup(context.Context, entities.GroupID, entities.MatchID) (*entities.Match, error) {
 	return nil, domainerrors.ErrMatchNotFound
 }

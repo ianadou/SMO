@@ -62,18 +62,24 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 	}, &group)
 	c.getExpect(t, http.StatusOK, "/api/v1/groups/"+group.ID, "", nil)
 
-	// 3. Create players (need two so a vote has a sensible voter/voted pair).
-	var p1, p2 struct {
+	// 3. Create players: four, so explicit 2v2 teams give the voter a
+	// teammate (votes are teammate-only).
+	var p1, p2, p3, p4 struct {
 		ID string `json:"id"`
 	}
-	c.postExpect(t, http.StatusCreated, "/api/v1/players", c.token, map[string]any{
-		"group_id": group.ID,
-		"name":     "Alice",
-	}, &p1)
-	c.postExpect(t, http.StatusCreated, "/api/v1/players", c.token, map[string]any{
-		"group_id": group.ID,
-		"name":     "Bob",
-	}, &p2)
+	for _, seed := range []struct {
+		name   string
+		target *struct {
+			ID string `json:"id"`
+		}
+	}{
+		{"Alice", &p1}, {"Bob", &p2}, {"Carol", &p3}, {"Dan", &p4},
+	} {
+		c.postExpect(t, http.StatusCreated, "/api/v1/players", c.token, map[string]any{
+			"group_id": group.ID,
+			"name":     seed.name,
+		}, seed.target)
+	}
 	c.getExpect(t, http.StatusOK, "/api/v1/players/"+p1.ID, "", nil)
 	c.getExpect(t, http.StatusOK, "/api/v1/groups/"+group.ID+"/players", "", nil)
 
@@ -135,39 +141,62 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 		"answer": "yes",
 	}, nil)
 
-	// 5c. A second player confirms too, so the match has a roster a
-	// strategy can split into two non-empty teams.
-	var inv2 struct {
-		PlainToken string `json:"plain_token"`
+	// 5c. The three other players confirm too, so the match can be split
+	// into an explicit 2v2.
+	for _, playerID := range []string{p2.ID, p3.ID, p4.ID} {
+		var extraInv struct {
+			PlainToken string `json:"plain_token"`
+		}
+		c.postExpect(t, http.StatusCreated, "/api/v1/invitations", c.token, map[string]any{
+			"match_id": match.ID, "player_id": playerID,
+		}, &extraInv)
+		c.postExpect(t, http.StatusOK, "/api/v1/invitations/respond", "", map[string]any{
+			"token": extraInv.PlainToken, "answer": "yes",
+		}, nil)
 	}
-	c.postExpect(t, http.StatusCreated, "/api/v1/invitations", c.token, map[string]any{
-		"match_id": match.ID, "player_id": p2.ID,
-	}, &inv2)
-	c.postExpect(t, http.StatusOK, "/api/v1/invitations/respond", "", map[string]any{
-		"token": inv2.PlainToken, "answer": "yes",
-	}, nil)
 
-	// 6. Teams must exist before teams_ready; generate then transition.
+	// 6. Teams must exist before teams_ready; generate, then pin an
+	// explicit partition so the vote step below knows who is whose
+	// teammate, then transition.
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/teams/generate", c.token, map[string]any{
 		"strategy": "random",
+	}, nil)
+	c.putExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/teams", c.token, map[string]any{
+		"team_a": []string{p1.ID, p2.ID},
+		"team_b": []string{p3.ID, p4.ID},
 	}, nil)
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/teams-ready", c.token, nil, nil)
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/start", c.token, nil, nil)
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/complete", c.token,
 		map[string]any{"score_a": 3, "score_b": 1}, nil)
 
-	// 7. Cast + read votes (only allowed once the match is completed).
+	// 7. Vote, token-authed: the public context endpoint resolves the
+	// bearer's teammates, the cast derives the voter from the token,
+	// and raw vote reads are organizer-only.
+	var voteCtx struct {
+		Status    string `json:"status"`
+		Teammates []struct {
+			PlayerID string `json:"player_id"`
+		} `json:"teammates"`
+	}
+	c.postExpect(t, http.StatusOK, "/api/v1/votes/context", "", map[string]any{
+		"token": inv.PlainToken,
+	}, &voteCtx)
+	if voteCtx.Status != "completed" || len(voteCtx.Teammates) != 1 ||
+		voteCtx.Teammates[0].PlayerID != p2.ID {
+		t.Fatalf("unexpected vote context: %+v", voteCtx)
+	}
+
 	var vote struct {
 		ID string `json:"id"`
 	}
 	c.postExpect(t, http.StatusCreated, "/api/v1/votes", "", map[string]any{
-		"match_id": match.ID,
-		"voter_id": string(p1.ID),
-		"voted_id": string(p2.ID),
+		"token":    inv.PlainToken,
+		"voted_id": p2.ID,
 		"score":    5,
 	}, &vote)
-	c.getExpect(t, http.StatusOK, "/api/v1/votes/"+vote.ID, "", nil)
-	c.getExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/votes", "", nil)
+	c.getExpect(t, http.StatusOK, "/api/v1/votes/"+vote.ID, c.token, nil)
+	c.getExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/votes", c.token, nil)
 
 	// 8. Update a player's ranking explicitly (not the finalize path).
 	c.patchExpect(t, http.StatusOK, "/api/v1/players/"+p1.ID+"/ranking", c.token, map[string]any{
@@ -468,6 +497,11 @@ func (c *apiClient) postExpect(t *testing.T, want int, path, token string, body,
 func (c *apiClient) getExpect(t *testing.T, want int, path, token string, into any) {
 	t.Helper()
 	c.expect(t, http.MethodGet, path, token, nil, into, want)
+}
+
+func (c *apiClient) putExpect(t *testing.T, want int, path, token string, body, into any) {
+	t.Helper()
+	c.expect(t, http.MethodPut, path, token, body, into, want)
 }
 
 func (c *apiClient) patchExpect(t *testing.T, want int, path, token string, body, into any) {

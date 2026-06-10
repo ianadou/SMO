@@ -283,8 +283,10 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	respondToInvitationUC := invitationusecase.NewRespondToInvitationUseCase(invitationRepo, matchRepo, tokenService, systemClock)
 	listMatchParticipantsUC := invitationusecase.NewListMatchParticipantsUseCase(invitationRepo)
 
-	// Vote use cases.
-	castVoteUC := voteusecase.NewCastVoteUseCase(voteRepo, matchRepo, idGenerator, systemClock)
+	// Vote use cases. The voter is derived from the invitation token,
+	// hence the invitation repository and token service dependencies.
+	castVoteUC := voteusecase.NewCastVoteUseCase(voteRepo, matchRepo, invitationRepo, tokenService, idGenerator, systemClock)
+	getVoteContextUC := voteusecase.NewGetVoteContextUseCase(invitationRepo, matchRepo, groupRepo, voteRepo, tokenService)
 	getVoteUC := voteusecase.NewGetVoteUseCase(voteRepo)
 	listVotesByMatchUC := voteusecase.NewListVotesByMatchUseCase(voteRepo)
 
@@ -379,7 +381,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	invitationHandler := handlers.NewInvitationHandler(createInvitationUC, getInvitationUC, getInvitationContextUC, listInvitationsByMatchUC, respondToInvitationUC)
 	invitationHandler.Register(public, protected)
 
-	voteHandler := handlers.NewVoteHandler(castVoteUC, getVoteUC, listVotesByMatchUC)
+	voteHandler := handlers.NewVoteHandler(castVoteUC, getVoteContextUC, getVoteUC, listVotesByMatchUC)
 	voteHandler.Register(public, protected)
 
 	authHandler := handlers.NewAuthHandler(registerOrganizerUC, loginOrganizerUC)

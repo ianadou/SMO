@@ -172,6 +172,39 @@ func (r *PostgresMatchRepository) ListTeamMembersWithPlayers(ctx context.Context
 	return out, nil
 }
 
+// CountClosedMatchesTogether returns, per other player, how many closed
+// matches of the group both that player and playerID attended.
+func (r *PostgresMatchRepository) CountClosedMatchesTogether(
+	ctx context.Context,
+	groupID entities.GroupID,
+	playerID entities.PlayerID,
+	otherIDs []entities.PlayerID,
+) (map[entities.PlayerID]int, error) {
+	if len(otherIDs) == 0 {
+		return map[entities.PlayerID]int{}, nil
+	}
+
+	others := make([]string, len(otherIDs))
+	for i, id := range otherIDs {
+		others[i] = string(id)
+	}
+
+	rows, err := r.queries.CountClosedMatchesTogether(ctx, generated.CountClosedMatchesTogetherParams{
+		GroupID:        string(groupID),
+		PlayerID:       string(playerID),
+		OtherPlayerIds: others,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("postgres match repository: count matches together for %q: %w", playerID, err)
+	}
+
+	counts := make(map[entities.PlayerID]int, len(rows))
+	for _, row := range rows {
+		counts[entities.PlayerID(row.PlayerID)] = int(row.SharedMatches)
+	}
+	return counts, nil
+}
+
 // FindLatestDecidedByGroup returns the group's most recent decided match
 // (completed/closed, non-draw), excluding excludeID. Reports
 // ErrMatchNotFound when none — the expected first-match case.

@@ -57,3 +57,16 @@ RETURNING *;
 
 -- name: DeleteMatch :exec
 DELETE FROM matches WHERE id = $1;
+
+-- name: CountClosedMatchesTogether :many
+-- Read model for the vote page "matchs joués ensemble" meta: for each
+-- other player, how many closed matches of the group both they and the
+-- reference player attended (confirmed invitations on both sides).
+SELECT i2.player_id, COUNT(*) AS shared_matches
+FROM matches m
+JOIN invitations i1
+  ON i1.match_id = m.id AND i1.player_id = sqlc.arg(player_id) AND i1.response = 'yes'
+JOIN invitations i2
+  ON i2.match_id = m.id AND i2.player_id = ANY(sqlc.arg(other_player_ids)::text[]) AND i2.response = 'yes'
+WHERE m.group_id = sqlc.arg(group_id) AND m.status = 'closed'
+GROUP BY i2.player_id;

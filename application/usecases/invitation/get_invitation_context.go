@@ -24,6 +24,7 @@ type PageContext struct {
 	MatchTitle      string
 	Venue           string
 	ScheduledAt     time.Time
+	MatchStatus     entities.MatchStatus
 	MaxParticipants int
 	ConfirmedNames  []string
 	Response        entities.InvitationResponse
@@ -110,6 +111,7 @@ func (uc *GetInvitationContextUseCase) Execute(
 		MatchTitle:      match.Title(),
 		Venue:           match.Venue(),
 		ScheduledAt:     match.ScheduledAt(),
+		MatchStatus:     match.Status(),
 		MaxParticipants: entities.MaxParticipantsPerMatch,
 		ConfirmedNames:  confirmedNames,
 		Response:        inv.Response(),

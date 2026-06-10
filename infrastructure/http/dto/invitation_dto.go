@@ -86,6 +86,7 @@ type InvitationContextResponse struct {
 	MatchTitle        string    `json:"match_title"`
 	Venue             string    `json:"venue"`
 	ScheduledAt       time.Time `json:"scheduled_at"`
+	MatchStatus       string    `json:"match_status"`
 	Capacity          string    `json:"capacity"`
 	ConfirmedCount    int       `json:"confirmed_count"`
 	MaxParticipants   int       `json:"max_participants"`
@@ -120,6 +121,7 @@ func InvitationContextResponseFromContext(c *invitation.PageContext) InvitationC
 		MatchTitle:        c.MatchTitle,
 		Venue:             c.Venue,
 		ScheduledAt:       c.ScheduledAt,
+		MatchStatus:       string(c.MatchStatus),
 		Capacity:          fmt.Sprintf("%d (%dv%d)", c.MaxParticipants, c.MaxParticipants/2, c.MaxParticipants/2),
 		ConfirmedCount:    len(c.ConfirmedNames),
 		MaxParticipants:   c.MaxParticipants,

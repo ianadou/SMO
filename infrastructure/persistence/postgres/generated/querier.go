@@ -9,6 +9,10 @@ import (
 )
 
 type Querier interface {
+	// Read model for the vote page "matchs joués ensemble" meta: for each
+	// other player, how many closed matches of the group both they and the
+	// reference player attended (confirmed invitations on both sides).
+	CountClosedMatchesTogether(ctx context.Context, arg CountClosedMatchesTogetherParams) ([]CountClosedMatchesTogetherRow, error)
 	CountConfirmedInvitationsByMatchID(ctx context.Context, matchID string) (int64, error)
 	// ============================================================================
 	// group.sql — Queries for the groups table.

@@ -117,8 +117,13 @@ func TestBuildRouter_ErrorPaths(t *testing.T) {
 		c.expectStatus(t, http.MethodGet, "/api/v1/invitations/does-not-exist", "", nil, http.StatusNotFound)
 	})
 
-	t.Run("404: get unknown vote returns 404", func(t *testing.T) {
-		c.expectStatus(t, http.MethodGet, "/api/v1/votes/does-not-exist", "", nil, http.StatusNotFound)
+	t.Run("404: get unknown vote returns 404 for the organizer", func(t *testing.T) {
+		c.expectStatus(t, http.MethodGet, "/api/v1/votes/does-not-exist", c.token, nil, http.StatusNotFound)
+	})
+
+	t.Run("401: raw vote reads require the organizer JWT", func(t *testing.T) {
+		c.expectStatus(t, http.MethodGet, "/api/v1/votes/does-not-exist", "", nil, http.StatusUnauthorized)
+		c.expectStatus(t, http.MethodGet, "/api/v1/matches/"+draftMatch.ID+"/votes", "", nil, http.StatusUnauthorized)
 	})
 
 	t.Run("400: create group missing name returns 400", func(t *testing.T) {
@@ -135,11 +140,18 @@ func TestBuildRouter_ErrorPaths(t *testing.T) {
 
 	t.Run("400: cast vote with score out of range returns 400", func(t *testing.T) {
 		c.expectStatus(t, http.MethodPost, "/api/v1/votes", "", map[string]any{
-			"match_id": draftMatch.ID,
-			"voter_id": "p1",
+			"token":    "any-token",
 			"voted_id": "p2",
 			"score":    99,
 		}, http.StatusBadRequest)
+	})
+
+	t.Run("404: cast vote with unknown token returns 404", func(t *testing.T) {
+		c.expectStatus(t, http.MethodPost, "/api/v1/votes", "", map[string]any{
+			"token":    "definitely-not-a-real-token",
+			"voted_id": "p2",
+			"score":    4,
+		}, http.StatusNotFound)
 	})
 
 	t.Run("4xx: respond to invitation with garbage token", func(t *testing.T) {
