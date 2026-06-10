@@ -165,6 +165,10 @@ func (authRequiredFakeMatchRepo) ReplaceTeams(context.Context, *entities.Match) 
 	return domainerrors.ErrMatchNotFound
 }
 
+func (authRequiredFakeMatchRepo) CountClosedMatchesTogether(context.Context, entities.GroupID, entities.PlayerID, []entities.PlayerID) (map[entities.PlayerID]int, error) {
+	return map[entities.PlayerID]int{}, nil
+}
+
 func (authRequiredFakeMatchRepo) FindLatestDecidedByGroup(context.Context, entities.GroupID, entities.MatchID) (*entities.Match, error) {
 	return nil, domainerrors.ErrMatchNotFound
 }
@@ -257,7 +261,8 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 	)
 
 	voteHandler := handlers.NewVoteHandler(
-		vote.NewCastVoteUseCase(voteRepo, repo, idGen, clock),
+		vote.NewCastVoteUseCase(voteRepo, repo, &authRequiredFakeInvitationRepo{}, &noopTokenService{}, idGen, clock),
+		vote.NewGetVoteContextUseCase(&authRequiredFakeInvitationRepo{}, repo, &authRequiredFakeGroupRepo{}, voteRepo, &noopTokenService{}),
 		vote.NewGetVoteUseCase(voteRepo),
 		vote.NewListVotesByMatchUseCase(voteRepo),
 	)
@@ -296,6 +301,8 @@ func TestAuthRequired_ProtectedRoute_Returns401_WithoutToken(t *testing.T) {
 		{http.MethodPatch, "/api/v1/players/p-1/ranking"},
 		{http.MethodPost, "/api/v1/invitations"},
 		{http.MethodGet, "/api/v1/matches/m-1/invitations"},
+		{http.MethodGet, "/api/v1/votes/v-1"},
+		{http.MethodGet, "/api/v1/matches/m-1/votes"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
@@ -327,8 +334,8 @@ func TestAuthRequired_PublicRoute_DoesNotReturn401_WithoutToken(t *testing.T) {
 		{http.MethodGet, "/api/v1/players/p-1"},
 		{http.MethodGet, "/api/v1/groups/g-1/players"},
 		{http.MethodGet, "/api/v1/groups/g-1/matches"},
-		{http.MethodGet, "/api/v1/votes/v-1"},
-		{http.MethodGet, "/api/v1/matches/m-1/votes"},
+		{http.MethodPost, "/api/v1/votes"},
+		{http.MethodPost, "/api/v1/votes/context"},
 		{http.MethodGet, "/api/v1/invitations/i-1"},
 		{http.MethodPost, "/api/v1/auth/register"},
 		{http.MethodPost, "/api/v1/auth/login"},

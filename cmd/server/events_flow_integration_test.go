@@ -201,6 +201,10 @@ func (r *inmemoryMatchRepoForEventsTest) ReplaceTeams(context.Context, *entities
 	return nil
 }
 
+func (r *inmemoryMatchRepoForEventsTest) CountClosedMatchesTogether(context.Context, entities.GroupID, entities.PlayerID, []entities.PlayerID) (map[entities.PlayerID]int, error) {
+	return map[entities.PlayerID]int{}, nil
+}
+
 func (r *inmemoryMatchRepoForEventsTest) FindLatestDecidedByGroup(context.Context, entities.GroupID, entities.MatchID) (*entities.Match, error) {
 	return nil, domainerrors.ErrMatchNotFound
 }

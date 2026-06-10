@@ -52,6 +52,13 @@ type MatchRepository interface {
 	// joined with player display data, ordered by team then slot.
 	ListTeamMembersWithPlayers(ctx context.Context, matchID entities.MatchID) ([]entities.MatchTeamMember, error)
 
+	// CountClosedMatchesTogether returns, for each of the given other
+	// players, how many closed matches of the group both that player and
+	// the reference player attended (confirmed invitations on both
+	// sides). Players sharing no closed match are absent from the map.
+	// Powers the "matchs joués ensemble" meta on the vote page.
+	CountClosedMatchesTogether(ctx context.Context, groupID entities.GroupID, playerID entities.PlayerID, otherIDs []entities.PlayerID) (map[entities.PlayerID]int, error)
+
 	// FindLatestDecidedByGroup returns the most recent match of the group
 	// (by scheduled date) that was completed or closed with a decisive
 	// score (no draw), excluding the given match id. It reports

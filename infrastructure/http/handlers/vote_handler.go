@@ -14,6 +14,7 @@ import (
 // VoteHandler exposes the Vote aggregate over HTTP.
 type VoteHandler struct {
 	castVote         *vote.CastVoteUseCase
+	getVoteContext   *vote.GetVoteContextUseCase
 	getVote          *vote.GetVoteUseCase
 	listVotesByMatch *vote.ListVotesByMatchUseCase
 }
@@ -21,25 +22,34 @@ type VoteHandler struct {
 // NewVoteHandler builds the handler.
 func NewVoteHandler(
 	castVote *vote.CastVoteUseCase,
+	getVoteContext *vote.GetVoteContextUseCase,
 	getVote *vote.GetVoteUseCase,
 	listVotesByMatch *vote.ListVotesByMatchUseCase,
 ) *VoteHandler {
-	return &VoteHandler{castVote: castVote, getVote: getVote, listVotesByMatch: listVotesByMatch}
+	return &VoteHandler{
+		castVote:         castVote,
+		getVoteContext:   getVoteContext,
+		getVote:          getVote,
+		listVotesByMatch: listVotesByMatch,
+	}
 }
 
-// Register wires vote routes. All vote routes are public: Cast is
-// authed via the match invitation token (not a JWT), and reads are
-// public by design. The `protected` parameter is accepted to keep the
-// handler interface uniform across the codebase.
-func (h *VoteHandler) Register(public, _ *gin.RouterGroup) {
+// Register wires vote routes. Cast and Context are public but
+// token-authed: the invitation token in the body is the capability that
+// both identifies and authenticates the voter. Raw vote reads are
+// organizer-only: votes are anonymous between players (the vote page
+// promises "vos coéquipiers ne sauront pas qui les a notés"), so
+// players only ever see aggregates via the context endpoint.
+func (h *VoteHandler) Register(public, protected *gin.RouterGroup) {
 	votes := public.Group("/votes")
 	votes.POST("", h.Cast)
-	votes.GET("/:id", h.Get)
+	votes.POST("/context", h.Context)
 
-	public.GET("/matches/:id/votes", h.ListByMatch)
+	protected.GET("/votes/:id", h.Get)
+	protected.GET("/matches/:id/votes", h.ListByMatch)
 }
 
-// Cast handles POST /api/votes.
+// Cast handles POST /api/v1/votes.
 func (h *VoteHandler) Cast(c *gin.Context) {
 	var req dto.CastVoteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -47,10 +57,9 @@ func (h *VoteHandler) Cast(c *gin.Context) {
 		return
 	}
 	v, err := h.castVote.Execute(c.Request.Context(), vote.CastVoteInput{
-		MatchID: entities.MatchID(req.MatchID),
-		VoterID: entities.PlayerID(req.VoterID),
-		VotedID: entities.PlayerID(req.VotedID),
-		Score:   req.Score,
+		PlainToken: req.Token,
+		VotedID:    entities.PlayerID(req.VotedID),
+		Score:      req.Score,
 	})
 	if err != nil {
 		status, message := httperrors.MapError(err)
@@ -60,7 +69,24 @@ func (h *VoteHandler) Cast(c *gin.Context) {
 	c.JSON(http.StatusCreated, dto.VoteResponseFromEntity(v))
 }
 
-// Get handles GET /api/votes/:id.
+// Context handles POST /api/v1/votes/context. It resolves the bearer's
+// token into the full vote-page view model.
+func (h *VoteHandler) Context(c *gin.Context) {
+	var req dto.VoteContextRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+	pageContext, err := h.getVoteContext.Execute(c.Request.Context(), req.Token)
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		c.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+	c.JSON(http.StatusOK, dto.VoteContextResponseFromContext(pageContext))
+}
+
+// Get handles GET /api/v1/votes/:id (organizer only).
 func (h *VoteHandler) Get(c *gin.Context) {
 	v, err := h.getVote.Execute(c.Request.Context(), entities.VoteID(c.Param("id")))
 	if err != nil {
@@ -71,7 +97,7 @@ func (h *VoteHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.VoteResponseFromEntity(v))
 }
 
-// ListByMatch handles GET /api/matches/:id/votes.
+// ListByMatch handles GET /api/v1/matches/:id/votes (organizer only).
 func (h *VoteHandler) ListByMatch(c *gin.Context) {
 	votes, err := h.listVotesByMatch.Execute(c.Request.Context(), entities.MatchID(c.Param("id")))
 	if err != nil {

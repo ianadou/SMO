@@ -139,6 +139,10 @@ func (invStubMatchRepo) Save(context.Context, *entities.Match) error         { r
 func (invStubMatchRepo) UpdateStatus(context.Context, *entities.Match) error { return nil }
 func (invStubMatchRepo) Finalize(context.Context, *entities.Match) error     { return nil }
 func (invStubMatchRepo) ReplaceTeams(context.Context, *entities.Match) error { return nil }
+func (invStubMatchRepo) CountClosedMatchesTogether(context.Context, entities.GroupID, entities.PlayerID, []entities.PlayerID) (map[entities.PlayerID]int, error) {
+	return map[entities.PlayerID]int{}, nil
+}
+
 func (invStubMatchRepo) FindLatestDecidedByGroup(context.Context, entities.GroupID, entities.MatchID) (*entities.Match, error) {
 	return nil, domainerrors.ErrMatchNotFound
 }

@@ -122,6 +122,10 @@ func (r *fakeMatchRepository) ListTeamMembersWithPlayers(_ context.Context, matc
 	return r.teamMembers[matchID], nil
 }
 
+func (r *fakeMatchRepository) CountClosedMatchesTogether(context.Context, entities.GroupID, entities.PlayerID, []entities.PlayerID) (map[entities.PlayerID]int, error) {
+	return map[entities.PlayerID]int{}, nil
+}
+
 func (r *fakeMatchRepository) FindLatestDecidedByGroup(_ context.Context, _ entities.GroupID, _ entities.MatchID) (*entities.Match, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -275,3 +275,85 @@ func TestPostgresMatchRepository_Delete_RemovesMatch(t *testing.T) {
 		t.Errorf("expected ErrMatchNotFound after delete, got %v", findErr)
 	}
 }
+
+// seedClosedMatchWithConfirmed inserts a match in the given status and a
+// confirmed (or declined) invitation per listed player, so the
+// matches-together aggregate has rows to count.
+func seedMatchWithInvitations(t *testing.T, matchID, groupID, status string, responseByPlayer map[string]string) {
+	t.Helper()
+	ctx := context.Background()
+
+	if _, err := sharedPool.Exec(ctx, `
+		INSERT INTO matches (id, group_id, title, venue, scheduled_at, status)
+		VALUES ($1, $2, 'Shared', 'Venue', NOW() - INTERVAL '1 day', $3)
+	`, matchID, groupID, status); err != nil {
+		t.Fatalf("seed match %s: %v", matchID, err)
+	}
+
+	for playerID, response := range responseByPlayer {
+		if _, err := sharedPool.Exec(ctx, `
+			INSERT INTO invitations (id, match_id, player_id, token_hash, expires_at, response)
+			VALUES ($1, $2, $3, $4, NOW() + INTERVAL '5 days', $5)
+		`, "inv-"+matchID+"-"+playerID, matchID, playerID, "hash-"+matchID+"-"+playerID, response); err != nil {
+			t.Fatalf("seed invitation %s/%s: %v", matchID, playerID, err)
+		}
+	}
+}
+
+func TestPostgresMatchRepository_CountClosedMatchesTogether_CountsOnlyClosedConfirmedSharedMatches(t *testing.T) {
+	repo := newTestMatchRepository(t)
+	ctx := context.Background()
+
+	if _, err := sharedPool.Exec(ctx, "DELETE FROM invitations"); err != nil {
+		t.Fatalf("clean invitations: %v", err)
+	}
+	if _, err := sharedPool.Exec(ctx, "DELETE FROM players"); err != nil {
+		t.Fatalf("clean players: %v", err)
+	}
+	for _, p := range []string{"p-1", "p-2", "p-3"} {
+		seedPlayer(t, p)
+	}
+	if _, err := sharedPool.Exec(ctx, `
+		INSERT INTO groups (id, organizer_id, name)
+		VALUES ('other-group', 'test-org', 'Other Group')
+		ON CONFLICT (id) DO NOTHING
+	`); err != nil {
+		t.Fatalf("seed other group: %v", err)
+	}
+
+	// Two closed matches in the group: p-2 shares both with p-1, p-3
+	// shares one (declined the second). An open match and a closed match
+	// of another group must not count.
+	seedMatchWithInvitations(t, "m-closed-1", "test-group", "closed",
+		map[string]string{"p-1": "yes", "p-2": "yes", "p-3": "yes"})
+	seedMatchWithInvitations(t, "m-closed-2", "test-group", "closed",
+		map[string]string{"p-1": "yes", "p-2": "yes", "p-3": "no"})
+	seedMatchWithInvitations(t, "m-open", "test-group", "open",
+		map[string]string{"p-1": "yes", "p-2": "yes"})
+	seedMatchWithInvitations(t, "m-elsewhere", "other-group", "closed",
+		map[string]string{"p-1": "yes", "p-2": "yes"})
+
+	counts, err := repo.CountClosedMatchesTogether(ctx, "test-group", "p-1",
+		[]entities.PlayerID{"p-2", "p-3"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if counts["p-2"] != 2 {
+		t.Errorf("expected p-2 to share 2 closed matches, got %d", counts["p-2"])
+	}
+	if counts["p-3"] != 1 {
+		t.Errorf("expected p-3 to share 1 closed match, got %d", counts["p-3"])
+	}
+}
+
+func TestPostgresMatchRepository_CountClosedMatchesTogether_ReturnsEmptyMap_WhenNoOtherPlayers(t *testing.T) {
+	repo := newTestMatchRepository(t)
+
+	counts, err := repo.CountClosedMatchesTogether(context.Background(), "test-group", "p-1", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(counts) != 0 {
+		t.Errorf("expected empty map, got %v", counts)
+	}
+}

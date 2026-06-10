@@ -11,6 +11,51 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countClosedMatchesTogether = `-- name: CountClosedMatchesTogether :many
+SELECT i2.player_id, COUNT(*) AS shared_matches
+FROM matches m
+JOIN invitations i1
+  ON i1.match_id = m.id AND i1.player_id = $1 AND i1.response = 'yes'
+JOIN invitations i2
+  ON i2.match_id = m.id AND i2.player_id = ANY($2::text[]) AND i2.response = 'yes'
+WHERE m.group_id = $3 AND m.status = 'closed'
+GROUP BY i2.player_id
+`
+
+type CountClosedMatchesTogetherParams struct {
+	PlayerID       string
+	OtherPlayerIds []string
+	GroupID        string
+}
+
+type CountClosedMatchesTogetherRow struct {
+	PlayerID      string
+	SharedMatches int64
+}
+
+// Read model for the vote page "matchs joués ensemble" meta: for each
+// other player, how many closed matches of the group both they and the
+// reference player attended (confirmed invitations on both sides).
+func (q *Queries) CountClosedMatchesTogether(ctx context.Context, arg CountClosedMatchesTogetherParams) ([]CountClosedMatchesTogetherRow, error) {
+	rows, err := q.db.Query(ctx, countClosedMatchesTogether, arg.PlayerID, arg.OtherPlayerIds, arg.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountClosedMatchesTogetherRow
+	for rows.Next() {
+		var i CountClosedMatchesTogetherRow
+		if err := rows.Scan(&i.PlayerID, &i.SharedMatches); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createMatch = `-- name: CreateMatch :one
 INSERT INTO matches (
     id, group_id, title, venue, scheduled_at, status, created_at

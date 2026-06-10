@@ -28,6 +28,9 @@ func MapError(err error) (int, string) {
 	if status, message, matched := mapBusinessRuleError(err); matched {
 		return status, message
 	}
+	if status, message, matched := mapVoteEligibilityError(err); matched {
+		return status, message
+	}
 	if status, message, matched := mapTeamStateError(err); matched {
 		return status, message
 	}
@@ -129,6 +132,19 @@ func mapBusinessRuleError(err error) (int, string, bool) {
 		return http.StatusConflict, "match is not completed", true
 	case errors.Is(err, domainerrors.ErrEmailAlreadyExists):
 		return http.StatusConflict, "email already exists", true
+	}
+	return 0, "", false
+}
+
+// mapVoteEligibilityError handles the two errors that gate who a token
+// bearer may vote for. Split out of mapBusinessRuleError to keep each
+// category helper within the project cyclomatic-complexity limit.
+func mapVoteEligibilityError(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, domainerrors.ErrNotTeammates):
+		return http.StatusBadRequest, "players are not teammates", true
+	case errors.Is(err, domainerrors.ErrNotConfirmedParticipant):
+		return http.StatusForbidden, "not a confirmed participant for this match", true
 	}
 	return 0, "", false
 }
