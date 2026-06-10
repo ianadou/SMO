@@ -37,7 +37,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
           version: v2.12.2
   hadolint:
@@ -47,7 +47,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
       - name: Run hadolint on Dockerfile
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
           dockerfile: Dockerfile
           # DL3059 (consecutive RUN instructions) is intentionally
@@ -64,7 +64,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
       - name: Scan filesystem (Go modules + lockfiles)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -86,14 +86,14 @@ jobs:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
       - name: Build image (no push)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: .
           push: false
           load: true
           tags: smo-app:trivy-scan
       - name: Scan image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: smo-app:trivy-scan
@@ -108,6 +108,58 @@ jobs:
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image
+  govulncheck:
+    name: Govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Scan for reachable Go vulnerabilities
+        # Only reports vulnerabilities whose vulnerable symbols are
+        # actually reachable from this code, so a finding here is
+        # signal, never noise. Blocking by design. The tool version is
+        # pinned and verified through the Go module checksum database.
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.3.0 ./...
+  osv-scanner:
+    name: OSV scanner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Scan lockfiles against the OSV database
+        # Scans go.mod and frontend/pnpm-lock.yaml in one pass against
+        # the aggregated OSV database — a second opinion next to Trivy
+        # (different database) and govulncheck (Go-only, reachability).
+        # Built from source through the Go module proxy + checksum DB
+        # instead of pulling a third-party action.
+        run: go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.8 scan source -r .
+  frontend-audit:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enable corepack
+        run: corepack enable
+      - name: Audit dependencies from the lockfile
+        # Works from pnpm-lock.yaml alone, no install needed. Fails on
+        # high/critical advisories, aligned with the Trivy gate.
+        run: pnpm audit --audit-level high
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -196,7 +248,7 @@ jobs:
       # see https://docs.codecov.com/docs/codecov-tokens. Failing the
       # upload must NOT fail the CI (Codecov outage is not our problem).
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           files: coverage.out
           token: ${{ secrets.CODECOV_TOKEN }}
