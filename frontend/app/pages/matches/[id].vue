@@ -32,10 +32,10 @@ watch(
   { immediate: true },
 )
 
-const readonlyStateLabel = computed(() =>
-  match.value?.status === 'in_progress'
-    ? 'Match en cours · lecture seule'
-    : 'Équipes validées · lecture seule',
+const isCompositionSaved = computed(() => match.value?.status === 'teams_ready')
+
+const validateLabel = computed(() =>
+  isCompositionSaved.value ? 'Enregistrer la composition' : 'Valider les équipes',
 )
 
 useHead(() => ({
@@ -50,7 +50,9 @@ function back() {
 
 function validate() {
   const { team_a, team_b } = toTeamArrays(red.value, green.value)
-  return detail.validateTeams(team_a, team_b)
+  return isCompositionSaved.value
+    ? detail.saveTeams(team_a, team_b)
+    : detail.validateTeams(team_a, team_b)
 }
 </script>
 
@@ -86,7 +88,8 @@ function validate() {
             <span>Composition</span>
             <span class="md-field-meta-state">
               <template v-if="screen === 'composition'">Glisse pour échanger</template>
-              <template v-else-if="screen === 'finished'">{{ readonlyStateLabel }}</template>
+              <template v-else-if="screen === 'locked'">Verrouillée · coup d'envoi imminent</template>
+              <template v-else-if="screen === 'finished'">Match en cours · lecture seule</template>
               <template v-else>Clôturé</template>
             </span>
           </div>
@@ -104,6 +107,7 @@ function validate() {
         <MatchValidateBar
           v-if="screen === 'composition'"
           :busy="loading"
+          :label="validateLabel"
           @validate="validate"
         />
       </template>

@@ -3,27 +3,44 @@ import { deriveScreen, splitTeams, toTeamArrays } from './teamComposition'
 import type { TeamMemberDTO } from '~/types/matches'
 
 describe('deriveScreen', () => {
+  const kickoff = '2026-06-01T19:00:00Z'
+  const wellBeforeLock = new Date('2026-06-01T18:00:00Z')
+  const exactlyAtLock = new Date('2026-06-01T18:50:00Z')
+  const pastLock = new Date('2026-06-01T18:55:00Z')
+
   it('maps draft to the open-match setup screen', () => {
-    expect(deriveScreen('draft', false)).toBe('setup-draft')
-    expect(deriveScreen('draft', true)).toBe('setup-draft')
+    expect(deriveScreen('draft', false, wellBeforeLock, kickoff)).toBe('setup-draft')
+    expect(deriveScreen('draft', true, wellBeforeLock, kickoff)).toBe('setup-draft')
   })
 
   it('maps open without teams to the generate setup screen', () => {
-    expect(deriveScreen('open', false)).toBe('setup-generate')
+    expect(deriveScreen('open', false, wellBeforeLock, kickoff)).toBe('setup-generate')
   })
 
-  it('maps open with teams to the editable composition screen', () => {
-    expect(deriveScreen('open', true)).toBe('composition')
+  it('maps open with teams to the editable composition screen before the lock', () => {
+    expect(deriveScreen('open', true, wellBeforeLock, kickoff)).toBe('composition')
   })
 
-  it('maps teams_ready and in_progress to the read-only finished screen', () => {
-    expect(deriveScreen('teams_ready', true)).toBe('finished')
-    expect(deriveScreen('in_progress', true)).toBe('finished')
+  it('maps teams_ready to the editable composition screen before the lock', () => {
+    expect(deriveScreen('teams_ready', true, wellBeforeLock, kickoff)).toBe('composition')
+  })
+
+  it('locks the composition exactly ten minutes before kickoff', () => {
+    expect(deriveScreen('open', true, exactlyAtLock, kickoff)).toBe('locked')
+  })
+
+  it('locks the composition past the lock threshold for both editable statuses', () => {
+    expect(deriveScreen('open', true, pastLock, kickoff)).toBe('locked')
+    expect(deriveScreen('teams_ready', true, pastLock, kickoff)).toBe('locked')
+  })
+
+  it('maps in_progress to the read-only finished screen', () => {
+    expect(deriveScreen('in_progress', true, wellBeforeLock, kickoff)).toBe('finished')
   })
 
   it('maps completed and closed to the scored read-only screen', () => {
-    expect(deriveScreen('completed', true)).toBe('closed')
-    expect(deriveScreen('closed', true)).toBe('closed')
+    expect(deriveScreen('completed', true, wellBeforeLock, kickoff)).toBe('closed')
+    expect(deriveScreen('closed', true, wellBeforeLock, kickoff)).toBe('closed')
   })
 })
 

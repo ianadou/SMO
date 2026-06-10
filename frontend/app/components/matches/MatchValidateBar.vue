@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{ busy?: boolean }>()
+withDefaults(defineProps<{ busy?: boolean; label?: string }>(), {
+  label: 'Valider les équipes',
+})
 const emit = defineEmits<{ validate: [] }>()
 </script>
 
@@ -7,7 +9,7 @@ const emit = defineEmits<{ validate: [] }>()
   <div class="md-bottombar">
     <div class="md-bottombar-inner">
       <button class="md-bottombar-btn" :disabled="busy" @click="emit('validate')">
-        Valider les équipes
+        {{ label }}
       </button>
     </div>
   </div>
