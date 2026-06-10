@@ -53,9 +53,10 @@ describe('MatchVsHeader', () => {
     expect(wrapper.emitted('back')).toHaveLength(1)
   })
 
-  it('exposes the more-options button with an accessible label', async () => {
+  it('emits menu when the invitations button is clicked', async () => {
     const wrapper = await mountSuspended(MatchVsHeader, { props: { match: makeMatch() } })
-    expect(wrapper.find('button[aria-label="Plus d\'options"]').exists()).toBe(true)
+    await wrapper.find('button[aria-label="Invitations"]').trigger('click')
+    expect(wrapper.emitted('menu')).toHaveLength(1)
   })
 
   it('maps in_progress status to the live pill', async () => {
