@@ -16,12 +16,16 @@ mockNuxtImport('useApi', () => () => ({
 
 mockNuxtImport('useRoute', () => () => ({ params: { token: 'tok-123' } }))
 
+const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }))
+mockNuxtImport('navigateTo', () => navigate)
+
 const fullContext = {
   organizer_name: 'Alex L.',
   group_name: 'Foot du jeudi',
   match_title: 'Match',
   venue: 'Salle Pierre Mendès, Lyon',
   scheduled_at: '2026-05-07T19:30:00+02:00',
+  match_status: 'open',
   capacity: '10 (5v5)',
   confirmed_count: 6,
   max_participants: 10,
@@ -33,6 +37,7 @@ const fullContext = {
 
 beforeEach(() => {
   post.mockReset()
+  navigate.mockReset()
 })
 
 describe('Invitation page', () => {
@@ -58,6 +63,20 @@ describe('Invitation page', () => {
     const wrapper = await mountSuspended(InvitePage)
     await flushPromises()
     expect(wrapper.text()).toContain('Lien invalide')
+  })
+
+  it('redirects to the vote page once the match is completed', async () => {
+    post.mockResolvedValueOnce({ ...fullContext, match_status: 'completed' })
+    await mountSuspended(InvitePage)
+    await flushPromises()
+    expect(navigate).toHaveBeenCalledWith('/vote/tok-123', { replace: true })
+  })
+
+  it('redirects to the vote page once the match is closed', async () => {
+    post.mockResolvedValueOnce({ ...fullContext, match_status: 'closed' })
+    await mountSuspended(InvitePage)
+    await flushPromises()
+    expect(navigate).toHaveBeenCalledWith('/vote/tok-123', { replace: true })
   })
 
   it('shows the expired screen when state is expired', async () => {

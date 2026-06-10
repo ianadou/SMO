@@ -32,6 +32,10 @@ async function load() {
   loading.value = true
   try {
     const ctx = await api.post<InvitationContext>('/invitations/context', { token })
+    if (ctx.match_status === 'completed' || ctx.match_status === 'closed') {
+      await navigateTo(`/vote/${token}`, { replace: true })
+      return
+    }
     outcome.value = { kind: 'ok', context: ctx }
   }
   catch (e) {

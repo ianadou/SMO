@@ -9,7 +9,7 @@
 
 import { defineConfig, devices } from '@playwright/test'
 
-const E2E_PORT = 3001
+const E2E_PORT = Number(process.env.E2E_PORT ?? 3001)
 const E2E_HOST = '127.0.0.1'
 
 export default defineConfig({
