@@ -1,9 +1,12 @@
+import type { MatchStatus } from '~/types/matches'
+
 export interface InvitationContext {
   organizer_name: string
   group_name: string
   match_title: string
   venue: string
   scheduled_at: string
+  match_status: MatchStatus
   capacity: string
   confirmed_count: number
   max_participants: number
