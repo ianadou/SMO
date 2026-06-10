@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Plus, ArrowLeft, Webhook } from 'lucide-vue-next'
+import { Plus, ArrowLeft, Settings, Webhook } from 'lucide-vue-next'
 import CardSkeleton from '~/components/groups/CardSkeleton.vue'
 import MatchCard from '~/components/groups/MatchCard.vue'
 import NextMatchSection from '~/components/groups/NextMatchSection.vue'
 import CreateMatchModal from '~/components/groups/CreateMatchModal.vue'
+import RenameGroupModal from '~/components/groups/RenameGroupModal.vue'
 import Wordmark from '~/components/Wordmark.vue'
 import type { GroupDTO } from '~/types/groups'
 import type { MatchDTO, MatchStatus } from '~/types/matches'
@@ -22,6 +23,8 @@ const loading = ref(true)
 const error = ref('')
 const notFound = ref(false)
 const createOpen = ref(false)
+const renameOpen = ref(false)
+const toast = useToast()
 
 useHead(() => ({
   title: group.value ? `${group.value.name} — SMO` : 'Groupe — SMO',
@@ -60,6 +63,12 @@ async function onMatchCreated(created: MatchDTO) {
   matches.value = [created, ...matches.value]
 }
 
+function onGroupRenamed(renamed: GroupDTO) {
+  renameOpen.value = false
+  group.value = renamed
+  toast.success('Groupe renommé', `Il s'appelle maintenant « ${renamed.name} ».`)
+}
+
 const SPOTLIGHT_STATUSES = new Set<MatchStatus>(['open', 'teams_ready', 'in_progress'])
 
 const nextMatch = computed<MatchDTO | null>(() => {
@@ -89,7 +98,17 @@ onMounted(loadAll)
         <ArrowLeft :size="18" />
       </NuxtLink>
       <Wordmark class="leading-none" />
-      <div class="w-10 h-10" aria-hidden="true" />
+      <button
+        v-if="group"
+        type="button"
+        data-testid="group-settings"
+        class="w-10 h-10 inline-flex items-center justify-center bg-transparent border-0 text-fg-default rounded-[var(--radius-pill)] cursor-pointer transition-colors duration-150 hover:bg-white/5 active:bg-white/10 focus-visible:outline-none focus-visible:[box-shadow:0_0_0_2px_var(--color-bg-base),0_0_0_4px_rgba(32,128,255,0.45)]"
+        aria-label="Renommer le groupe"
+        @click="renameOpen = true"
+      >
+        <Settings :size="18" />
+      </button>
+      <div v-else class="w-10 h-10" aria-hidden="true" />
     </header>
 
     <div v-if="notFound" class="flex flex-col items-center text-center px-6 py-14 gap-3">
@@ -198,6 +217,14 @@ onMounted(loadAll)
         :group-id="groupId"
         @close="createOpen = false"
         @created="onMatchCreated"
+      />
+
+      <RenameGroupModal
+        v-if="group"
+        :open="renameOpen"
+        :group="group"
+        @close="renameOpen = false"
+        @renamed="onGroupRenamed"
       />
     </template>
   </div>

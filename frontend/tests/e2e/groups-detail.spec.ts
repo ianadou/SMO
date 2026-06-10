@@ -72,6 +72,30 @@ test.describe('Group detail page', () => {
     await expect(page.getByText('Pas encore de match')).toBeVisible()
   })
 
+  test('renaming the group through the settings modal updates the heading', async ({ page }) => {
+    await authenticate(page)
+    await mockGroupAndMatches(page, {})
+    await page.route(url => url.pathname === '/api/v1/groups/g-1' && url.search === '', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ...SAMPLE_GROUP, name: 'Foot du vendredi' }),
+        })
+      }
+      return route.fallback()
+    })
+
+    await page.goto('/groups/g-1')
+    await page.getByTestId('group-settings').click()
+    await expect(page.getByRole('heading', { name: 'Renommer le groupe' })).toBeVisible()
+
+    await page.getByLabel('Nom du groupe').fill('Foot du vendredi')
+    await page.getByRole('button', { name: 'Renommer', exact: true }).click()
+
+    await expect(page.getByRole('heading', { name: 'Foot du vendredi' })).toBeVisible()
+  })
+
   test('renders the Discord badge when the group has a webhook', async ({ page }) => {
     await authenticate(page)
     await mockGroupAndMatches(page, {})
