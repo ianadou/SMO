@@ -45,8 +45,21 @@
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* ============ SPACING (4px base) ============ */
-  /* Tailwind v4 default spacing scale already maps 1=4px, 2=8px, etc.
-   * No override needed unless we want named tokens — kept implicit. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-14: 56px;
+
+  /* ============ MOTION ============ */
+  --motion-fast: 90ms;
+  --motion-default: 160ms;
+  --motion-slow: 280ms;
+  --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ============ RADII ============ */
   --radius-sm: 6px;

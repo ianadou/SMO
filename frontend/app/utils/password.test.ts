@@ -15,19 +15,20 @@ describe('passwordStrength', () => {
     expect(passwordStrength('')).toBe(0)
   })
 
-  it('returns 1 for fewer than 8 characters', () => {
+  it('returns 1 for fewer than 12 characters', () => {
     expect(passwordStrength(compose({ lower: 1 }))).toBe(1)
     expect(passwordStrength(compose({ lower: 3, digit: 4 }))).toBe(1)
+    expect(passwordStrength(compose({ lower: 5, digit: 5 }))).toBe(1)
   })
 
-  it('returns 2 for 8+ chars with a single character class', () => {
-    expect(passwordStrength(compose({ lower: 8 }))).toBe(2)
-    expect(passwordStrength(compose({ digit: 8 }))).toBe(2)
+  it('returns 2 for 12+ chars with a single character class', () => {
+    expect(passwordStrength(compose({ lower: 12 }))).toBe(2)
+    expect(passwordStrength(compose({ digit: 12 }))).toBe(2)
   })
 
-  it('returns 3 for 8+ chars with 2 classes', () => {
-    expect(passwordStrength(compose({ lower: 4, digit: 4 }))).toBe(3)
-    expect(passwordStrength(compose({ upper: 1, lower: 7 }))).toBe(3)
+  it('returns 3 for 12+ chars with 2 classes', () => {
+    expect(passwordStrength(compose({ lower: 6, digit: 6 }))).toBe(3)
+    expect(passwordStrength(compose({ upper: 4, lower: 8 }))).toBe(3)
   })
 
   it('returns 4 for 12+ chars with 3+ classes', () => {

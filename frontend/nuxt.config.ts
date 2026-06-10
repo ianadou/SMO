@@ -17,7 +17,7 @@ export default defineNuxtConfig({
   // system tokens (colors, spacing, radii, shadows) as CSS
   // variables. The design system file stays the single source of
   // truth.
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/match-detail.css'],
 
   // Tailwind v4: configured via the official Vite plugin. CSS-first
   // setup (theme tokens declared inside the global stylesheet using
