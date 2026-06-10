@@ -2,20 +2,36 @@ package entities
 
 import (
 	"fmt"
+	"time"
 
 	domainerrors "github.com/ianadou/smo/domain/errors"
 )
 
+// TeamLockLeadTime is how long before kickoff the team composition
+// freezes. Inside this window the rosters can no longer be edited, so
+// players can rely on a stable line-up as the match begins.
+const TeamLockLeadTime = 10 * time.Minute
+
 // AssignTeams sets the two-team composition of the match.
 //
-// Teams may only be (re)assigned while the match is open; from
-// teams_ready onward the rosters are frozen (ErrTeamsNotEditable).
-// Both teams must be non-empty, no player may appear in both, and the
-// two teams must differ in size by at most one (ErrInvalidAssignment).
-func (m *Match) AssignTeams(teamA, teamB []PlayerID) error {
-	if m.status != MatchStatusOpen {
+// Teams may be (re)assigned while the match is open or teams_ready, up
+// until TeamLockLeadTime before the scheduled kickoff; from in_progress
+// onward, or once that lead time is reached, the rosters are frozen
+// (ErrTeamsNotEditable / ErrTeamsLocked). Both teams must be non-empty,
+// no player may appear in both, and the two teams must differ in size by
+// at most one (ErrInvalidAssignment).
+//
+// now is injected rather than read from a clock so the rule stays pure
+// and deterministic under test.
+func (m *Match) AssignTeams(teamA, teamB []PlayerID, now time.Time) error {
+	if m.status != MatchStatusOpen && m.status != MatchStatusTeamsReady {
 		return fmt.Errorf("%w: cannot edit teams in status %q",
 			domainerrors.ErrTeamsNotEditable, m.status)
+	}
+
+	if !now.Before(m.scheduledAt.Add(-TeamLockLeadTime)) {
+		return fmt.Errorf("%w: teams freeze %s before kickoff (scheduled for %s)",
+			domainerrors.ErrTeamsLocked, TeamLockLeadTime, m.scheduledAt.Format(time.RFC3339))
 	}
 
 	if len(teamA) == 0 || len(teamB) == 0 {

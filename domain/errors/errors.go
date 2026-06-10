@@ -71,9 +71,16 @@ var (
 	ErrInvalidAssignment = errors.New("invalid assignment")
 
 	// ErrTeamsNotEditable is returned when a team-composition change is
-	// attempted while the match is not in the open status (teams are frozen
-	// from teams_ready onward).
+	// attempted from a status that does not allow it. Teams are editable
+	// only while the match is open or teams_ready; from in_progress onward
+	// the rosters are frozen.
 	ErrTeamsNotEditable = errors.New("teams not editable")
+
+	// ErrTeamsLocked is returned when a team-composition change is attempted
+	// too close to kickoff. Within TeamLockLeadTime of the scheduled start
+	// the rosters freeze so the line-up is stable as the match begins, even
+	// if the status would otherwise still allow edits.
+	ErrTeamsLocked = errors.New("teams locked near kickoff")
 
 	// ErrTeamsRequired is returned when a match is asked to transition to
 	// teams_ready before any teams have been assigned.

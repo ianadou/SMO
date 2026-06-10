@@ -19,11 +19,14 @@ const stubPlayerName = "stub"
 type SetTeamsUseCase struct {
 	matchRepo ports.MatchRepository
 	invRepo   ports.InvitationRepository
+	clock     ports.Clock
 }
 
-// NewSetTeamsUseCase builds the use case.
-func NewSetTeamsUseCase(matchRepo ports.MatchRepository, invRepo ports.InvitationRepository) *SetTeamsUseCase {
-	return &SetTeamsUseCase{matchRepo: matchRepo, invRepo: invRepo}
+// NewSetTeamsUseCase builds the use case. The clock feeds the kickoff
+// lock check in Match.AssignTeams, which rejects edits too close to the
+// scheduled start.
+func NewSetTeamsUseCase(matchRepo ports.MatchRepository, invRepo ports.InvitationRepository, clock ports.Clock) *SetTeamsUseCase {
+	return &SetTeamsUseCase{matchRepo: matchRepo, invRepo: invRepo, clock: clock}
 }
 
 // Execute validates that (teamA ∪ teamB) is exactly the set of confirmed
@@ -60,7 +63,7 @@ func (uc *SetTeamsUseCase) Execute(ctx context.Context, matchID entities.MatchID
 		return nil, fmt.Errorf("set teams use case: validate partition: %w", err)
 	}
 
-	if err := match.AssignTeams(resolvedA, resolvedB); err != nil {
+	if err := match.AssignTeams(resolvedA, resolvedB, uc.clock.Now()); err != nil {
 		return nil, fmt.Errorf("set teams use case: store teams: %w", err)
 	}
 	if err := uc.matchRepo.ReplaceTeams(ctx, match); err != nil {

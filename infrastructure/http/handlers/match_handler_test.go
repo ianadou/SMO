@@ -221,7 +221,7 @@ func buildTestRouter(t *testing.T) *testRouter {
 		FinalizeMatch:         match.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, calculator),
 		ListMatchParticipants: invitation.NewListMatchParticipantsUseCase(invRepo),
 		GenerateTeams:         match.NewGenerateTeamsUseCase(matchRepo, invRepo, playerRepo, clock),
-		SetTeams:              match.NewSetTeamsUseCase(matchRepo, invRepo),
+		SetTeams:              match.NewSetTeamsUseCase(matchRepo, invRepo, clock),
 		GetMatchTeams:         match.NewGetMatchTeamsUseCase(matchRepo),
 	})
 
@@ -263,7 +263,10 @@ const squadSize = 4
 func seedSquad(t *testing.T, tr *testRouter, status entities.MatchStatus) []entities.PlayerID {
 	t.Helper()
 	ctx := context.Background()
-	now := time.Date(2026, 4, 10, 12, 0, 0, 0, time.UTC)
+	// Aligned with the router clock (buildTestRouter) so the match sits a
+	// day before kickoff: team edits stay well outside the TeamLockLeadTime
+	// freeze window.
+	now := time.Date(2026, 4, 12, 10, 0, 0, 0, time.UTC)
 
 	m, err := entities.RehydrateMatch(entities.MatchSnapshot{
 		ID:          "match-1",

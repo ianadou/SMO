@@ -45,7 +45,7 @@ func TestMatch_HappyPathFullLifecycle(t *testing.T) {
 		t.Errorf("expected status open, got %q", match.Status())
 	}
 
-	if err := match.AssignTeams([]PlayerID{"a"}, []PlayerID{"b"}); err != nil {
+	if err := match.AssignTeams([]PlayerID{"a"}, []PlayerID{"b"}, match.ScheduledAt().Add(-time.Hour)); err != nil {
 		t.Fatalf("AssignTeams failed: %v", err)
 	}
 
@@ -171,7 +171,7 @@ func TestMarkTeamsReady_Succeeds_WhenTeamsAssigned(t *testing.T) {
 	t.Parallel()
 
 	match := newMatchInStatus(t, MatchStatusOpen)
-	if err := match.AssignTeams([]PlayerID{"a"}, []PlayerID{"b"}); err != nil {
+	if err := match.AssignTeams([]PlayerID{"a"}, []PlayerID{"b"}, match.ScheduledAt().Add(-time.Hour)); err != nil {
 		t.Fatalf("AssignTeams failed: %v", err)
 	}
 

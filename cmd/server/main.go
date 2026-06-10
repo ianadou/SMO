@@ -266,7 +266,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	completeMatchUC := matchusecase.NewCompleteMatchUseCase(matchRepo)
 	finalizeMatchUC := matchusecase.NewFinalizeMatchUseCase(matchRepo, voteRepo, playerRepo, rankingCalculator)
 	generateTeamsUC := matchusecase.NewGenerateTeamsUseCase(matchRepo, invitationRepo, playerRepo, systemClock)
-	setTeamsUC := matchusecase.NewSetTeamsUseCase(matchRepo, invitationRepo)
+	setTeamsUC := matchusecase.NewSetTeamsUseCase(matchRepo, invitationRepo, systemClock)
 	getMatchTeamsUC := matchusecase.NewGetMatchTeamsUseCase(matchRepo)
 
 	// Player use cases.
