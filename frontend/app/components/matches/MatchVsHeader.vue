@@ -5,7 +5,7 @@ import TeamMatchupCard from './TeamMatchupCard.vue'
 import type { MatchDTO } from '~/types/matches'
 
 const props = defineProps<{ match: MatchDTO }>()
-const emit = defineEmits<{ back: [] }>()
+const emit = defineEmits<{ back: []; menu: [] }>()
 
 const cardStatus = computed<'upcoming' | 'live' | 'finished' | 'closed'>(() => {
   switch (props.match.status) {
@@ -63,7 +63,12 @@ const timeLabel = computed(() =>
           :winner="winner"
         />
       </div>
-      <button class="md-icon-btn" aria-label="Plus d'options">
+      <button
+        class="md-icon-btn"
+        aria-label="Invitations"
+        data-testid="match-menu"
+        @click="emit('menu')"
+      >
         <MoreVertical :size="22" />
       </button>
     </div>

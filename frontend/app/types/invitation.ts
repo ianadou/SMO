@@ -33,3 +33,26 @@ export type LoadOutcome =
   | { kind: 'ok'; context: InvitationContext }
   | { kind: 'invalid' }
   | { kind: 'error' }
+
+export interface MatchInvitationDTO {
+  id: string
+  match_id: string
+  player_id: string
+  expires_at: string
+  response: 'pending' | 'yes' | 'no'
+  responded_at: string | null
+  created_at: string
+}
+
+export interface CreatedInvitationDTO extends MatchInvitationDTO {
+  plain_token: string
+}
+
+export type InviteRowStatus = 'not-invited' | 'fresh' | 'pending' | 'yes' | 'no'
+
+export interface InviteRow {
+  playerId: string
+  playerName: string
+  status: InviteRowStatus
+  shareUrl: string | null
+}

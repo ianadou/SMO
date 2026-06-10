@@ -5,10 +5,14 @@ import TeamField from '~/components/matches/TeamField.vue'
 import PresentList from '~/components/matches/PresentList.vue'
 import MatchSetupCard from '~/components/matches/MatchSetupCard.vue'
 import MatchValidateBar from '~/components/matches/MatchValidateBar.vue'
+import InviteSheet from '~/components/matches/InviteSheet.vue'
 import { useMatchDetail } from '~/composables/useMatchDetail'
+import { useMatchInvitations } from '~/composables/useMatchInvitations'
 import { useTeamDrag } from '~/composables/useTeamDrag'
+import { useToast } from '~/composables/useToast'
 import { splitTeams, toTeamArrays } from '~/utils/teamComposition'
 import type { TeamMemberDTO } from '~/types/matches'
+import type { InviteRow } from '~/types/invitation'
 
 definePageMeta({ layout: false, middleware: 'auth' })
 
@@ -17,6 +21,43 @@ const matchId = route.params.id as string
 
 const detail = useMatchDetail(matchId)
 const { match, members, screen, loading, error } = detail
+
+const invitationsPanel = useMatchInvitations(matchId)
+const toast = useToast()
+const sheetOpen = ref(false)
+const sheetLoaded = ref(false)
+
+const invitationsLocked = computed(
+  () => match.value !== null && match.value.status !== 'draft' && match.value.status !== 'open',
+)
+
+async function openInviteSheet() {
+  if (!match.value) return
+  sheetOpen.value = true
+  if (!sheetLoaded.value) {
+    sheetLoaded.value = true
+    await invitationsPanel.load(match.value.group_id)
+  }
+}
+
+function reloadInvitations() {
+  if (match.value) invitationsPanel.load(match.value.group_id)
+}
+
+async function shareInviteLink(row: InviteRow) {
+  if (!row.shareUrl) return
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Invitation SMO', url: row.shareUrl })
+      return
+    }
+    catch {
+      return
+    }
+  }
+  await navigator.clipboard.writeText(row.shareUrl)
+  toast.success('Lien copié', `Envoie-le à ${row.playerName} — il ne sera plus affiché ensuite.`)
+}
 
 const red = ref<TeamMemberDTO[]>([])
 const green = ref<TeamMemberDTO[]>([])
@@ -58,7 +99,7 @@ function validate() {
 
 <template>
   <div :class="['md-screen', { 'has-bottombar': screen === 'composition' }]">
-    <MatchVsHeader v-if="match" :match="match" @back="back" />
+    <MatchVsHeader v-if="match" :match="match" @back="back" @menu="openInviteSheet" />
 
     <div v-if="loading && !match" class="md-state">Chargement…</div>
 
@@ -111,6 +152,20 @@ function validate() {
           @validate="validate"
         />
       </template>
+
+      <InviteSheet
+        :open="sheetOpen"
+        :rows="invitationsPanel.rows.value"
+        :confirmed-count="invitationsPanel.confirmedCount.value"
+        :loading="invitationsPanel.loading.value"
+        :inviting-id="invitationsPanel.invitingId.value"
+        :locked="invitationsLocked"
+        :failed="invitationsPanel.error.value"
+        @invite="invitationsPanel.invite($event)"
+        @share="shareInviteLink"
+        @close="sheetOpen = false"
+        @retry="reloadInvitations"
+      />
     </template>
   </div>
 </template>
