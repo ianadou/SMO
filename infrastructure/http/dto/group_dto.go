@@ -30,6 +30,13 @@ type CreateGroupRequest struct {
 	DiscordWebhookURL string `json:"discord_webhook_url,omitempty"`
 }
 
+// RenameGroupRequest is the body of PATCH /api/v1/groups/:id. Renaming
+// is the only mutable field for now; the webhook will get its own
+// dedicated, secret-aware flow when needed.
+type RenameGroupRequest struct {
+	Name string `json:"name" binding:"required,min=1,max=100"`
+}
+
 // GroupResponse is the JSON body returned for any group endpoint that
 // returns a single group (POST /api/groups, GET /api/groups/:id).
 //

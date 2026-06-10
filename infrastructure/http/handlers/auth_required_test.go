@@ -243,6 +243,7 @@ func buildProtectedRouter(t *testing.T) *gin.Engine {
 		group.NewCreateGroupUseCase(groupRepo, idGen, clock),
 		group.NewGetGroupUseCase(groupRepo),
 		group.NewListGroupsByOrganizerUseCase(groupRepo),
+		group.NewRenameGroupUseCase(groupRepo),
 	)
 
 	invitationHandler := handlers.NewInvitationHandler(
@@ -295,6 +296,7 @@ func TestAuthRequired_ProtectedRoute_Returns401_WithoutToken(t *testing.T) {
 		method, path string
 	}{
 		{http.MethodPost, "/api/v1/groups"},
+		{http.MethodPatch, "/api/v1/groups/g-1"},
 		{http.MethodPost, "/api/v1/matches"},
 		{http.MethodPost, "/api/v1/matches/m-1/open"},
 		{http.MethodPost, "/api/v1/players"},

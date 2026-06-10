@@ -243,6 +243,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 
 	// Group use cases.
 	createGroupUC := groupusecase.NewCreateGroupUseCase(groupRepo, idGenerator, systemClock)
+	renameGroupUC := groupusecase.NewRenameGroupUseCase(groupRepo)
 	getGroupUC := groupusecase.NewGetGroupUseCase(groupRepo)
 	listGroupsByOrganizerUC := groupusecase.NewListGroupsByOrganizerUseCase(groupRepo)
 
@@ -308,7 +309,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	loginOrganizerUC := authusecase.NewLoginOrganizerUseCase(organizerRepo, passwordHasher, jwtSigner, loginTracker)
 
 	// HTTP handlers.
-	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC, listGroupsByOrganizerUC)
+	groupHandler := handlers.NewGroupHandler(createGroupUC, getGroupUC, listGroupsByOrganizerUC, renameGroupUC)
 	matchHandler := handlers.NewMatchHandler(handlers.MatchHandlerDeps{
 		CreateMatch:           createMatchUC,
 		GetMatch:              getMatchUC,
