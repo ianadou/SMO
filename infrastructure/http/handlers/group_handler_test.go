@@ -112,7 +112,8 @@ func newTestHandlerEnvWithOrganizer(t *testing.T, fixedID string, fixedTime time
 	createUC := group.NewCreateGroupUseCase(repo, &fakeIDGenerator{id: fixedID}, &fakeClock{now: fixedTime})
 	getUC := group.NewGetGroupUseCase(repo)
 	listUC := group.NewListGroupsByOrganizerUseCase(repo)
-	handler := NewGroupHandler(createUC, getUC, listUC)
+	renameUC := group.NewRenameGroupUseCase(repo)
+	handler := NewGroupHandler(createUC, getUC, listUC, renameUC)
 
 	router := gin.New()
 	api := router.Group("/api/v1")
@@ -437,5 +438,87 @@ func TestGroupHandler_List_Returns200_WithEmptyArray_WhenOrganizerHasNoGroups(t 
 	body := strings.TrimSpace(rec.Body.String())
 	if body != "[]" {
 		t.Errorf("expected empty JSON array '[]', got %q", body)
+	}
+}
+
+func TestGroupHandler_Rename_Returns200_WhenOwnerRenames(t *testing.T) {
+	t.Parallel()
+	env := newTestHandlerEnvWithOrganizer(t, "group-1", time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC), "org-1")
+	seedHandlerGroup(t, env.repo)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/groups/group-1",
+		strings.NewReader(`{"name":"Foot du vendredi"}`))
+	req.Header.Set("Content-Type", "application/json")
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp["name"] != "Foot du vendredi" {
+		t.Errorf("expected renamed group in response, got %v", resp["name"])
+	}
+}
+
+func TestGroupHandler_Rename_Returns404_WhenNotOwner(t *testing.T) {
+	t.Parallel()
+	env := newTestHandlerEnvWithOrganizer(t, "group-1", time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC), "org-intruder")
+	seedHandlerGroup(t, env.repo)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/groups/group-1",
+		strings.NewReader(`{"name":"Pris !"}`))
+	req.Header.Set("Content-Type", "application/json")
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for a foreign group, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestGroupHandler_Rename_Returns400_WhenNameMissing(t *testing.T) {
+	t.Parallel()
+	env := newTestHandlerEnvWithOrganizer(t, "group-1", time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC), "org-1")
+	seedHandlerGroup(t, env.repo)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/groups/group-1", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rec.Code)
+	}
+}
+
+func TestGroupHandler_Rename_Returns401_WhenJWTContextIsMissing(t *testing.T) {
+	t.Parallel()
+	env := newTestHandlerEnv(t, "group-1", time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC))
+	seedHandlerGroup(t, env.repo)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/groups/group-1",
+		strings.NewReader(`{"name":"Peu importe"}`))
+	req.Header.Set("Content-Type", "application/json")
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", rec.Code)
+	}
+}
+
+// seedHandlerGroup stores the canonical fixture group: "group-1" owned
+// by "org-1". Tests vary the JWT identity, never the stored owner.
+func seedHandlerGroup(t *testing.T, repo *fakeGroupRepository) {
+	t.Helper()
+	seeded, err := entities.NewGroup("group-1", "Foot du jeudi", "org-1", "",
+		time.Date(2026, 1, 10, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("seed group: %v", err)
+	}
+	if saveErr := repo.Save(context.Background(), seeded); saveErr != nil {
+		t.Fatalf("seed save: %v", saveErr)
 	}
 }

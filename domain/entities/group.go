@@ -184,6 +184,18 @@ func containsControlChar(s string) bool {
 	return false
 }
 
+// Rename changes the group's display name, enforcing the same trim and
+// length rules as NewGroup. The rest of the group (owner, webhook,
+// creation time) is deliberately untouchable through this method.
+func (g *Group) Rename(name string) error {
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" || len(trimmedName) > maxGroupNameLength {
+		return domainerrors.ErrInvalidName
+	}
+	g.name = trimmedName
+	return nil
+}
+
 // ID returns the group identifier.
 func (g *Group) ID() GroupID { return g.id }
 

@@ -260,3 +260,59 @@ func TestRehydrateGroup_RejectsInvalidShapes(t *testing.T) {
 		})
 	}
 }
+
+func TestGroupRename_UpdatesName_WhenValid(t *testing.T) {
+	t.Parallel()
+
+	group, err := NewGroup("group-123", "Foot du jeudi", "org-456", "",
+		time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	err = group.Rename("  Foot du vendredi  ")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if group.Name() != "Foot du vendredi" {
+		t.Errorf("expected trimmed new name, got %q", group.Name())
+	}
+	if group.OrganizerID() != "org-456" {
+		t.Errorf("rename must not touch the owner, got %q", group.OrganizerID())
+	}
+}
+
+func TestGroupRename_ReturnsErrInvalidName_WhenEmpty(t *testing.T) {
+	t.Parallel()
+
+	group, err := NewGroup("group-123", "Foot du jeudi", "org-456", "",
+		time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	err = group.Rename("   ")
+
+	if !errors.Is(err, domainerrors.ErrInvalidName) {
+		t.Errorf("expected ErrInvalidName, got %v", err)
+	}
+	if group.Name() != "Foot du jeudi" {
+		t.Errorf("name must be unchanged on failure, got %q", group.Name())
+	}
+}
+
+func TestGroupRename_ReturnsErrInvalidName_WhenTooLong(t *testing.T) {
+	t.Parallel()
+
+	group, err := NewGroup("group-123", "Foot du jeudi", "org-456", "",
+		time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	err = group.Rename(strings.Repeat("x", 101))
+
+	if !errors.Is(err, domainerrors.ErrInvalidName) {
+		t.Errorf("expected ErrInvalidName, got %v", err)
+	}
+}

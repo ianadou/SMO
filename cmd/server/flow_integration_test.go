@@ -61,6 +61,9 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 		"name": "Flow Group",
 	}, &group)
 	c.getExpect(t, http.StatusOK, "/api/v1/groups/"+group.ID, "", nil)
+	c.patchExpect(t, http.StatusOK, "/api/v1/groups/"+group.ID, c.token, map[string]any{
+		"name": "Flow Group (renamed)",
+	}, nil)
 
 	// 3. Create players: four, so explicit 2v2 teams give the voter a
 	// teammate (votes are teammate-only).
@@ -127,7 +130,9 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 	c.postExpect(t, http.StatusOK, "/api/v1/invitations/context", "", map[string]any{
 		"token": inv.PlainToken,
 	}, &invCtx)
-	if invCtx.OrganizerName != "Flow Tester" || invCtx.GroupName != "Flow Group" ||
+	// The group was renamed in step 2, so the player-facing context must
+	// carry the new name.
+	if invCtx.OrganizerName != "Flow Tester" || invCtx.GroupName != "Flow Group (renamed)" ||
 		invCtx.Capacity != "10 (5v5)" || invCtx.State != "respondable" ||
 		invCtx.Response != "pending" || invCtx.ConfirmedCount != 0 {
 		t.Fatalf("unexpected invitation context: %+v", invCtx)

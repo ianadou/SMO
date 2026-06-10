@@ -20,6 +20,7 @@ type GroupHandler struct {
 	createGroup           *group.CreateGroupUseCase
 	getGroup              *group.GetGroupUseCase
 	listGroupsByOrganizer *group.ListGroupsByOrganizerUseCase
+	renameGroup           *group.RenameGroupUseCase
 }
 
 // NewGroupHandler builds a GroupHandler with the given use cases.
@@ -27,11 +28,13 @@ func NewGroupHandler(
 	createGroup *group.CreateGroupUseCase,
 	getGroup *group.GetGroupUseCase,
 	listGroupsByOrganizer *group.ListGroupsByOrganizerUseCase,
+	renameGroup *group.RenameGroupUseCase,
 ) *GroupHandler {
 	return &GroupHandler{
 		createGroup:           createGroup,
 		getGroup:              getGroup,
 		listGroupsByOrganizer: listGroupsByOrganizer,
+		renameGroup:           renameGroup,
 	}
 }
 
@@ -40,13 +43,15 @@ func NewGroupHandler(
 //
 // Routes:
 //
-//	GET  /groups       → List     (protected — organizer scoped via JWT)
-//	GET  /groups/:id   → Get      (public)
-//	POST /groups       → Create   (protected — organizer only)
+//	GET   /groups       → List     (protected — organizer scoped via JWT)
+//	GET   /groups/:id   → Get      (public)
+//	POST  /groups       → Create   (protected — organizer only)
+//	PATCH /groups/:id   → Rename   (protected — owner only)
 func (h *GroupHandler) Register(public, protected *gin.RouterGroup) {
 	protected.GET("/groups", h.List)
 	public.GET("/groups/:id", h.Get)
 	protected.POST("/groups", h.Create)
+	protected.PATCH("/groups/:id", h.Rename)
 }
 
 // Create handles POST /api/v1/groups. The organizer ID is taken from
@@ -103,6 +108,33 @@ func (h *GroupHandler) List(ctx *gin.Context) {
 		response = append(response, dto.GroupResponseFromEntity(g))
 	}
 	ctx.JSON(http.StatusOK, response)
+}
+
+// Rename handles PATCH /api/v1/groups/:id. Ownership is enforced in
+// the use case: a group owned by another organizer surfaces as 404, so
+// the endpoint never reveals whether a group ID exists.
+func (h *GroupHandler) Rename(ctx *gin.Context) {
+	var request dto.RenameGroupRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, httperrors.ErrorResponse{Error: "invalid request body"})
+		return
+	}
+
+	organizerID := middlewares.OrganizerIDFromContext(ctx.Request.Context())
+	if organizerID == "" {
+		ctx.JSON(http.StatusUnauthorized, httperrors.ErrorResponse{Error: "missing authenticated organizer"})
+		return
+	}
+
+	renamedGroup, err := h.renameGroup.Execute(ctx.Request.Context(),
+		entities.GroupID(ctx.Param("id")), organizerID, request.Name)
+	if err != nil {
+		status, message := httperrors.MapError(err)
+		ctx.JSON(status, httperrors.ErrorResponse{Error: message})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.GroupResponseFromEntity(renamedGroup))
 }
 
 // Get handles GET /api/groups/:id.
