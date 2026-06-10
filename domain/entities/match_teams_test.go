@@ -150,3 +150,67 @@ func TestAssignTeams_AllowsEqualSizeTeams(t *testing.T) {
 
 	require.NoError(t, err)
 }
+
+func TestTeamOf_ReturnsSideA_WhenPlayerInTeamA(t *testing.T) {
+	m := openMatch(t)
+	require.NoError(t, m.AssignTeams([]PlayerID{"a", "b"}, []PlayerID{"c", "d"}, beforeTeamLock))
+
+	side, ok := m.TeamOf("b")
+
+	require.True(t, ok)
+	assert.Equal(t, TeamSideA, side)
+}
+
+func TestTeamOf_ReturnsSideB_WhenPlayerInTeamB(t *testing.T) {
+	m := openMatch(t)
+	require.NoError(t, m.AssignTeams([]PlayerID{"a", "b"}, []PlayerID{"c", "d"}, beforeTeamLock))
+
+	side, ok := m.TeamOf("d")
+
+	require.True(t, ok)
+	assert.Equal(t, TeamSideB, side)
+}
+
+func TestTeamOf_ReturnsFalse_WhenPlayerNotInMatch(t *testing.T) {
+	m := openMatch(t)
+	require.NoError(t, m.AssignTeams([]PlayerID{"a", "b"}, []PlayerID{"c", "d"}, beforeTeamLock))
+
+	_, ok := m.TeamOf("stranger")
+
+	assert.False(t, ok)
+}
+
+func TestTeamOf_ReturnsFalse_WhenTeamsNotAssigned(t *testing.T) {
+	m := openMatch(t)
+
+	_, ok := m.TeamOf("a")
+
+	assert.False(t, ok)
+}
+
+func TestTeammatesOf_ReturnsOtherTeamMembers_PreservingOrder(t *testing.T) {
+	m := openMatch(t)
+	require.NoError(t, m.AssignTeams([]PlayerID{"a", "b", "c"}, []PlayerID{"d", "e"}, beforeTeamLock))
+
+	teammates := m.TeammatesOf("b")
+
+	assert.Equal(t, []PlayerID{"a", "c"}, teammates)
+}
+
+func TestTeammatesOf_ReturnsTeamBMembers_WhenPlayerInTeamB(t *testing.T) {
+	m := openMatch(t)
+	require.NoError(t, m.AssignTeams([]PlayerID{"a", "b", "c"}, []PlayerID{"d", "e"}, beforeTeamLock))
+
+	teammates := m.TeammatesOf("e")
+
+	assert.Equal(t, []PlayerID{"d"}, teammates)
+}
+
+func TestTeammatesOf_ReturnsNil_WhenPlayerNotInMatch(t *testing.T) {
+	m := openMatch(t)
+	require.NoError(t, m.AssignTeams([]PlayerID{"a", "b"}, []PlayerID{"c", "d"}, beforeTeamLock))
+
+	teammates := m.TeammatesOf("stranger")
+
+	assert.Nil(t, teammates)
+}

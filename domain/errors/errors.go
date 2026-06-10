@@ -101,6 +101,16 @@ var (
 	// ErrSelfVote is returned when a player tries to vote for themselves.
 	ErrSelfVote = errors.New("cannot vote for yourself")
 
+	// ErrNotTeammates is returned when a vote targets a player who is
+	// not on the voter's team for that match. Players rate their own
+	// teammates only, never opponents.
+	ErrNotTeammates = errors.New("players are not teammates")
+
+	// ErrNotConfirmedParticipant is returned when a token bearer who
+	// never confirmed attendance (declined, or left pending) attempts a
+	// participant-only operation such as voting.
+	ErrNotConfirmedParticipant = errors.New("not a confirmed participant")
+
 	// ErrMatchNotCompleted is returned when an operation that requires
 	// the match to be in the completed state (e.g., casting a vote) is
 	// attempted before the match has been marked completed.
