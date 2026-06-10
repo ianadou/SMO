@@ -60,7 +60,7 @@ func TestBuildRouter_ErrorPaths(t *testing.T) {
 		"group_id":     group.ID,
 		"title":        "Draft Match",
 		"venue":        "Stadium",
-		"scheduled_at": time.Date(2026, 6, 15, 19, 0, 0, 0, time.UTC),
+		"scheduled_at": time.Now().Add(24 * time.Hour).UTC(),
 	}, &draftMatch)
 
 	t.Run("auth: malformed register body returns 400", func(t *testing.T) {
