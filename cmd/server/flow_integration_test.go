@@ -85,7 +85,7 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 		"group_id":     group.ID,
 		"title":        "Flow Match",
 		"venue":        "Stadium A",
-		"scheduled_at": time.Date(2026, 6, 1, 19, 0, 0, 0, time.UTC),
+		"scheduled_at": time.Now().Add(24 * time.Hour).UTC(),
 	}, &match)
 	c.getExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID, "", nil)
 	c.getExpect(t, http.StatusOK, "/api/v1/groups/"+group.ID+"/matches", "", nil)
@@ -255,7 +255,7 @@ func TestBuildRouter_ScoreAndPreviousWinnerFlow(t *testing.T) {
 	}
 
 	// Match 1 played first (earlier scheduled_at); team B wins it.
-	m1 := playMatch(time.Date(2026, 6, 1, 19, 0, 0, 0, time.UTC), 0, 3)
+	m1 := playMatch(time.Now().Add(24*time.Hour).UTC(), 0, 3)
 
 	// Score round-trips through GET /matches/:id.
 	var got struct {
@@ -269,7 +269,7 @@ func TestBuildRouter_ScoreAndPreviousWinnerFlow(t *testing.T) {
 
 	// Match 2 is later: its ranking generation must seed the top player
 	// (highest ranking) onto side B, since B won match 1.
-	m2 := playMatch(time.Date(2026, 7, 1, 19, 0, 0, 0, time.UTC), 1, 0)
+	m2 := playMatch(time.Now().Add(48*time.Hour).UTC(), 1, 0)
 	var teams []struct {
 		PlayerName string `json:"player_name"`
 		Team       string `json:"team"`
@@ -344,7 +344,7 @@ func TestBuildRouter_TeamAssignmentFlow(t *testing.T) {
 		"group_id":     group.ID,
 		"title":        "Teams Match",
 		"venue":        "Stadium B",
-		"scheduled_at": time.Date(2026, 7, 1, 19, 0, 0, 0, time.UTC),
+		"scheduled_at": time.Now().Add(24 * time.Hour).UTC(),
 	}, &match)
 	c.postExpect(t, http.StatusOK, "/api/v1/matches/"+match.ID+"/open", c.token, nil, nil)
 
