@@ -75,7 +75,7 @@ func (uc *GenerateTeamsUseCase) Execute(
 		return nil, fmt.Errorf("generate teams use case: assign: %w", err)
 	}
 
-	if err := match.AssignTeams(teamA, teamB); err != nil {
+	if err := match.AssignTeams(teamA, teamB, uc.clock.Now()); err != nil {
 		return nil, fmt.Errorf("generate teams use case: store teams: %w", err)
 	}
 

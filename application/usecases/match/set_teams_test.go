@@ -14,12 +14,14 @@ func newSetTeamsUseCase(t *testing.T) (
 	*SetTeamsUseCase,
 	*fakeMatchRepository,
 	*fakeInvitationRepoForGenerate,
+	*fakeClock,
 ) {
 	t.Helper()
 	matchRepo := newFakeMatchRepository()
 	invRepo := newFakeInvitationRepoForGenerate()
-	uc := NewSetTeamsUseCase(matchRepo, invRepo)
-	return uc, matchRepo, invRepo
+	clock := newFakeClock(time.Now())
+	uc := NewSetTeamsUseCase(matchRepo, invRepo, clock)
+	return uc, matchRepo, invRepo, clock
 }
 
 func seedConfirmedParticipants(
@@ -40,7 +42,7 @@ func seedConfirmedParticipants(
 
 func TestSetTeams_PersistsExactPartition(t *testing.T) {
 	t.Parallel()
-	uc, matchRepo, invRepo := newSetTeamsUseCase(t)
+	uc, matchRepo, invRepo, _ := newSetTeamsUseCase(t)
 	ctx := context.Background()
 
 	seedOpenMatch(t, matchRepo)
@@ -65,7 +67,7 @@ func TestSetTeams_PersistsExactPartition(t *testing.T) {
 
 func TestSetTeams_Rejected_WhenNotAPartitionOfConfirmed(t *testing.T) {
 	t.Parallel()
-	uc, matchRepo, invRepo := newSetTeamsUseCase(t)
+	uc, matchRepo, invRepo, _ := newSetTeamsUseCase(t)
 	ctx := context.Background()
 
 	seedOpenMatch(t, matchRepo)
@@ -81,7 +83,7 @@ func TestSetTeams_Rejected_WhenNotAPartitionOfConfirmed(t *testing.T) {
 
 func TestSetTeams_Rejected_WhenImbalanced(t *testing.T) {
 	t.Parallel()
-	uc, matchRepo, invRepo := newSetTeamsUseCase(t)
+	uc, matchRepo, invRepo, _ := newSetTeamsUseCase(t)
 	ctx := context.Background()
 
 	seedOpenMatch(t, matchRepo)
@@ -97,7 +99,7 @@ func TestSetTeams_Rejected_WhenImbalanced(t *testing.T) {
 
 func TestSetTeams_Rejected_WhenMatchNotOpen(t *testing.T) {
 	t.Parallel()
-	uc, matchRepo, invRepo := newSetTeamsUseCase(t)
+	uc, matchRepo, invRepo, _ := newSetTeamsUseCase(t)
 	ctx := context.Background()
 
 	m, err := entities.NewMatch(generateTestMatchID, "g-1", "Test", "Venue",
@@ -115,6 +117,23 @@ func TestSetTeams_Rejected_WhenMatchNotOpen(t *testing.T) {
 
 	if !errors.Is(err, domainerrors.ErrTeamsNotEditable) {
 		t.Errorf("expected ErrTeamsNotEditable, got %v", err)
+	}
+}
+
+func TestSetTeams_Rejected_WhenLockedNearKickoff(t *testing.T) {
+	t.Parallel()
+	uc, matchRepo, invRepo, clock := newSetTeamsUseCase(t)
+	ctx := context.Background()
+
+	m := seedOpenMatch(t, matchRepo)
+	seedConfirmedParticipants(invRepo, "p1", "p2", "p3", "p4")
+	clock.now = m.ScheduledAt().Add(-5 * time.Minute)
+
+	_, err := uc.Execute(ctx, generateTestMatchID,
+		[]entities.PlayerID{"p1", "p2"}, []entities.PlayerID{"p3", "p4"})
+
+	if !errors.Is(err, domainerrors.ErrTeamsLocked) {
+		t.Errorf("expected ErrTeamsLocked, got %v", err)
 	}
 }
 

@@ -141,7 +141,9 @@ func mapBusinessRuleError(err error) (int, string, bool) {
 func mapTeamStateError(err error) (int, string, bool) {
 	switch {
 	case errors.Is(err, domainerrors.ErrTeamsNotEditable):
-		return http.StatusConflict, "teams can only be edited while the match is open", true
+		return http.StatusConflict, "teams can no longer be edited once the match has started", true
+	case errors.Is(err, domainerrors.ErrTeamsLocked):
+		return http.StatusConflict, "teams are locked: too close to kickoff", true
 	case errors.Is(err, domainerrors.ErrTeamsRequired):
 		return http.StatusConflict, "teams must be assigned before marking ready", true
 	}

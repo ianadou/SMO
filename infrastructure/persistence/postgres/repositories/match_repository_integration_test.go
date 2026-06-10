@@ -144,7 +144,7 @@ func TestPostgresMatchRepository_Finalize_PersistsMVPAndStatus(t *testing.T) {
 	// MarkTeamsReady requires a composition since the teams precondition
 	// landed; the values are irrelevant here (this test asserts status
 	// and MVP only, not rosters).
-	if err := match.AssignTeams([]entities.PlayerID{"p-a"}, []entities.PlayerID{"p-b"}); err != nil {
+	if err := match.AssignTeams([]entities.PlayerID{"p-a"}, []entities.PlayerID{"p-b"}, match.ScheduledAt().Add(-time.Hour)); err != nil {
 		t.Fatalf("setup: AssignTeams: %v", err)
 	}
 	if err := match.MarkTeamsReady(); err != nil {
@@ -217,7 +217,9 @@ func TestPostgresMatchRepository_Finalize_PersistsNonNilMVP(t *testing.T) {
 	// real player as MVP.
 	for i, step := range []func() error{
 		match.Open,
-		func() error { return match.AssignTeams([]entities.PlayerID{"p-a"}, []entities.PlayerID{"p-b"}) },
+		func() error {
+			return match.AssignTeams([]entities.PlayerID{"p-a"}, []entities.PlayerID{"p-b"}, match.ScheduledAt().Add(-time.Hour))
+		},
 		match.MarkTeamsReady, match.Start,
 		func() error { return match.Complete(2, 1) },
 	} {
