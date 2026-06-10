@@ -2,6 +2,7 @@ package entities
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	domainerrors "github.com/ianadou/smo/domain/errors"
@@ -57,4 +58,41 @@ func (m *Match) AssignTeams(teamA, teamB []PlayerID, now time.Time) error {
 	m.teamA = clonePlayerIDs(teamA)
 	m.teamB = clonePlayerIDs(teamB)
 	return nil
+}
+
+// TeamOf reports which side the given player is assigned to. The second
+// return value is false when the player is on neither roster (or teams
+// have not been assigned yet).
+func (m *Match) TeamOf(playerID PlayerID) (TeamSide, bool) {
+	if slices.Contains(m.teamA, playerID) {
+		return TeamSideA, true
+	}
+	if slices.Contains(m.teamB, playerID) {
+		return TeamSideB, true
+	}
+	return "", false
+}
+
+// TeammatesOf returns the other members of the given player's team,
+// preserving roster order. It returns nil when the player is on neither
+// roster — callers that need to distinguish "no teammates" from "not in
+// the match" should use TeamOf.
+func (m *Match) TeammatesOf(playerID PlayerID) []PlayerID {
+	side, ok := m.TeamOf(playerID)
+	if !ok {
+		return nil
+	}
+
+	roster := m.teamA
+	if side == TeamSideB {
+		roster = m.teamB
+	}
+
+	teammates := make([]PlayerID, 0, len(roster)-1)
+	for _, id := range roster {
+		if id != playerID {
+			teammates = append(teammates, id)
+		}
+	}
+	return teammates
 }
