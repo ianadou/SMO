@@ -108,6 +108,58 @@ jobs:
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image
+  govulncheck:
+    name: Govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Scan for reachable Go vulnerabilities
+        # Only reports vulnerabilities whose vulnerable symbols are
+        # actually reachable from this code, so a finding here is
+        # signal, never noise. Blocking by design. The tool version is
+        # pinned and verified through the Go module checksum database.
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.3.0 ./...
+  osv-scanner:
+    name: OSV scanner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Scan lockfiles against the OSV database
+        # Scans go.mod and frontend/pnpm-lock.yaml in one pass against
+        # the aggregated OSV database — a second opinion next to Trivy
+        # (different database) and govulncheck (Go-only, reachability).
+        # Built from source through the Go module proxy + checksum DB
+        # instead of pulling a third-party action.
+        run: go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.8 scan source -r .
+  frontend-audit:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enable corepack
+        run: corepack enable
+      - name: Audit dependencies from the lockfile
+        # Works from pnpm-lock.yaml alone, no install needed. Fails on
+        # high/critical advisories, aligned with the Trivy gate.
+        run: pnpm audit --audit-level high
   build:
     name: Build
     runs-on: ubuntu-latest
