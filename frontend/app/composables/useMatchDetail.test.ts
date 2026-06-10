@@ -105,4 +105,16 @@ describe('useMatchDetail', () => {
     })
     expect(api.post).toHaveBeenCalledWith('/matches/m1/teams-ready', {})
   })
+
+  it('reports the error and stops loading when a mutation fails', async () => {
+    const api = fakeApi(matchDTO({ status: 'draft' }), [])
+    api.post.mockRejectedValueOnce(new ApiError(409, 'cannot open'))
+    const md = useMatchDetail('m1', api)
+    await md.load()
+
+    await md.openMatch()
+
+    expect(md.error.value).toBe('cannot open')
+    expect(md.loading.value).toBe(false)
+  })
 })
