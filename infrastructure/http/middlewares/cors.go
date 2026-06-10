@@ -14,7 +14,7 @@ const allowedHeaders = "Authorization,Content-Type,X-Request-ID"
 
 // allowedMethods covers every verb the API uses today. Kept tight on
 // purpose — adding a new verb to the API is a conscious config bump.
-const allowedMethods = "GET,POST,PATCH,DELETE,OPTIONS"
+const allowedMethods = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
 
 // preflightMaxAgeSeconds tells the browser how long it can cache the
 // preflight response before re-issuing OPTIONS. Twelve hours is the

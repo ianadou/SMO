@@ -11,7 +11,7 @@ describe('StrengthMeter', () => {
 
   it('shows no label when level is 0', async () => {
     const wrapper = await mountSuspended(StrengthMeter, { props: { level: 0 } })
-    expect(wrapper.text()).toContain('Au moins 8 caractères')
+    expect(wrapper.text()).toContain('Au moins 12 caractères')
     expect(wrapper.text()).not.toContain('Faible')
     expect(wrapper.text()).not.toContain('Très fort')
   })
