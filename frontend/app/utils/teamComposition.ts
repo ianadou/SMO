@@ -1,10 +1,24 @@
 import type { MatchScreen, MatchStatus, TeamMemberDTO } from '~/types/matches'
 
-export function deriveScreen(status: MatchStatus, hasTeams: boolean): MatchScreen {
+export const TEAM_LOCK_LEAD_TIME_MS = 10 * 60 * 1000
+
+export function deriveScreen(
+  status: MatchStatus,
+  hasTeams: boolean,
+  now: Date,
+  scheduledAt: string,
+): MatchScreen {
   if (status === 'draft') return 'setup-draft'
-  if (status === 'open') return hasTeams ? 'composition' : 'setup-generate'
-  if (status === 'teams_ready' || status === 'in_progress') return 'finished'
+  if (status === 'open' && !hasTeams) return 'setup-generate'
+  if (status === 'open' || status === 'teams_ready') {
+    return isTeamLockReached(now, scheduledAt) ? 'locked' : 'composition'
+  }
+  if (status === 'in_progress') return 'finished'
   return 'closed'
+}
+
+function isTeamLockReached(now: Date, scheduledAt: string): boolean {
+  return now.getTime() >= new Date(scheduledAt).getTime() - TEAM_LOCK_LEAD_TIME_MS
 }
 
 export function splitTeams(members: TeamMemberDTO[]): {

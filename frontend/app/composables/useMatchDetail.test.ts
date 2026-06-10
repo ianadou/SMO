@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick } from 'vue'
 import { useMatchDetail } from './useMatchDetail'
 import { ApiError } from './useApi'
@@ -35,6 +35,14 @@ async function flush() {
 }
 
 describe('useMatchDetail', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ now: new Date('2026-05-20T10:00:00Z'), toFake: ['Date'] })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('loads the match and its teams, deriving the screen', async () => {
     const api = fakeApi(matchDTO({ status: 'open' }), [
       { player_id: 'p1', player_name: 'A', team: 'A', slot: 0 },
@@ -56,6 +64,25 @@ describe('useMatchDetail', () => {
     const md = useMatchDetail('m1', api)
     await md.load()
     expect(md.screen.value).toBe('setup-generate')
+  })
+
+  it('derives the editable composition screen when teams_ready before the lock', async () => {
+    const api = fakeApi(matchDTO({ status: 'teams_ready' }), [
+      { player_id: 'p1', player_name: 'A', team: 'A', slot: 0 },
+    ])
+    const md = useMatchDetail('m1', api)
+    await md.load()
+    expect(md.screen.value).toBe('composition')
+  })
+
+  it('derives the locked screen within ten minutes of kickoff', async () => {
+    const api = fakeApi(
+      matchDTO({ status: 'teams_ready', scheduled_at: '2026-05-20T10:05:00Z' }),
+      [{ player_id: 'p1', player_name: 'A', team: 'A', slot: 0 }],
+    )
+    const md = useMatchDetail('m1', api)
+    await md.load()
+    expect(md.screen.value).toBe('locked')
   })
 
   it('surfaces the api error message and stops loading', async () => {
@@ -104,6 +131,20 @@ describe('useMatchDetail', () => {
       team_b: ['p3', 'p4'],
     })
     expect(api.post).toHaveBeenCalledWith('/matches/m1/teams-ready', {})
+  })
+
+  it('saves teams without re-marking them ready', async () => {
+    const api = fakeApi(matchDTO({ status: 'teams_ready' }), [])
+    const md = useMatchDetail('m1', api)
+    await md.load()
+
+    await md.saveTeams(['p1', 'p2'], ['p3', 'p4'])
+
+    expect(api.put).toHaveBeenCalledWith('/matches/m1/teams', {
+      team_a: ['p1', 'p2'],
+      team_b: ['p3', 'p4'],
+    })
+    expect(api.post).not.toHaveBeenCalled()
   })
 
   it('reports the error and stops loading when a mutation fails', async () => {

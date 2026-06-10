@@ -20,7 +20,12 @@ export function useMatchDetail(matchId: string, api: MatchApi = useApi()) {
 
   const screen = computed<MatchScreen>(() =>
     match.value
-      ? deriveScreen(match.value.status, members.value.length > 0)
+      ? deriveScreen(
+          match.value.status,
+          members.value.length > 0,
+          new Date(),
+          match.value.scheduled_at,
+        )
       : 'setup-draft',
   )
 
@@ -90,7 +95,25 @@ export function useMatchDetail(matchId: string, api: MatchApi = useApi()) {
       await api.post(`/matches/${matchId}/teams-ready`, {})
     })
     if (ok) {
-      toast.success('Équipes validées', 'La composition est verrouillée.')
+      toast.success(
+        'Équipes validées',
+        "Modifiable jusqu'à 10 min avant le coup d'envoi.",
+      )
+    }
+  }
+
+  async function saveTeams(teamA: string[], teamB: string[]) {
+    const ok = await mutate(() =>
+      api.put(`/matches/${matchId}/teams`, {
+        team_a: teamA,
+        team_b: teamB,
+      }),
+    )
+    if (ok) {
+      toast.success(
+        'Composition mise à jour',
+        "Modifiable jusqu'à 10 min avant le coup d'envoi.",
+      )
     }
   }
 
@@ -104,5 +127,6 @@ export function useMatchDetail(matchId: string, api: MatchApi = useApi()) {
     openMatch,
     generate,
     validateTeams,
+    saveTeams,
   }
 }

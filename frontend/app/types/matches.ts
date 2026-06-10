@@ -31,6 +31,7 @@ export type MatchScreen =
   | 'setup-draft'
   | 'setup-generate'
   | 'composition'
+  | 'locked'
   | 'finished'
   | 'closed'
 

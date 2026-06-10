@@ -10,6 +10,14 @@ describe('MatchValidateBar', () => {
     expect(wrapper.find('.md-bottombar-btn').text()).toBe('Valider les équipes')
   })
 
+  it('renders a custom label when provided', async () => {
+    const wrapper = await mountSuspended(MatchValidateBar, {
+      props: { label: 'Enregistrer la composition' },
+    })
+
+    expect(wrapper.find('.md-bottombar-btn').text()).toBe('Enregistrer la composition')
+  })
+
   it('emits validate when the button is clicked', async () => {
     const wrapper = await mountSuspended(MatchValidateBar)
 
