@@ -176,6 +176,7 @@ type InvitationResponse struct {
 	ExpiresAt   time.Time  `json:"expires_at"`
 	Response    string     `json:"response"`
 	RespondedAt *time.Time `json:"responded_at"`
+	ClaimedAt   *time.Time `json:"claimed_at"`
 	CreatedAt   time.Time  `json:"created_at"`
 }
 
@@ -197,6 +198,7 @@ func InvitationResponseFromEntity(inv *entities.Invitation) InvitationResponse {
 		ExpiresAt:   inv.ExpiresAt(),
 		Response:    string(inv.Response()),
 		RespondedAt: inv.RespondedAt(),
+		ClaimedAt:   inv.ClaimedAt(),
 		CreatedAt:   inv.CreatedAt(),
 	}
 }

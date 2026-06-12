@@ -203,3 +203,57 @@ func TestMapError_HandlesWrappedReferencedEntityNotFound(t *testing.T) {
 		t.Errorf("expected message 'referenced entity does not exist', got %q", message)
 	}
 }
+
+func TestMapError_ShareLinkLookupErrors_ShareOneNotFoundShape(t *testing.T) {
+	t.Parallel()
+
+	// Unknown, revoked and expired links must be indistinguishable from
+	// the outside: a different status or message would let a caller
+	// probe whether a link existed before being killed.
+	cases := []struct {
+		name string
+		err  error
+	}{
+		{name: "unknown token", err: domainerrors.ErrShareLinkNotFound},
+		{name: "revoked or expired link", err: domainerrors.ErrShareLinkInactive},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			status, message := MapError(testCase.err)
+			if status != http.StatusNotFound {
+				t.Errorf("expected status 404, got %d", status)
+			}
+			if message != "share link not found" {
+				t.Errorf("expected message 'share link not found', got %q", message)
+			}
+		})
+	}
+}
+
+func TestMapError_ShareLinkConflictErrors(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		err         error
+		wantMessage string
+	}{
+		{name: "claim race", err: domainerrors.ErrInvitationAlreadyClaimed, wantMessage: "invitation already claimed"},
+		{name: "self-add on invited name", err: domainerrors.ErrPlayerAlreadyInvited, wantMessage: "player already invited to this match"},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			status, message := MapError(testCase.err)
+			if status != http.StatusConflict {
+				t.Errorf("expected status 409, got %d", status)
+			}
+			if message != testCase.wantMessage {
+				t.Errorf("expected message %q, got %q", testCase.wantMessage, message)
+			}
+		})
+	}
+}

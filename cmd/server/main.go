@@ -27,6 +27,7 @@ import (
 	invitationusecase "github.com/ianadou/smo/application/usecases/invitation"
 	matchusecase "github.com/ianadou/smo/application/usecases/match"
 	playerusecase "github.com/ianadou/smo/application/usecases/player"
+	sharelinkusecase "github.com/ianadou/smo/application/usecases/sharelink"
 	voteusecase "github.com/ianadou/smo/application/usecases/vote"
 	"github.com/ianadou/smo/domain/events"
 	"github.com/ianadou/smo/domain/ports"
@@ -220,6 +221,7 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	matchRepo := repositories.NewPostgresMatchRepository(pool)
 	playerRepo := cacheredis.WrapPlayerRepository(repositories.NewPostgresPlayerRepository(pool), redisClient)
 	invitationRepo := repositories.NewPostgresInvitationRepository(pool)
+	matchShareLinkRepo := repositories.NewPostgresMatchShareLinkRepository(pool)
 	voteRepo := repositories.NewPostgresVoteRepository(pool)
 	organizerRepo := repositories.NewPostgresOrganizerRepository(pool)
 	tokenService := token.New()
@@ -283,6 +285,14 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 	listInvitationsByMatchUC := invitationusecase.NewListInvitationsByMatchUseCase(invitationRepo)
 	respondToInvitationUC := invitationusecase.NewRespondToInvitationUseCase(invitationRepo, matchRepo, tokenService, systemClock)
 	listMatchParticipantsUC := invitationusecase.NewListMatchParticipantsUseCase(invitationRepo)
+
+	// Share link use cases. Claim and join mint personal invitation
+	// tokens, hence the invitation repository and token service deps.
+	generateShareLinkUC := sharelinkusecase.NewGenerateMatchShareLinkUseCase(matchShareLinkRepo, matchRepo, groupRepo, tokenService, idGenerator, systemClock)
+	revokeShareLinkUC := sharelinkusecase.NewRevokeMatchShareLinkUseCase(matchShareLinkRepo, matchRepo, groupRepo, systemClock)
+	getShareLinkContextUC := sharelinkusecase.NewGetShareLinkContextUseCase(matchShareLinkRepo, invitationRepo, matchRepo, groupRepo, organizerRepo, playerRepo, tokenService, systemClock)
+	claimInvitationUC := sharelinkusecase.NewClaimInvitationUseCase(matchShareLinkRepo, invitationRepo, matchRepo, playerRepo, tokenService, systemClock)
+	joinMatchUC := sharelinkusecase.NewJoinMatchUseCase(matchShareLinkRepo, invitationRepo, matchRepo, playerRepo, tokenService, idGenerator, systemClock)
 
 	// Vote use cases. The voter is derived from the invitation token,
 	// hence the invitation repository and token service dependencies.
@@ -384,6 +394,9 @@ func buildRouter(pool *pgxpool.Pool, redisClient *rdb.Client, jwtSecret string) 
 
 	voteHandler := handlers.NewVoteHandler(castVoteUC, getVoteContextUC, getVoteUC, listVotesByMatchUC)
 	voteHandler.Register(public, protected)
+
+	shareLinkHandler := handlers.NewShareLinkHandler(generateShareLinkUC, revokeShareLinkUC, getShareLinkContextUC, claimInvitationUC, joinMatchUC)
+	shareLinkHandler.Register(public, protected)
 
 	authHandler := handlers.NewAuthHandler(registerOrganizerUC, loginOrganizerUC)
 	authHandler.Register(public, protected)

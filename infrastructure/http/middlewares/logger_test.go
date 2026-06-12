@@ -23,6 +23,7 @@ func newRouterWithLogger(buf *bytes.Buffer) *gin.Engine {
 	router.GET("/boom", func(c *gin.Context) { c.Status(http.StatusInternalServerError) })
 	router.GET("/health/live", func(c *gin.Context) { c.Status(http.StatusOK) })
 	router.GET("/health/ready", func(c *gin.Context) { c.Status(http.StatusOK) })
+	router.GET("/api/v1/share/:token", func(c *gin.Context) { c.Status(http.StatusOK) })
 	return router
 }
 
@@ -83,6 +84,25 @@ func TestSLogLogger_UsesErrorLevel_For5xx(t *testing.T) {
 	line := decodeLogLine(t, buf.Bytes())
 	if line["level"] != "ERROR" {
 		t.Errorf("expected level ERROR for 500, got %v", line["level"])
+	}
+}
+
+func TestSLogLogger_RedactsTokenBearingPaths_LogsRouteTemplate(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	router := newRouterWithLogger(&buf)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/share/super-secret-token-123", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	line := decodeLogLine(t, buf.Bytes())
+	if line["path"] != "/api/v1/share/:token" {
+		t.Errorf("expected route template '/api/v1/share/:token', got %v", line["path"])
+	}
+	if bytes.Contains(buf.Bytes(), []byte("super-secret-token-123")) {
+		t.Errorf("plain token leaked into the log line: %s", buf.String())
 	}
 }
 

@@ -173,3 +173,30 @@ func TestInvitationContextResponseFromContext_EmptyConfirmed_ReturnsEmptyNotNilS
 		t.Errorf("ConfirmedInitials len = %d, want 0", len(resp.ConfirmedInitials))
 	}
 }
+
+func TestInvitationResponseFromEntity_ExposesClaimedAt_WhenClaimed(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Now()
+	expiresAt := createdAt.Add(5 * 24 * time.Hour)
+	claimedAt := createdAt.Add(2 * time.Hour)
+	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, entities.InvitationResponsePending, nil, &claimedAt, createdAt)
+
+	resp := InvitationResponseFromEntity(inv)
+
+	if resp.ClaimedAt == nil || !resp.ClaimedAt.Equal(claimedAt) {
+		t.Errorf("expected ClaimedAt %v, got %v", claimedAt, resp.ClaimedAt)
+	}
+}
+
+func TestInvitationResponseFromEntity_NilClaimedAt_WhenNeverClaimed(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Now()
+	expiresAt := createdAt.Add(5 * 24 * time.Hour)
+	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, entities.InvitationResponsePending, nil, nil, createdAt)
+
+	resp := InvitationResponseFromEntity(inv)
+
+	if resp.ClaimedAt != nil {
+		t.Errorf("expected nil ClaimedAt, got %v", resp.ClaimedAt)
+	}
+}
