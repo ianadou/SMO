@@ -22,9 +22,9 @@ const checked = defineModel<boolean>({ required: true })
     </span>
     <span class="text-[14px] leading-[1.4] text-fg-default">
       J'accepte les
-      <a href="#cgu" target="_blank" rel="noopener noreferrer" class="text-fg-default underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">conditions générales</a>
+      <a href="/terms" target="_blank" rel="noopener noreferrer" class="text-fg-default underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">conditions générales</a>
       et la
-      <a href="#privacy" target="_blank" rel="noopener noreferrer" class="text-fg-default underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">politique de confidentialité</a>
+      <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-fg-default underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">politique de confidentialité</a>
     </span>
   </label>
 </template>

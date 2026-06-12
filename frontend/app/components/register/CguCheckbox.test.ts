@@ -36,3 +36,11 @@ describe('CguCheckbox', () => {
     expect(wrapper.find('input[type="checkbox"]').attributes('aria-invalid')).toBe('true')
   })
 })
+
+it('links to the real terms and privacy pages', async () => {
+  const wrapper = await mountSuspended(CguCheckbox, {
+    props: { modelValue: false },
+  })
+  expect(wrapper.html()).toContain('href="/terms"')
+  expect(wrapper.html()).toContain('href="/privacy"')
+})
