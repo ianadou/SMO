@@ -102,6 +102,12 @@ async function submit() {
         <div class="mt-10 text-[13px] leading-[1.4] text-fg-muted text-center">
           Les joueurs n'ont pas besoin de compte — ils accèdent par lien d'invitation.
         </div>
+
+        <div class="mt-4 text-[12px] leading-[1.4] text-fg-muted text-center flex justify-center gap-x-3">
+          <NuxtLink to="/legal" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">Mentions légales</NuxtLink>
+          <NuxtLink to="/privacy" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">Confidentialité</NuxtLink>
+          <NuxtLink to="/terms" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">CGU</NuxtLink>
+        </div>
       </form>
     </div>
   </main>
