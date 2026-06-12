@@ -107,6 +107,7 @@ func (uc *CreateInvitationUseCase) Execute(ctx context.Context, input CreateInvi
 		expiresAt,
 		entities.InvitationResponsePending,
 		nil,
+		nil,
 		now,
 	)
 	if err != nil {

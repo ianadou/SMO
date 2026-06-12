@@ -213,6 +213,24 @@ func enforceCapacity(ctx context.Context, qtx *generated.Queries, matchID entiti
 	return nil
 }
 
+// Claim persists the invitation's rotated token hash and claim
+// timestamp. The UPDATE is conditional (claimed_at IS NULL AND
+// response = 'pending'), so two concurrent claims cannot both win: the
+// loser's update matches zero rows and is mapped to
+// ErrInvitationAlreadyClaimed. The caller loaded the invitation just
+// before, so zero rows means the row settled in the meantime, not that
+// it disappeared.
+func (r *PostgresInvitationRepository) Claim(ctx context.Context, inv *entities.Invitation) error {
+	if _, err := r.queries.ClaimInvitation(ctx, mappers.InvitationToClaimParams(inv)); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf(invitationRepoOp+": claim %q: %w",
+				inv.ID(), domainerrors.ErrInvitationAlreadyClaimed)
+		}
+		return fmt.Errorf(invitationRepoOp+": claim %q: %w", inv.ID(), err)
+	}
+	return nil
+}
+
 // Delete removes an invitation by identifier.
 func (r *PostgresInvitationRepository) Delete(ctx context.Context, id entities.InvitationID) error {
 	if err := r.queries.DeleteInvitation(ctx, string(id)); err != nil {

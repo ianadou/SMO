@@ -12,7 +12,7 @@ func TestInvitationResponseFromEntity_OmitsPlainToken(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Now()
 	expiresAt := createdAt.Add(5 * 24 * time.Hour)
-	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, entities.InvitationResponsePending, nil, createdAt)
+	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, entities.InvitationResponsePending, nil, nil, createdAt)
 
 	resp := InvitationResponseFromEntity(inv)
 	if resp.ID != "inv-1" {
@@ -31,7 +31,7 @@ func TestRespondInvitationResponseFromEntity_ExposesResponseAndTimestamp(t *test
 	createdAt := time.Now()
 	expiresAt := createdAt.Add(5 * 24 * time.Hour)
 	respondedAt := createdAt.Add(time.Hour)
-	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, entities.InvitationResponseYes, &respondedAt, createdAt)
+	inv, _ := entities.NewInvitation("inv-1", "match-1", "p-1", "hash", expiresAt, entities.InvitationResponseYes, &respondedAt, nil, createdAt)
 
 	resp := RespondInvitationResponseFromEntity(inv)
 

@@ -26,6 +26,16 @@ type Invitations struct {
 	PlayerID    string
 	Response    string
 	RespondedAt pgtype.Timestamptz
+	ClaimedAt   pgtype.Timestamptz
+}
+
+type MatchShareLinks struct {
+	ID        string
+	MatchID   string
+	TokenHash string
+	ExpiresAt pgtype.Timestamptz
+	RevokedAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
 }
 
 type MatchTeamMembers struct {

@@ -134,6 +134,17 @@ func (r *fakeInvitationRepository) ListConfirmedParticipants(_ context.Context, 
 	return out, nil
 }
 
+// Claim upserts without the adapter's conditional stored-row check:
+// the fake hands out shared pointers, so the stored copy is already
+// the claimed entity by the time Claim runs. No invitation use case
+// in this package calls it; it exists to satisfy the port.
+func (r *fakeInvitationRepository) Claim(_ context.Context, inv *entities.Invitation) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.invitations[inv.ID()] = inv
+	return nil
+}
+
 // RespondWithCapacityGuard mirrors the postgres adapter's contract: the
 // capacity check fires only when this call newly confirms an invitation
 // (it was not already 'yes' in the stored map), and the whole thing is

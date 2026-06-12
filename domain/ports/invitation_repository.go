@@ -26,6 +26,13 @@ type InvitationRepository interface {
 	// powers the match detail page.
 	ListConfirmedParticipants(ctx context.Context, matchID entities.MatchID) ([]entities.MatchParticipant, error)
 
+	// Claim persists the invitation's rotated token hash and claim
+	// timestamp, conditionally: the update applies only while the
+	// stored row is still unclaimed and pending, so two concurrent
+	// claims cannot both win. The loser gets
+	// domainerrors.ErrInvitationAlreadyClaimed.
+	Claim(ctx context.Context, inv *entities.Invitation) error
+
 	// RespondWithCapacityGuard persists the invitation's new response.
 	// When (and only when) the response transitions into "yes", it
 	// atomically enforces the capacity cap: it serializes on the match

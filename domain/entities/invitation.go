@@ -47,6 +47,7 @@ type Invitation struct {
 	expiresAt   time.Time
 	response    InvitationResponse
 	respondedAt *time.Time
+	claimedAt   *time.Time
 	createdAt   time.Time
 }
 
@@ -63,6 +64,11 @@ type Invitation struct {
 // respondedAt invariant is enforced: pending requires a nil respondedAt,
 // while yes/no require a non-nil respondedAt (the moment the answer was
 // recorded).
+//
+// The claimedAt parameter is nil until the invitation is claimed through
+// a match share link (see Claim). It carries no invariant of its own: a
+// claimed invitation can still be pending (claimed but not yet answered)
+// and a settled one can be unclaimed (answered via the personal link).
 func NewInvitation(
 	id InvitationID,
 	matchID MatchID,
@@ -71,6 +77,7 @@ func NewInvitation(
 	expiresAt time.Time,
 	response InvitationResponse,
 	respondedAt *time.Time,
+	claimedAt *time.Time,
 	createdAt time.Time,
 ) (*Invitation, error) {
 	if id == "" || matchID == "" || playerID == "" || tokenHash == "" {
@@ -97,6 +104,7 @@ func NewInvitation(
 		expiresAt:   expiresAt,
 		response:    response,
 		respondedAt: respondedAt,
+		claimedAt:   claimedAt,
 		createdAt:   createdAt,
 	}, nil
 }
@@ -143,6 +151,10 @@ func (i *Invitation) Response() InvitationResponse { return i.response }
 // or nil if it is still pending.
 func (i *Invitation) RespondedAt() *time.Time { return i.respondedAt }
 
+// ClaimedAt returns the timestamp at which the invitation was claimed
+// through a match share link, or nil if it was never claimed.
+func (i *Invitation) ClaimedAt() *time.Time { return i.claimedAt }
+
 // CreatedAt returns the creation timestamp of the invitation.
 func (i *Invitation) CreatedAt() time.Time { return i.createdAt }
 
@@ -182,5 +194,31 @@ func (i *Invitation) Respond(answer InvitationResponse, now time.Time, locked bo
 
 	i.response = answer
 	i.respondedAt = &now
+	return nil
+}
+
+// Claim binds this invitation to the person who picked it from the match
+// share link, rotating the token: a new personal token hash replaces the
+// old one, so any previously shared personal link stops resolving. One
+// token, one owner.
+//
+// A claim is allowed only while the invitation is untouched: a non-nil
+// claimedAt means someone claimed it first, and a settled response means
+// its owner already engaged through their personal link. Both are the
+// same conflict from the claimer's perspective, hence one error.
+// Expiration takes priority, mirroring Respond.
+func (i *Invitation) Claim(newTokenHash string, now time.Time) error {
+	if newTokenHash == "" {
+		return domainerrors.ErrInvalidID
+	}
+	if i.IsExpired(now) {
+		return domainerrors.ErrInvitationExpired
+	}
+	if i.claimedAt != nil || i.response != InvitationResponsePending {
+		return domainerrors.ErrInvitationAlreadyClaimed
+	}
+
+	i.tokenHash = newTokenHash
+	i.claimedAt = &now
 	return nil
 }

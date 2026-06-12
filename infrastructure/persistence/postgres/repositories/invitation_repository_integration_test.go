@@ -69,7 +69,7 @@ func buildTestInvitation(t *testing.T, id, matchID, hash string) *entities.Invit
 	expiresAt := createdAt.Add(5 * 24 * time.Hour)
 	inv, err := entities.NewInvitation(
 		entities.InvitationID(id), entities.MatchID(matchID), entities.PlayerID("p-1"), hash,
-		expiresAt, entities.InvitationResponsePending, nil, createdAt,
+		expiresAt, entities.InvitationResponsePending, nil, nil, createdAt,
 	)
 	if err != nil {
 		t.Fatalf("NewInvitation: %v", err)
@@ -245,6 +245,77 @@ func TestPostgresInvitationRepository_RespondWithCapacityGuard_ReconfirmYesIsNot
 	}
 }
 
+func TestPostgresInvitationRepository_Claim_PersistsClaimedInvitation(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+
+	inv := buildTestInvitation(t, "inv-1", "test-match", "original-hash")
+	if err := repo.Save(ctx, inv); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if err := inv.Claim("rotated-hash", time.Now()); err != nil {
+		t.Fatalf("entity Claim: %v", err)
+	}
+
+	if err := repo.Claim(ctx, inv); err != nil {
+		t.Fatalf("repo.Claim: %v", err)
+	}
+
+	found, _ := repo.FindByID(ctx, "inv-1")
+	if found.TokenHash() != "rotated-hash" {
+		t.Errorf("expected rotated token hash, got %q", found.TokenHash())
+	}
+	if found.ClaimedAt() == nil {
+		t.Error("expected claimed_at to be set")
+	}
+}
+
+func TestPostgresInvitationRepository_Claim_ReturnsErrInvitationAlreadyClaimed_WhenRowIsClaimed(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+
+	inv := buildTestInvitation(t, "inv-1", "test-match", "original-hash")
+	if err := repo.Save(ctx, inv); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	_ = inv.Claim("winner-hash", time.Now())
+	if err := repo.Claim(ctx, inv); err != nil {
+		t.Fatalf("first claim: %v", err)
+	}
+
+	// A racing claimer holds a stale pending copy of the same row: its
+	// in-memory Claim succeeds, but the conditional UPDATE must lose.
+	stale := buildTestInvitation(t, "inv-1", "test-match", "original-hash")
+	_ = stale.Claim("loser-hash", time.Now())
+
+	err := repo.Claim(ctx, stale)
+	if !errors.Is(err, domainerrors.ErrInvitationAlreadyClaimed) {
+		t.Errorf("expected ErrInvitationAlreadyClaimed, got %v", err)
+	}
+}
+
+func TestPostgresInvitationRepository_Claim_ReturnsErrInvitationAlreadyClaimed_WhenResponseIsSettled(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+
+	inv := buildTestInvitation(t, "inv-1", "test-match", "original-hash")
+	if err := repo.Save(ctx, inv); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	_ = inv.Respond(entities.InvitationResponseYes, time.Now(), false)
+	if err := repo.RespondWithCapacityGuard(ctx, inv, entities.MaxParticipantsPerMatch); err != nil {
+		t.Fatalf("respond: %v", err)
+	}
+
+	stale := buildTestInvitation(t, "inv-1", "test-match", "original-hash")
+	_ = stale.Claim("loser-hash", time.Now())
+
+	err := repo.Claim(ctx, stale)
+	if !errors.Is(err, domainerrors.ErrInvitationAlreadyClaimed) {
+		t.Errorf("expected ErrInvitationAlreadyClaimed for a settled row, got %v", err)
+	}
+}
+
 func TestPostgresInvitationRepository_Delete_RemovesInvitation(t *testing.T) {
 	repo := newTestInvitationRepository(t)
 	ctx := context.Background()
@@ -276,7 +347,7 @@ func TestPostgresInvitationRepository_CountConfirmedByMatch_OnlyCountsYes(t *tes
 		inv, err := entities.NewInvitation(
 			entities.InvitationID(fmt.Sprintf("inv-%d", i)), "test-match",
 			entities.PlayerID(fmt.Sprintf("p-count-%d", i)), fmt.Sprintf("h-%d", i),
-			createdAt.Add(48*time.Hour), entities.InvitationResponsePending, nil, createdAt,
+			createdAt.Add(48*time.Hour), entities.InvitationResponsePending, nil, nil, createdAt,
 		)
 		if err != nil {
 			t.Fatalf("build invitation: %v", err)
@@ -343,7 +414,7 @@ func TestPostgresInvitationRepository_ListConfirmedParticipants_ExcludesPendingA
 	createdAt := time.Now()
 	declined, _ := entities.NewInvitation(
 		"inv-declined", "test-match", "p-declined", "hash-d",
-		createdAt.Add(48*time.Hour), entities.InvitationResponsePending, nil, createdAt,
+		createdAt.Add(48*time.Hour), entities.InvitationResponsePending, nil, nil, createdAt,
 	)
 	if err := repo.Save(ctx, declined); err != nil {
 		t.Fatalf("Save declined: %v", err)
@@ -423,7 +494,7 @@ func TestPostgresInvitationRepository_RespondWithCapacityGuard_IsConcurrencySafe
 		inv, err := entities.NewInvitation(
 			entities.InvitationID(fmt.Sprintf("inv-seed-%d", i)), "test-match",
 			entities.PlayerID(fmt.Sprintf("p-seed-%d", i)), fmt.Sprintf("seed-h-%d", i),
-			createdAt.Add(48*time.Hour), entities.InvitationResponsePending, nil, createdAt,
+			createdAt.Add(48*time.Hour), entities.InvitationResponsePending, nil, nil, createdAt,
 		)
 		if err != nil {
 			t.Fatalf("build seed invitation: %v", err)
@@ -446,7 +517,7 @@ func TestPostgresInvitationRepository_RespondWithCapacityGuard_IsConcurrencySafe
 		inv, err := entities.NewInvitation(
 			entities.InvitationID(fmt.Sprintf("inv-race-%d", i)), "test-match",
 			entities.PlayerID(fmt.Sprintf("p-race-%d", i)), fmt.Sprintf("race-h-%d", i),
-			createdAt.Add(48*time.Hour), entities.InvitationResponsePending, nil, createdAt,
+			createdAt.Add(48*time.Hour), entities.InvitationResponsePending, nil, nil, createdAt,
 		)
 		if err != nil {
 			t.Fatalf("build contender: %v", err)
@@ -495,5 +566,35 @@ func TestPostgresInvitationRepository_RespondWithCapacityGuard_IsConcurrencySafe
 	if confirmed != entities.MaxParticipantsPerMatch {
 		t.Errorf("expected exactly %d confirmed after the race, got %d",
 			entities.MaxParticipantsPerMatch, confirmed)
+	}
+}
+
+func TestPostgresInvitationRepository_Save_PersistsClaimedAt_WhenBornClaimed(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	ctx := context.Background()
+
+	createdAt := time.Now()
+	claimedAt := createdAt
+	inv, err := entities.NewInvitation(
+		"inv-born-claimed", "test-match", "p-1", "hash-born-claimed",
+		createdAt.Add(5*24*time.Hour), entities.InvitationResponsePending, nil, &claimedAt, createdAt,
+	)
+	if err != nil {
+		t.Fatalf("NewInvitation: %v", err)
+	}
+
+	if saveErr := repo.Save(ctx, inv); saveErr != nil {
+		t.Fatalf("expected Save to succeed: %v", saveErr)
+	}
+
+	found, findErr := repo.FindByID(ctx, "inv-born-claimed")
+	if findErr != nil {
+		t.Fatalf("expected to find saved invitation: %v", findErr)
+	}
+	if found.ClaimedAt() == nil {
+		t.Fatal("expected claimed_at to survive the insert round-trip, got nil")
+	}
+	if found.ClaimedAt().Unix() != claimedAt.Unix() {
+		t.Errorf("expected claimed_at %v, got %v", claimedAt, found.ClaimedAt())
 	}
 }

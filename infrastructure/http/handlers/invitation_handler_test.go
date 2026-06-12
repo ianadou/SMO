@@ -98,6 +98,17 @@ func (r *fakeInvRepo) ListConfirmedParticipants(_ context.Context, matchID entit
 	return out, nil
 }
 
+// Claim upserts without the adapter's conditional stored-row check:
+// the fake hands out shared pointers, so the stored copy is already
+// claimed by the time Claim runs. Race semantics are the postgres
+// adapter's contract, covered by its integration tests.
+func (r *fakeInvRepo) Claim(_ context.Context, inv *entities.Invitation) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.invitations[inv.ID()] = inv
+	return nil
+}
+
 func (r *fakeInvRepo) RespondWithCapacityGuard(_ context.Context, inv *entities.Invitation, _ int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -67,6 +67,10 @@ func (authRequiredFakeInvitationRepo) RespondWithCapacityGuard(context.Context, 
 	return domainerrors.ErrInvitationNotFound
 }
 
+func (authRequiredFakeInvitationRepo) Claim(context.Context, *entities.Invitation) error {
+	return domainerrors.ErrInvitationAlreadyClaimed
+}
+
 func (authRequiredFakeInvitationRepo) ListByMatch(context.Context, entities.MatchID) ([]*entities.Invitation, error) {
 	return nil, nil
 }

@@ -9,6 +9,9 @@ import (
 )
 
 type Querier interface {
+	// The WHERE clause is the claim-race guard: two concurrent claims of the
+	// same invitation cannot both match a row, so the loser sees zero rows.
+	ClaimInvitation(ctx context.Context, arg ClaimInvitationParams) (Invitations, error)
 	// Read model for the vote page "matchs joués ensemble" meta: for each
 	// other player, how many closed matches of the group both they and the
 	// reference player attended (confirmed invitations on both sides).
@@ -32,11 +35,14 @@ type Querier interface {
 	// struct rather than generating per-query row types.
 	// ============================================================================
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (Groups, error)
+	// claimed_at is a parameter, not a constant NULL: a share-link self-add
+	// mints an invitation that is born claimed by its creator.
 	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitations, error)
 	// Inserts a new match row. All fields are required; the status is
 	// typically 'draft' at creation time and evolves through the
 	// Match.Open(), MarkTeamsReady(), etc. state machine methods.
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (Matches, error)
+	CreateMatchShareLink(ctx context.Context, arg CreateMatchShareLinkParams) (MatchShareLinks, error)
 	// Inserts a new organizer. The UNIQUE constraint on email rejects
 	// duplicates; the repository translates that violation into
 	// ErrEmailAlreadyExists.
@@ -53,6 +59,7 @@ type Querier interface {
 	// in a single statement. Used by FinalizeMatchUseCase to avoid a window
 	// where MVP is set but status hasn't transitioned yet, or vice versa.
 	FinalizeMatch(ctx context.Context, arg FinalizeMatchParams) (Matches, error)
+	GetActiveMatchShareLinkByMatchID(ctx context.Context, matchID string) (MatchShareLinks, error)
 	GetGroupByID(ctx context.Context, id string) (Groups, error)
 	GetInvitationByID(ctx context.Context, id string) (Invitations, error)
 	GetInvitationByTokenHash(ctx context.Context, tokenHash string) (Invitations, error)
@@ -61,6 +68,7 @@ type Querier interface {
 	// scheduled date. Feeds the "top player joins the previous winner" rule.
 	GetLatestDecidedMatchByGroup(ctx context.Context, arg GetLatestDecidedMatchByGroupParams) (Matches, error)
 	GetMatchByID(ctx context.Context, id string) (Matches, error)
+	GetMatchShareLinkByTokenHash(ctx context.Context, tokenHash string) (MatchShareLinks, error)
 	// Email lookups go through this query exclusively. Emails are stored
 	// lower-cased by the entity, so the WHERE clause does not need
 	// LOWER() — but we still pass the lowered value at the application
@@ -87,6 +95,7 @@ type Querier interface {
 	LockMatchRow(ctx context.Context, id string) (string, error)
 	UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Groups, error)
 	UpdateInvitationResponse(ctx context.Context, arg UpdateInvitationResponseParams) (Invitations, error)
+	UpdateMatchShareLink(ctx context.Context, arg UpdateMatchShareLinkParams) (MatchShareLinks, error)
 	// Persists the status and the final score. The state machine on the
 	// Match entity controls which transitions are valid; this query trusts
 	// the caller. Score is nil for every transition except complete (and

@@ -299,7 +299,7 @@ func seedSquad(t *testing.T, tr *testRouter, status entities.MatchStatus) []enti
 		inv, ierr := entities.NewInvitation(
 			entities.InvitationID(fmt.Sprintf("inv-%d", i)),
 			"match-1", pid, fmt.Sprintf("hash-%d", i),
-			now.Add(48*time.Hour), entities.InvitationResponseYes, &respondedAt, now,
+			now.Add(48*time.Hour), entities.InvitationResponseYes, &respondedAt, nil, now,
 		)
 		if ierr != nil {
 			t.Fatalf("seedSquad: new invitation for %q: %v", pid, ierr)

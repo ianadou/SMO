@@ -1,8 +1,6 @@
 package mappers
 
 import (
-	"time"
-
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ianadou/smo/domain/entities"
@@ -12,11 +10,6 @@ import (
 // InvitationToDomain converts a sqlc-generated Invitations row into a
 // domain Invitation entity.
 func InvitationToDomain(row generated.Invitations) (*entities.Invitation, error) {
-	var respondedAtPtr *time.Time
-	if row.RespondedAt.Valid {
-		t := row.RespondedAt.Time
-		respondedAtPtr = &t
-	}
 	return entities.NewInvitation(
 		entities.InvitationID(row.ID),
 		entities.MatchID(row.MatchID),
@@ -24,15 +17,16 @@ func InvitationToDomain(row generated.Invitations) (*entities.Invitation, error)
 		row.TokenHash,
 		row.ExpiresAt.Time,
 		entities.InvitationResponse(row.Response),
-		respondedAtPtr,
+		optionalTimeFromPg(row.RespondedAt),
+		optionalTimeFromPg(row.ClaimedAt),
 		row.CreatedAt.Time,
 	)
 }
 
 // InvitationToCreateParams converts a domain Invitation into create
 // params. New invitations are always created pending (response and
-// responded_at are fixed in the SQL), so only the immutable identity
-// fields are mapped here.
+// responded_at are fixed in the SQL). claimed_at is mapped because a
+// share-link self-add mints an invitation born claimed by its creator.
 func InvitationToCreateParams(inv *entities.Invitation) generated.CreateInvitationParams {
 	return generated.CreateInvitationParams{
 		ID:        string(inv.ID()),
@@ -40,6 +34,7 @@ func InvitationToCreateParams(inv *entities.Invitation) generated.CreateInvitati
 		PlayerID:  string(inv.PlayerID()),
 		TokenHash: inv.TokenHash(),
 		ExpiresAt: pgtype.Timestamptz{Time: inv.ExpiresAt(), Valid: true},
+		ClaimedAt: optionalTimeToPg(inv.ClaimedAt()),
 		CreatedAt: pgtype.Timestamptz{Time: inv.CreatedAt(), Valid: true},
 	}
 }
@@ -50,15 +45,16 @@ func InvitationToUpdateResponseParams(inv *entities.Invitation) generated.Update
 	return generated.UpdateInvitationResponseParams{
 		ID:          string(inv.ID()),
 		Response:    string(inv.Response()),
-		RespondedAt: respondedAtToPg(inv.RespondedAt()),
+		RespondedAt: optionalTimeToPg(inv.RespondedAt()),
 	}
 }
 
-// respondedAtToPg converts an optional *time.Time into pgtype.Timestamptz.
-// Nil becomes the NULL representation.
-func respondedAtToPg(respondedAt *time.Time) pgtype.Timestamptz {
-	if respondedAt == nil {
-		return pgtype.Timestamptz{Valid: false}
+// InvitationToClaimParams converts a claimed domain Invitation into the
+// params for the conditional claim update (rotated token + claim time).
+func InvitationToClaimParams(inv *entities.Invitation) generated.ClaimInvitationParams {
+	return generated.ClaimInvitationParams{
+		ID:        string(inv.ID()),
+		TokenHash: inv.TokenHash(),
+		ClaimedAt: optionalTimeToPg(inv.ClaimedAt()),
 	}
-	return pgtype.Timestamptz{Time: *respondedAt, Valid: true}
 }

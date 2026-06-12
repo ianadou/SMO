@@ -36,7 +36,7 @@ func newRespondFixture(
 	hash := tokens.HashToken(plain)
 
 	createdAt := expiresAt.Add(-7 * 24 * time.Hour)
-	inv, err := entities.NewInvitation("inv-1", "match-1", "p-1", hash, expiresAt, response, respondedAt, createdAt)
+	inv, err := entities.NewInvitation("inv-1", "match-1", "p-1", hash, expiresAt, response, respondedAt, nil, createdAt)
 	if err != nil {
 		t.Fatalf("setup: NewInvitation: %v", err)
 	}
@@ -200,6 +200,7 @@ func TestRespondToInvitationUseCase_Execute_ReturnsErrMatchFull_WhenMatchAtCapac
 			expires,
 			entities.InvitationResponseYes,
 			&respondedAt,
+			nil,
 			createdAt,
 		)
 		if err != nil {
@@ -210,7 +211,7 @@ func TestRespondToInvitationUseCase_Execute_ReturnsErrMatchFull_WhenMatchAtCapac
 
 	pending, err := entities.NewInvitation(
 		"inv-pending", "match-1", "player-late", hash, expires,
-		entities.InvitationResponsePending, nil, createdAt,
+		entities.InvitationResponsePending, nil, nil, createdAt,
 	)
 	if err != nil {
 		t.Fatalf("seed pending: %v", err)
@@ -248,6 +249,7 @@ func TestRespondToInvitationUseCase_Execute_AllowsConfirmation_WhenBelowCapacity
 			expires,
 			entities.InvitationResponseYes,
 			&respondedAt,
+			nil,
 			createdAt,
 		)
 		_ = repo.Save(context.Background(), confirmed)
@@ -255,7 +257,7 @@ func TestRespondToInvitationUseCase_Execute_AllowsConfirmation_WhenBelowCapacity
 
 	pending, _ := entities.NewInvitation(
 		"inv-pending", "match-1", "player-last", hash, expires,
-		entities.InvitationResponsePending, nil, createdAt,
+		entities.InvitationResponsePending, nil, nil, createdAt,
 	)
 	_ = repo.Save(context.Background(), pending)
 

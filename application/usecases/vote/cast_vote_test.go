@@ -58,7 +58,7 @@ func seedBearerInvitation(
 	inv, err := entities.NewInvitation(
 		entities.InvitationID("inv-"+playerID), votableMatchID, playerID,
 		fakeTokenService{}.HashToken(plain),
-		voteTestKickoff.Add(24*time.Hour), response, &respondedAt,
+		voteTestKickoff.Add(24*time.Hour), response, &respondedAt, nil,
 		voteTestKickoff.Add(-48*time.Hour),
 	)
 	if err != nil {
@@ -106,7 +106,7 @@ func TestCastVoteUseCase_AllowsVoting_WhenInvitationExpired(t *testing.T) {
 	inv, err := entities.NewInvitation(
 		"inv-p-1", votableMatchID, "p-1",
 		fakeTokenService{}.HashToken("tok-p-1"),
-		voteTestKickoff.Add(-time.Hour), entities.InvitationResponseYes, &respondedAt,
+		voteTestKickoff.Add(-time.Hour), entities.InvitationResponseYes, &respondedAt, nil,
 		voteTestKickoff.Add(-48*time.Hour),
 	)
 	if err != nil {
