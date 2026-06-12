@@ -83,7 +83,12 @@ async function submit(answer: 'yes' | 'no') {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  if (route.query.respond === '1' && view.value === 'initial') {
+    modalOpen.value = true
+  }
+})
 </script>
 
 <template>

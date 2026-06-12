@@ -44,6 +44,25 @@ function reloadInvitations() {
   if (match.value) invitationsPanel.load(match.value.group_id)
 }
 
+async function generateMatchLink() {
+  const generated = await invitationsPanel.generateShareLink()
+  if (generated) toast.success('Lien du match prêt', 'Copie-le et partage-le dans le groupe.')
+  else toast.error('Génération impossible', 'Réessaie dans un instant.')
+}
+
+async function copyMatchLink() {
+  const link = invitationsPanel.shareLink.value
+  if (!link) return
+  await navigator.clipboard.writeText(link.url)
+  toast.success('Lien copié', 'Chaque joueur pourra réclamer son prénom.')
+}
+
+async function revokeMatchLink() {
+  const revoked = await invitationsPanel.revokeShareLink()
+  if (revoked) toast.success('Lien révoqué', 'L\'ancien lien du match ne fonctionne plus.')
+  else toast.error('Révocation impossible', 'Réessaie dans un instant.')
+}
+
 async function shareInviteLink(row: InviteRow) {
   if (!row.shareUrl) return
   if (navigator.share) {
@@ -161,10 +180,15 @@ function validate() {
         :inviting-id="invitationsPanel.invitingId.value"
         :locked="invitationsLocked"
         :failed="invitationsPanel.error.value"
+        :share-link="invitationsPanel.shareLink.value"
+        :link-busy="invitationsPanel.linkBusy.value"
         @invite="invitationsPanel.invite($event)"
         @share="shareInviteLink"
         @close="sheetOpen = false"
         @retry="reloadInvitations"
+        @generate-link="generateMatchLink"
+        @copy-link="copyMatchLink"
+        @revoke-link="revokeMatchLink"
       />
     </template>
   </div>

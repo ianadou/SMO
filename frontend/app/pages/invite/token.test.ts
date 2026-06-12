@@ -14,7 +14,10 @@ mockNuxtImport('useApi', () => () => ({
   delete: vi.fn(),
 }))
 
-mockNuxtImport('useRoute', () => () => ({ params: { token: 'tok-123' } }))
+const { routeMock } = vi.hoisted(() => ({
+  routeMock: { params: { token: 'tok-123' }, query: {} as Record<string, string> },
+}))
+mockNuxtImport('useRoute', () => () => routeMock)
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }))
 mockNuxtImport('navigateTo', () => navigate)
@@ -38,6 +41,7 @@ const fullContext = {
 beforeEach(() => {
   post.mockReset()
   navigate.mockReset()
+  routeMock.query = {}
 })
 
 describe('Invitation page', () => {
@@ -139,6 +143,24 @@ describe('Invitation page', () => {
 
     expect(post).toHaveBeenLastCalledWith('/invitations/respond', { token: 'tok-123', answer: 'no' })
     expect(wrapper.text()).toContain('Réponse enregistrée')
+  })
+
+  it('auto-opens the respond modal when respond=1 and the invitation is pending', async () => {
+    routeMock.query = { respond: '1' }
+    post.mockResolvedValueOnce(fullContext)
+    const wrapper = await mountSuspended(InvitePage)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="answer-yes"]').exists()).toBe(true)
+  })
+
+  it('does not auto-open the respond modal when respond=1 but the player already answered', async () => {
+    routeMock.query = { respond: '1' }
+    post.mockResolvedValueOnce({ ...fullContext, response: 'yes' })
+    const wrapper = await mountSuspended(InvitePage)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="answer-yes"]').exists()).toBe(false)
   })
 
   it('refetches context and shows the locked-pending screen when respond returns 409 and the player never answered', async () => {

@@ -2,10 +2,12 @@ import { computed, ref } from 'vue'
 import { useApi } from './useApi'
 import type { PlayerDTO } from '~/types/groups'
 import type { CreatedInvitationDTO, InviteRow, MatchInvitationDTO } from '~/types/invitation'
+import type { MatchShareLinkDTO } from '~/types/shareLink'
 
 export interface InvitationApi {
   get: <T>(path: string) => Promise<T>
   post: <T>(path: string, body: unknown) => Promise<T>
+  delete: <T>(path: string) => Promise<T>
 }
 
 export function useMatchInvitations(matchId: string, api: InvitationApi = useApi()) {
@@ -15,19 +17,23 @@ export function useMatchInvitations(matchId: string, api: InvitationApi = useApi
   const loading = ref(false)
   const invitingId = ref<string | null>(null)
   const error = ref<boolean>(false)
+  const shareLink = ref<MatchShareLinkDTO | null>(null)
+  const linkBusy = ref(false)
 
   const rows = computed<InviteRow[]>(() =>
     players.value.map((player) => {
+      const invitation = invitations.value.find(inv => inv.player_id === player.id)
+      const claimed = Boolean(invitation?.claimed_at)
       const freshUrl = freshLinks.value[player.id]
       if (freshUrl) {
-        return { playerId: player.id, playerName: player.name, status: 'fresh' as const, shareUrl: freshUrl }
+        return { playerId: player.id, playerName: player.name, status: 'fresh' as const, shareUrl: freshUrl, claimed }
       }
-      const invitation = invitations.value.find(inv => inv.player_id === player.id)
       return {
         playerId: player.id,
         playerName: player.name,
         status: invitation ? invitation.response : 'not-invited',
         shareUrl: null,
+        claimed,
       }
     }),
   )
@@ -75,5 +81,48 @@ export function useMatchInvitations(matchId: string, api: InvitationApi = useApi
     }
   }
 
-  return { rows, confirmedCount, loading, invitingId, error, load, invite }
+  async function generateShareLink(): Promise<boolean> {
+    linkBusy.value = true
+    try {
+      const created = await api.post<MatchShareLinkDTO>(`/matches/${matchId}/share-link`, {})
+      const url = created.url || `${window.location.origin}/join/${created.token}`
+      shareLink.value = { ...created, url }
+      return true
+    }
+    catch {
+      return false
+    }
+    finally {
+      linkBusy.value = false
+    }
+  }
+
+  async function revokeShareLink(): Promise<boolean> {
+    linkBusy.value = true
+    try {
+      await api.delete(`/matches/${matchId}/share-link`)
+      shareLink.value = null
+      return true
+    }
+    catch {
+      return false
+    }
+    finally {
+      linkBusy.value = false
+    }
+  }
+
+  return {
+    rows,
+    confirmedCount,
+    loading,
+    invitingId,
+    error,
+    shareLink,
+    linkBusy,
+    load,
+    invite,
+    generateShareLink,
+    revokeShareLink,
+  }
 }
