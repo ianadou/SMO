@@ -7,6 +7,7 @@ import InviteConfirmed from '~/components/invite/InviteConfirmed.vue'
 import InviteRespondModal from '~/components/invite/InviteRespondModal.vue'
 import InviteMinimalState from '~/components/invite/InviteMinimalState.vue'
 import InviteIcon from '~/components/invite/InviteIcon.vue'
+import LegalFooter from '~/components/app/LegalFooter.vue'
 import type { InvitationContext, LoadOutcome, RespondResult } from '~/types/invitation'
 
 definePageMeta({ layout: false })
@@ -187,6 +188,8 @@ onMounted(async () => {
         SMO ne stocke ni votre numéro ni votre email.<br>
         Votre réponse est liée au lien d'invitation reçu.
       </p>
+
+      <LegalFooter class="mt-3 pb-2" />
     </template>
 
     <template v-else-if="view === 'result' && context">

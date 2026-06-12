@@ -89,11 +89,12 @@ test.describe('Groups page', () => {
     await expect(page.getByRole('button', { name: 'Réessayer' })).toBeVisible()
   })
 
-  test('logout button clears the session and redirects to /login', async ({ page }) => {
+  test('logout from the account menu clears the session and redirects to /login', async ({ page }) => {
     await authenticate(page)
     await mockGroups(page, 200, [])
     await page.goto('/groups')
-    await page.getByRole('button', { name: 'Se déconnecter' }).click()
+    await page.getByRole('button', { name: 'Menu du compte' }).click()
+    await page.getByTestId('logout').click()
     await expect(page).toHaveURL(/\/login$/)
     const stored = await page.evaluate(() => window.localStorage.getItem('smo.auth.token'))
     expect(stored).toBeNull()

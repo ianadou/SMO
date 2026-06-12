@@ -5,12 +5,11 @@ import MatchCard from '~/components/groups/MatchCard.vue'
 import NextMatchSection from '~/components/groups/NextMatchSection.vue'
 import CreateMatchModal from '~/components/groups/CreateMatchModal.vue'
 import RenameGroupModal from '~/components/groups/RenameGroupModal.vue'
-import Wordmark from '~/components/Wordmark.vue'
 import type { GroupDTO } from '~/types/groups'
 import type { MatchDTO, MatchStatus } from '~/types/matches'
 import { ApiError } from '~/composables/useApi'
 
-definePageMeta({ layout: false, middleware: 'auth' })
+definePageMeta({ layout: 'organizer', middleware: 'auth' })
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -88,7 +87,7 @@ onMounted(loadAll)
 </script>
 
 <template>
-  <div class="relative w-full max-w-[600px] mx-auto min-h-dvh flex flex-col pb-24">
+  <div class="relative w-full max-w-[600px] md:max-w-[840px] mx-auto flex flex-col pb-24">
     <header class="flex items-center justify-between px-5 pt-5">
       <NuxtLink
         to="/groups"
@@ -97,7 +96,6 @@ onMounted(loadAll)
       >
         <ArrowLeft :size="18" />
       </NuxtLink>
-      <Wordmark class="leading-none" />
       <button
         v-if="group"
         type="button"
@@ -153,7 +151,7 @@ onMounted(loadAll)
         </h2>
       </div>
 
-      <div class="flex flex-col gap-3 px-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 px-5">
         <template v-if="loading">
           <CardSkeleton v-for="n in 3" :key="n" />
         </template>
@@ -161,7 +159,7 @@ onMounted(loadAll)
         <div
           v-else-if="error"
           role="alert"
-          class="rounded-[var(--radius-md)] bg-bg-elevated text-fg-default px-4 py-3 text-sm"
+          class="md:col-span-full rounded-[var(--radius-md)] bg-bg-elevated text-fg-default px-4 py-3 text-sm"
         >
           {{ error }}
           <button
@@ -175,7 +173,7 @@ onMounted(loadAll)
 
         <div
           v-else-if="otherMatches.length === 0 && !nextMatch"
-          class="flex flex-col items-center text-center px-6 py-10 gap-2"
+          class="md:col-span-full flex flex-col items-center text-center px-6 py-10 gap-2"
         >
           <p class="text-fg-default font-medium">Pas encore de match</p>
           <p class="text-fg-muted text-sm max-w-[280px]">
@@ -185,7 +183,7 @@ onMounted(loadAll)
 
         <div
           v-else-if="otherMatches.length === 0"
-          class="flex flex-col items-center text-center px-6 py-6 gap-1"
+          class="md:col-span-full flex flex-col items-center text-center px-6 py-6 gap-1"
         >
           <p class="text-fg-muted text-sm">Aucun match passé pour l'instant.</p>
         </div>
@@ -205,7 +203,7 @@ onMounted(loadAll)
       <button
         v-if="group"
         type="button"
-        class="fixed right-[max(1.25rem,calc((100vw-600px)/2+1.25rem))] bottom-6 w-14 h-14 border-0 rounded-full bg-action-primary text-fg-emphasis inline-flex items-center justify-center cursor-pointer shadow-elevated transition-colors duration-150 hover:bg-action-primary-hover active:bg-action-primary-pressed focus-visible:outline-none focus-visible:[box-shadow:0_8px_24px_-8px_rgba(0,0,0,0.6),0_0_0_2px_var(--color-bg-base),0_0_0_4px_rgba(32,128,255,0.45)]"
+        class="fixed right-[max(1.25rem,calc((100vw-600px)/2+1.25rem))] md:right-[max(1.25rem,calc((100vw-840px)/2+1.25rem))] bottom-6 w-14 h-14 border-0 rounded-full bg-action-primary text-fg-emphasis inline-flex items-center justify-center cursor-pointer shadow-elevated transition-colors duration-150 hover:bg-action-primary-hover active:bg-action-primary-pressed focus-visible:outline-none focus-visible:[box-shadow:0_8px_24px_-8px_rgba(0,0,0,0.6),0_0_0_2px_var(--color-bg-base),0_0_0_4px_rgba(32,128,255,0.45)]"
         aria-label="Créer un match"
         @click="createOpen = true"
       >

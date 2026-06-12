@@ -7,6 +7,7 @@ import VoteConfirmModal from '~/components/vote/VoteConfirmModal.vue'
 import ResultRow from '~/components/vote/ResultRow.vue'
 import SelfScoreCard from '~/components/vote/SelfScoreCard.vue'
 import InviteMinimalState from '~/components/invite/InviteMinimalState.vue'
+import LegalFooter from '~/components/app/LegalFooter.vue'
 import { resolveVoteView } from '~/utils/voteView'
 import { formatMatchDate, formatMatchTime } from '~/utils/inviteFormat'
 import { useVotePage } from '~/composables/useVotePage'
@@ -191,6 +192,8 @@ onMounted(load)
         Le vote est définitif et anonyme.<br>
         Vos coéquipiers ne sauront pas qui les a notés.
       </p>
+
+      <LegalFooter class="mt-3" />
 
       <div class="fixed left-0 right-0 bottom-0 z-[5] px-5 pt-3 pb-[calc(theme(spacing.4)+env(safe-area-inset-bottom,0px))] bg-gradient-to-b from-transparent via-bg-base/80 to-bg-base">
         <div class="max-w-[600px] mx-auto">

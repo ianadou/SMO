@@ -6,6 +6,7 @@ import InviteMinimalState from '~/components/invite/InviteMinimalState.vue'
 import JoinRosterRow from '~/components/join/JoinRosterRow.vue'
 import JoinClaimModal from '~/components/join/JoinClaimModal.vue'
 import JoinSelfAddModal from '~/components/join/JoinSelfAddModal.vue'
+import LegalFooter from '~/components/app/LegalFooter.vue'
 import { useJoinPage } from '~/composables/useJoinPage'
 import { useToast } from '~/composables/useToast'
 import { resolveJoinView } from '~/utils/shareLinkView'
@@ -229,6 +230,8 @@ onMounted(load)
       Votre lien personnel vous sera remis après identification.<br>
       SMO ne stocke ni votre numéro ni votre email.
     </p>
+
+    <LegalFooter class="mt-3 pb-2" />
 
     <JoinClaimModal
       :open="selectedEntry !== null"

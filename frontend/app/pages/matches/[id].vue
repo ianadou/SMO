@@ -6,6 +6,7 @@ import PresentList from '~/components/matches/PresentList.vue'
 import MatchSetupCard from '~/components/matches/MatchSetupCard.vue'
 import MatchValidateBar from '~/components/matches/MatchValidateBar.vue'
 import InviteSheet from '~/components/matches/InviteSheet.vue'
+import LegalFooter from '~/components/app/LegalFooter.vue'
 import { useMatchDetail } from '~/composables/useMatchDetail'
 import { useMatchInvitations } from '~/composables/useMatchInvitations'
 import { useTeamDrag } from '~/composables/useTeamDrag'
@@ -191,5 +192,9 @@ function validate() {
         @revoke-link="revokeMatchLink"
       />
     </template>
+
+    <footer class="py-6 px-5">
+      <LegalFooter />
+    </footer>
   </div>
 </template>

@@ -5,6 +5,7 @@ import PrimaryButton from '~/components/login/PrimaryButton.vue'
 import InlineError from '~/components/login/InlineError.vue'
 import StrengthMeter from '~/components/register/StrengthMeter.vue'
 import CguCheckbox from '~/components/register/CguCheckbox.vue'
+import LegalFooter from '~/components/app/LegalFooter.vue'
 import { MIN_PASSWORD_LENGTH, isEmailFormat, passwordStrength } from '~/utils/password'
 import { ApiError } from '~/composables/useApi'
 
@@ -154,6 +155,8 @@ async function submit() {
             Se connecter
           </NuxtLink>
         </div>
+
+        <LegalFooter class="mt-8" />
       </form>
     </div>
   </main>
