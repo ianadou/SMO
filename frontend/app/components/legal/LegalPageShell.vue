@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import LegalFooter from '~/components/app/LegalFooter.vue'
+
 defineProps<{ title: string, updatedAt: string }>()
 </script>
 
@@ -20,11 +22,9 @@ defineProps<{ title: string, updatedAt: string }>()
         <slot />
       </div>
 
-      <nav class="mt-12 pt-6 border-t border-bg-elevated text-[13px] leading-[1.4] text-fg-muted flex flex-wrap gap-x-4 gap-y-2">
-        <NuxtLink to="/legal" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">Mentions légales</NuxtLink>
-        <NuxtLink to="/privacy" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">Confidentialité</NuxtLink>
-        <NuxtLink to="/terms" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">CGU</NuxtLink>
-      </nav>
+      <div class="mt-12 pt-6 border-t border-bg-elevated">
+        <LegalFooter />
+      </div>
     </div>
   </main>
 </template>

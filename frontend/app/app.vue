@@ -5,7 +5,9 @@ import ToastStack from '~/components/ui/ToastStack.vue'
 <template>
   <div>
     <NuxtRouteAnnouncer />
-    <NuxtPage />
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
     <ToastStack />
   </div>
 </template>

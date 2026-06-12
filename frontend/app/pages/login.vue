@@ -3,6 +3,7 @@ import { Eye, EyeOff } from 'lucide-vue-next'
 import TextField from '~/components/login/TextField.vue'
 import PrimaryButton from '~/components/login/PrimaryButton.vue'
 import InlineError from '~/components/login/InlineError.vue'
+import LegalFooter from '~/components/app/LegalFooter.vue'
 import { ApiError } from '~/composables/useApi'
 
 definePageMeta({ layout: false })
@@ -103,11 +104,7 @@ async function submit() {
           Les joueurs n'ont pas besoin de compte — ils accèdent par lien d'invitation.
         </div>
 
-        <div class="mt-4 text-[12px] leading-[1.4] text-fg-muted text-center flex justify-center gap-x-3">
-          <NuxtLink to="/legal" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">Mentions légales</NuxtLink>
-          <NuxtLink to="/privacy" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">Confidentialité</NuxtLink>
-          <NuxtLink to="/terms" class="underline underline-offset-2 decoration-fg-muted hover:decoration-fg-default">CGU</NuxtLink>
-        </div>
+        <LegalFooter class="mt-4" />
       </form>
     </div>
   </main>
