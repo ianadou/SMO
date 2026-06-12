@@ -11,6 +11,10 @@ import (
 type fakeTokenService struct {
 	tokens []string
 	index  int
+
+	// generateErr, when set, is returned by GenerateToken so tests can
+	// drive the token-minting failure branch of the use cases.
+	generateErr error
 }
 
 func newFakeTokenService(tokens ...string) *fakeTokenService {
@@ -18,6 +22,9 @@ func newFakeTokenService(tokens ...string) *fakeTokenService {
 }
 
 func (s *fakeTokenService) GenerateToken() (string, error) {
+	if s.generateErr != nil {
+		return "", s.generateErr
+	}
 	if s.index >= len(s.tokens) {
 		panic("fakeTokenService: ran out of tokens")
 	}

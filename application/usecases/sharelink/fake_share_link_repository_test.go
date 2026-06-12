@@ -21,6 +21,12 @@ type fakeShareLinkRepository struct {
 	findByHashErr error
 	findActiveErr error
 	updateErr     error
+
+	// findActiveOverride, when set, is returned by FindActiveByMatchID
+	// regardless of its activity. It models a misbehaving adapter
+	// handing back a dead link, so tests can prove the use cases defend
+	// against a broken active-link invariant.
+	findActiveOverride *entities.MatchShareLink
 }
 
 func newFakeShareLinkRepository(now time.Time) *fakeShareLinkRepository {
@@ -72,6 +78,9 @@ func (r *fakeShareLinkRepository) FindByTokenHash(_ context.Context, tokenHash s
 func (r *fakeShareLinkRepository) FindActiveByMatchID(_ context.Context, matchID entities.MatchID) (*entities.MatchShareLink, error) {
 	if r.findActiveErr != nil {
 		return nil, r.findActiveErr
+	}
+	if r.findActiveOverride != nil {
+		return r.findActiveOverride, nil
 	}
 	for _, link := range r.links {
 		if link.MatchID() == matchID && link.IsActive(r.now) {

@@ -18,7 +18,7 @@ func newGenerateFixture(t *testing.T, now time.Time) (
 	matchRepo := newFakeMatchRepository()
 	groupRepo := newFakeGroupRepository()
 	matchRepo.seedMatch(t, "match-1", "group-1")
-	groupRepo.seedGroup(t, "group-1", "org-1", "Sunday League")
+	groupRepo.seedGroup(t)
 	uc := NewGenerateMatchShareLinkUseCase(
 		links, matchRepo, groupRepo,
 		newFakeTokenService("plain-share-token"),
@@ -160,5 +160,61 @@ func TestGenerateMatchShareLinkUseCase_PropagatesCreateError(t *testing.T) {
 
 	if !errors.Is(err, repoErr) {
 		t.Errorf("expected wrapped repo error, got %v", err)
+	}
+}
+
+func TestGenerateMatchShareLinkUseCase_PropagatesError_WhenAdapterHandsBackDeadActiveLink(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	uc, links := newGenerateFixture(t, now)
+	revokedAt := now.Add(-time.Hour)
+	dead := links.seedLink(t, "link-dead", "dead-hash",
+		now.Add(48*time.Hour), &revokedAt, now.Add(-2*time.Hour))
+	links.findActiveOverride = dead
+
+	_, err := uc.Execute(context.Background(), "match-1", "org-1")
+
+	if !errors.Is(err, domainerrors.ErrShareLinkInactive) {
+		t.Errorf("expected ErrShareLinkInactive when revoking a dead link, got %v", err)
+	}
+}
+
+func TestGenerateMatchShareLinkUseCase_PropagatesError_WhenTokenGenerationFails(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	links := newFakeShareLinkRepository(now)
+	matches := newFakeMatchRepository()
+	groups := newFakeGroupRepository()
+	matches.seedMatch(t, "match-1", "group-1")
+	groups.seedGroup(t)
+	tokens := newFakeTokenService()
+	entropyErr := errors.New("entropy exhausted")
+	tokens.generateErr = entropyErr
+	uc := NewGenerateMatchShareLinkUseCase(
+		links, matches, groups, tokens, newFakeIDGenerator("link-1"), newFakeClock(now))
+
+	_, err := uc.Execute(context.Background(), "match-1", "org-1")
+
+	if !errors.Is(err, entropyErr) {
+		t.Errorf("expected wrapped token generation error, got %v", err)
+	}
+}
+
+func TestGenerateMatchShareLinkUseCase_PropagatesError_WhenGeneratedIDIsInvalid(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	links := newFakeShareLinkRepository(now)
+	matches := newFakeMatchRepository()
+	groups := newFakeGroupRepository()
+	matches.seedMatch(t, "match-1", "group-1")
+	groups.seedGroup(t)
+	uc := NewGenerateMatchShareLinkUseCase(
+		links, matches, groups, newFakeTokenService("plain-share-token"),
+		newFakeIDGenerator(""), newFakeClock(now))
+
+	_, err := uc.Execute(context.Background(), "match-1", "org-1")
+
+	if !errors.Is(err, domainerrors.ErrInvalidID) {
+		t.Errorf("expected ErrInvalidID from an empty generated id, got %v", err)
 	}
 }

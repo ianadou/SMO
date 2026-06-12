@@ -17,7 +17,7 @@ func newRevokeFixture(t *testing.T, now time.Time) (
 	matchRepo := newFakeMatchRepository()
 	groupRepo := newFakeGroupRepository()
 	matchRepo.seedMatch(t, "match-1", "group-1")
-	groupRepo.seedGroup(t, "group-1", "org-1", "Sunday League")
+	groupRepo.seedGroup(t)
 	uc := NewRevokeMatchShareLinkUseCase(links, matchRepo, groupRepo, newFakeClock(now))
 	return uc, links
 }
@@ -91,5 +91,21 @@ func TestRevokeMatchShareLinkUseCase_PropagatesUpdateError(t *testing.T) {
 
 	if !errors.Is(err, repoErr) {
 		t.Errorf("expected wrapped repo error, got %v", err)
+	}
+}
+
+func TestRevokeMatchShareLinkUseCase_PropagatesError_WhenAdapterHandsBackDeadActiveLink(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	uc, links := newRevokeFixture(t, now)
+	revokedAt := now.Add(-time.Hour)
+	dead := links.seedLink(t, "link-dead", "dead-hash",
+		now.Add(48*time.Hour), &revokedAt, now.Add(-2*time.Hour))
+	links.findActiveOverride = dead
+
+	err := uc.Execute(context.Background(), "match-1", "org-1")
+
+	if !errors.Is(err, domainerrors.ErrShareLinkInactive) {
+		t.Errorf("expected ErrShareLinkInactive when revoking a dead link, got %v", err)
 	}
 }

@@ -16,6 +16,7 @@ type joinFixture struct {
 	invitations *fakeInvitationRepository
 	matches     *fakeMatchRepository
 	players     *fakePlayerRepository
+	tokens      *fakeTokenService
 }
 
 // newJoinFixture wires the use case around match-1 (group-1), an active
@@ -42,7 +43,7 @@ func newJoinFixture(t *testing.T, now time.Time, ids ...string) *joinFixture {
 	)
 	return &joinFixture{
 		uc: uc, links: links, invitations: invitations,
-		matches: matches, players: players,
+		matches: matches, players: players, tokens: tokens,
 	}
 }
 
@@ -235,5 +236,96 @@ func TestJoinMatchUseCase_MarksInvitationClaimedAtBirth_SoTheNameIsNotSquattable
 	claimedAt := result.Invitation.ClaimedAt()
 	if claimedAt == nil || !claimedAt.Equal(now) {
 		t.Errorf("expected invitation claimed at %v so the roster locks the name, got %v", now, claimedAt)
+	}
+}
+
+func TestJoinMatchUseCase_PropagatesError_WhenMatchLookupFails(t *testing.T) {
+	t.Parallel()
+	fixture := newJoinFixture(t, time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC))
+	delete(fixture.matches.matches, "match-1")
+
+	_, err := fixture.uc.Execute(context.Background(), JoinMatchInput{
+		ShareToken: "share-token",
+		PlayerName: "Zoe",
+	})
+
+	if !errors.Is(err, domainerrors.ErrMatchNotFound) {
+		t.Errorf("expected ErrMatchNotFound, got %v", err)
+	}
+}
+
+func TestJoinMatchUseCase_PropagatesError_WhenTokenGenerationFails(t *testing.T) {
+	t.Parallel()
+	fixture := newJoinFixture(t, time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC))
+	entropyErr := errors.New("entropy exhausted")
+	fixture.tokens.generateErr = entropyErr
+
+	_, err := fixture.uc.Execute(context.Background(), JoinMatchInput{
+		ShareToken: "share-token",
+		PlayerName: "Marc",
+	})
+
+	if !errors.Is(err, entropyErr) {
+		t.Errorf("expected wrapped token generation error, got %v", err)
+	}
+}
+
+func TestJoinMatchUseCase_PropagatesError_WhenGroupPlayersLookupFails(t *testing.T) {
+	t.Parallel()
+	fixture := newJoinFixture(t, time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC))
+	repoErr := errors.New("db down")
+	fixture.players.listErr = repoErr
+
+	_, err := fixture.uc.Execute(context.Background(), JoinMatchInput{
+		ShareToken: "share-token",
+		PlayerName: "Zoe",
+	})
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped players lookup error, got %v", err)
+	}
+}
+
+func TestJoinMatchUseCase_PropagatesError_WhenInvitationLookupFails(t *testing.T) {
+	t.Parallel()
+	fixture := newJoinFixture(t, time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC))
+	repoErr := errors.New("db down")
+	fixture.invitations.listByMatchErr = repoErr
+
+	_, err := fixture.uc.Execute(context.Background(), JoinMatchInput{
+		ShareToken: "share-token",
+		PlayerName: "Marc",
+	})
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped invitations lookup error, got %v", err)
+	}
+}
+
+func TestJoinMatchUseCase_PropagatesError_WhenGeneratedPlayerIDIsInvalid(t *testing.T) {
+	t.Parallel()
+	fixture := newJoinFixture(t, time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC), "")
+
+	_, err := fixture.uc.Execute(context.Background(), JoinMatchInput{
+		ShareToken: "share-token",
+		PlayerName: "Zoe",
+	})
+
+	if !errors.Is(err, domainerrors.ErrInvalidID) {
+		t.Errorf("expected ErrInvalidID from an empty generated player id, got %v", err)
+	}
+}
+
+func TestJoinMatchUseCase_PropagatesError_WhenGeneratedInvitationIDIsInvalid(t *testing.T) {
+	t.Parallel()
+	fixture := newJoinFixture(t, time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC), "")
+
+	_, err := fixture.uc.Execute(context.Background(), JoinMatchInput{
+		ShareToken: "share-token",
+		PlayerName: "Marc",
+	})
+
+	if !errors.Is(err, domainerrors.ErrInvalidID) {
+		t.Errorf("expected ErrInvalidID from an empty generated invitation id, got %v", err)
 	}
 }

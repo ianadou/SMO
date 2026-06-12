@@ -18,13 +18,16 @@ func newFakeGroupRepository() *fakeGroupRepository {
 	return &fakeGroupRepository{groups: make(map[entities.GroupID]*entities.Group)}
 }
 
-func (r *fakeGroupRepository) seedGroup(t testHelper, id entities.GroupID, organizerID entities.OrganizerID, name string) {
+// seedGroup seeds group "group-1" owned by "org-1". The ids are fixed
+// because every test in the package revolves around that single group;
+// ownership rejections pass a different organizer id to Execute instead.
+func (r *fakeGroupRepository) seedGroup(t testHelper) {
 	now := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
-	g, err := entities.NewGroup(id, name, organizerID, "", now)
+	g, err := entities.NewGroup("group-1", "Sunday League", "org-1", "", now)
 	if err != nil {
 		t.Fatalf("seedGroup: %v", err)
 	}
-	r.groups[id] = g
+	r.groups[g.ID()] = g
 }
 
 func (r *fakeGroupRepository) FindByID(_ context.Context, id entities.GroupID) (*entities.Group, error) {

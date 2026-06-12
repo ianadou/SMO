@@ -87,7 +87,11 @@ func (r *fakeMatchRepository) FindLatestDecidedByGroup(context.Context, entities
 type fakePlayerRepository struct {
 	players map[entities.PlayerID]*entities.Player
 
+	// Per-method error injectors for use case error-branch tests.
+	// nil = method behaves normally.
 	saveErr error
+	findErr error
+	listErr error
 }
 
 func newFakePlayerRepository() *fakePlayerRepository {
@@ -113,6 +117,9 @@ func (r *fakePlayerRepository) Save(_ context.Context, player *entities.Player) 
 }
 
 func (r *fakePlayerRepository) FindByID(_ context.Context, id entities.PlayerID) (*entities.Player, error) {
+	if r.findErr != nil {
+		return nil, r.findErr
+	}
 	p, ok := r.players[id]
 	if !ok {
 		return nil, domainerrors.ErrPlayerNotFound
@@ -121,6 +128,9 @@ func (r *fakePlayerRepository) FindByID(_ context.Context, id entities.PlayerID)
 }
 
 func (r *fakePlayerRepository) ListByGroup(_ context.Context, groupID entities.GroupID) ([]*entities.Player, error) {
+	if r.listErr != nil {
+		return nil, r.listErr
+	}
 	result := make([]*entities.Player, 0)
 	for _, p := range r.players {
 		if p.GroupID() == groupID {

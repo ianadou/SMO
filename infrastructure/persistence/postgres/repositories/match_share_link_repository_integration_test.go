@@ -196,3 +196,83 @@ func TestPostgresMatchShareLinkRepository_Update_ReturnsErrShareLinkNotFound(t *
 		t.Errorf("expected ErrShareLinkNotFound, got %v", err)
 	}
 }
+
+// A canceled context surfaces a driver error that is neither pgx.ErrNoRows
+// nor a pg FK violation, so every method must fall through to its generic
+// wrap branch instead of mistranslating the failure into a domain sentinel.
+func TestPostgresMatchShareLinkRepository_WrapsDriverError_WhenContextCanceled(t *testing.T) {
+	repo := newTestMatchShareLinkRepository(t)
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	link := buildTestShareLink(t, "link-ctx", "test-match", "hash-ctx")
+
+	t.Run("Create", func(t *testing.T) {
+		err := repo.Create(canceledCtx, link)
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("expected wrapped context.Canceled, got %v", err)
+		}
+		if errors.Is(err, domainerrors.ErrReferencedEntityNotFound) {
+			t.Errorf("driver error must not be reported as a FK violation, got %v", err)
+		}
+	})
+
+	t.Run("FindByTokenHash", func(t *testing.T) {
+		_, err := repo.FindByTokenHash(canceledCtx, "hash-ctx")
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("expected wrapped context.Canceled, got %v", err)
+		}
+		if errors.Is(err, domainerrors.ErrShareLinkNotFound) {
+			t.Errorf("driver error must not be reported as not-found, got %v", err)
+		}
+	})
+
+	t.Run("FindActiveByMatchID", func(t *testing.T) {
+		_, err := repo.FindActiveByMatchID(canceledCtx, "test-match")
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("expected wrapped context.Canceled, got %v", err)
+		}
+		if errors.Is(err, domainerrors.ErrShareLinkNotFound) {
+			t.Errorf("driver error must not be reported as not-found, got %v", err)
+		}
+	})
+
+	t.Run("Update", func(t *testing.T) {
+		err := repo.Update(canceledCtx, link)
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("expected wrapped context.Canceled, got %v", err)
+		}
+		if errors.Is(err, domainerrors.ErrShareLinkNotFound) {
+			t.Errorf("driver error must not be reported as not-found, got %v", err)
+		}
+	})
+}
+
+// A row that violates the entity invariants (empty token hash) can only
+// exist through direct database tampering; the repository must surface
+// the mapping failure instead of handing a broken entity to the domain.
+func TestPostgresMatchShareLinkRepository_WrapsMappingError_WhenStoredRowIsCorrupted(t *testing.T) {
+	repo := newTestMatchShareLinkRepository(t)
+	ctx := context.Background()
+
+	if _, err := sharedPool.Exec(ctx, `
+		INSERT INTO match_share_links (id, match_id, token_hash, expires_at, created_at)
+		VALUES ('link-corrupt', 'test-match', '', NOW() + INTERVAL '1 day', NOW())
+	`); err != nil {
+		t.Fatalf("seed corrupted row: %v", err)
+	}
+
+	t.Run("FindByTokenHash", func(t *testing.T) {
+		_, err := repo.FindByTokenHash(ctx, "")
+		if err == nil || errors.Is(err, domainerrors.ErrShareLinkNotFound) {
+			t.Errorf("expected a mapping error distinct from not-found, got %v", err)
+		}
+	})
+
+	t.Run("FindActiveByMatchID", func(t *testing.T) {
+		_, err := repo.FindActiveByMatchID(ctx, "test-match")
+		if err == nil || errors.Is(err, domainerrors.ErrShareLinkNotFound) {
+			t.Errorf("expected a mapping error distinct from not-found, got %v", err)
+		}
+	})
+}

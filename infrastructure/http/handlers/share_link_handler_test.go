@@ -527,3 +527,15 @@ func TestShareLinkHandler_Join_Returns400_WhenNameMissing(t *testing.T) {
 		t.Errorf("expected 400, got %d", rec.Code)
 	}
 }
+
+func TestShareLinkHandler_Revoke_Returns401_WhenOrganizerMissing(t *testing.T) {
+	env := buildShareLinkTestRouter(t, "", entities.MatchStatusOpen)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/matches/match-1/share-link", nil)
+	rec := httptest.NewRecorder()
+	env.router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", rec.Code)
+	}
+}

@@ -17,6 +17,8 @@ type contextFixture struct {
 	invitations *fakeInvitationRepository
 	matches     *fakeMatchRepository
 	players     *fakePlayerRepository
+	groups      *fakeGroupRepository
+	organizers  *fakeOrganizerRepository
 }
 
 // newContextFixture wires the use case around match-1 (group-1, owned
@@ -34,7 +36,7 @@ func newContextFixture(t *testing.T, now time.Time) *contextFixture {
 	tokens := newFakeTokenService()
 
 	matches.seedMatch(t, "match-1", "group-1")
-	groups.seedGroup(t, "group-1", "org-1", "Sunday League")
+	groups.seedGroup(t)
 	organizers.seedOrganizer(t, "org-1", "Karim")
 	links.seedLink(t, "link-1",
 		tokens.HashToken("share-token"), now.Add(48*time.Hour), nil, now.Add(-time.Hour))
@@ -46,6 +48,7 @@ func newContextFixture(t *testing.T, now time.Time) *contextFixture {
 	return &contextFixture{
 		uc: uc, links: links, invitations: invitations,
 		matches: matches, players: players,
+		groups: groups, organizers: organizers,
 	}
 }
 
@@ -217,5 +220,58 @@ func TestGetShareLinkContextUseCase_ReturnsErrPlayerNotFound_WhenInvitationRefer
 
 	if !errors.Is(err, domainerrors.ErrPlayerNotFound) {
 		t.Errorf("expected ErrPlayerNotFound on dangling reference, got %v", err)
+	}
+}
+
+func TestGetShareLinkContextUseCase_PropagatesError_WhenMatchLookupFails(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	fixture := newContextFixture(t, now)
+	delete(fixture.matches.matches, "match-1")
+
+	_, err := fixture.uc.Execute(context.Background(), "share-token")
+
+	if !errors.Is(err, domainerrors.ErrMatchNotFound) {
+		t.Errorf("expected ErrMatchNotFound, got %v", err)
+	}
+}
+
+func TestGetShareLinkContextUseCase_PropagatesError_WhenGroupLookupFails(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	fixture := newContextFixture(t, now)
+	delete(fixture.groups.groups, "group-1")
+
+	_, err := fixture.uc.Execute(context.Background(), "share-token")
+
+	if !errors.Is(err, domainerrors.ErrGroupNotFound) {
+		t.Errorf("expected ErrGroupNotFound, got %v", err)
+	}
+}
+
+func TestGetShareLinkContextUseCase_PropagatesError_WhenOrganizerLookupFails(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	fixture := newContextFixture(t, now)
+	delete(fixture.organizers.organizers, "org-1")
+
+	_, err := fixture.uc.Execute(context.Background(), "share-token")
+
+	if !errors.Is(err, domainerrors.ErrOrganizerNotFound) {
+		t.Errorf("expected ErrOrganizerNotFound, got %v", err)
+	}
+}
+
+func TestGetShareLinkContextUseCase_PropagatesError_WhenGroupPlayersLookupFails(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	fixture := newContextFixture(t, now)
+	repoErr := errors.New("db down")
+	fixture.players.listErr = repoErr
+
+	_, err := fixture.uc.Execute(context.Background(), "share-token")
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("expected wrapped players lookup error, got %v", err)
 	}
 }

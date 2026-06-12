@@ -16,6 +16,7 @@ type claimFixture struct {
 	invitations *fakeInvitationRepository
 	matches     *fakeMatchRepository
 	players     *fakePlayerRepository
+	tokens      *fakeTokenService
 }
 
 // newClaimFixture wires the use case around match-1 (group-1), an
@@ -41,7 +42,7 @@ func newClaimFixture(t *testing.T, now time.Time) *claimFixture {
 	)
 	return &claimFixture{
 		uc: uc, links: links, invitations: invitations,
-		matches: matches, players: players,
+		matches: matches, players: players, tokens: tokens,
 	}
 }
 
@@ -209,5 +210,49 @@ func TestClaimInvitationUseCase_ReturnsErrInvitationExpired_WhenInvitationExpire
 
 	if !errors.Is(err, domainerrors.ErrInvitationExpired) {
 		t.Errorf("expected ErrInvitationExpired, got %v", err)
+	}
+}
+
+func TestClaimInvitationUseCase_PropagatesError_WhenMatchLookupFails(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	fixture := newClaimFixture(t, now)
+	fixture.seedClaimableInvitation(t, now)
+	delete(fixture.matches.matches, "match-1")
+
+	_, err := fixture.uc.Execute(context.Background(), "share-token", "player-1")
+
+	if !errors.Is(err, domainerrors.ErrMatchNotFound) {
+		t.Errorf("expected ErrMatchNotFound, got %v", err)
+	}
+}
+
+func TestClaimInvitationUseCase_PropagatesError_WhenTokenGenerationFails(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	fixture := newClaimFixture(t, now)
+	fixture.seedClaimableInvitation(t, now)
+	entropyErr := errors.New("entropy exhausted")
+	fixture.tokens.generateErr = entropyErr
+
+	_, err := fixture.uc.Execute(context.Background(), "share-token", "player-1")
+
+	if !errors.Is(err, entropyErr) {
+		t.Errorf("expected wrapped token generation error, got %v", err)
+	}
+}
+
+func TestClaimInvitationUseCase_PropagatesError_WhenPlayerLookupFailsAfterClaim(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	fixture := newClaimFixture(t, now)
+	fixture.seedClaimableInvitation(t, now)
+	lookupErr := errors.New("connection reset")
+	fixture.players.findErr = lookupErr
+
+	_, err := fixture.uc.Execute(context.Background(), "share-token", "player-1")
+
+	if !errors.Is(err, lookupErr) {
+		t.Errorf("expected wrapped player lookup error, got %v", err)
 	}
 }

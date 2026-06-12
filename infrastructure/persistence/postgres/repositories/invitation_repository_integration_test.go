@@ -598,3 +598,20 @@ func TestPostgresInvitationRepository_Save_PersistsClaimedAt_WhenBornClaimed(t *
 		t.Errorf("expected claimed_at %v, got %v", claimedAt, found.ClaimedAt())
 	}
 }
+
+func TestPostgresInvitationRepository_Claim_WrapsDriverError_WhenContextCanceled(t *testing.T) {
+	repo := newTestInvitationRepository(t)
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	inv := buildTestInvitation(t, "inv-ctx", "test-match", "hash-ctx")
+
+	err := repo.Claim(canceledCtx, inv)
+
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected wrapped context.Canceled, got %v", err)
+	}
+	if errors.Is(err, domainerrors.ErrInvitationAlreadyClaimed) {
+		t.Errorf("driver error must not be reported as a lost claim race, got %v", err)
+	}
+}
