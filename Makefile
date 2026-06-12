@@ -28,8 +28,12 @@ fmt: ## Format the code with gofumpt
 	gofumpt -w .
 
 .PHONY: test
-test: ## Run all tests
+test: ## Run all unit tests
 	go test ./...
+
+.PHONY: test-integration
+test-integration: ## Run unit + integration tests (requires Docker for testcontainers)
+	go test -tags=integration ./...
 
 .PHONY: test-cover
 test-cover: ## Run tests with coverage report
@@ -83,11 +87,30 @@ migrate-create: ## Create a new SQL migration file (use NAME=description)
 #   - postgres : PostgreSQL 16 database with a named persistent volume
 #   - app      : the SMO HTTP server, built from the local Dockerfile
 #
-# Environment variables come from .env at the repository root. Copy
-# .env.example to .env to get started.
+# Environment variables come from .env at the repository root. `make env`
+# creates it on first run with locally generated secrets, so a fresh
+# clone boots with `make up` and nothing sensitive is ever committed.
+
+.PHONY: env
+env: ## Create .env from .env.example with generated local secrets (no-op if present)
+	@test -f .env || { \
+		cp .env.example .env; \
+		sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$$(openssl rand -hex 16)|" .env; \
+		sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$$(openssl rand -hex 32)|" .env; \
+		echo ".env created with generated local secrets"; \
+	}
+
+.PHONY: up
+up: env ## Clone-and-run entrypoint: build and start the full stack
+	docker compose up -d --build
+	@echo ""
+	@echo "SMO is starting:"
+	@echo "  Frontend  http://localhost:3000"
+	@echo "  API       http://localhost:8081/api/v1"
+	@echo "  Health    http://localhost:8081/health/ready"
 
 .PHONY: compose-up
-compose-up: ## Start the full Docker Compose stack in the background
+compose-up: env ## Start the full Docker Compose stack in the background
 	docker compose up -d
 
 .PHONY: compose-up-db
