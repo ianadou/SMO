@@ -42,6 +42,7 @@ export interface MatchInvitationDTO {
   response: 'pending' | 'yes' | 'no'
   responded_at: string | null
   created_at: string
+  claimed_at?: string | null
 }
 
 export interface CreatedInvitationDTO extends MatchInvitationDTO {
@@ -55,4 +56,5 @@ export interface InviteRow {
   playerName: string
   status: InviteRowStatus
   shareUrl: string | null
+  claimed?: boolean
 }

@@ -157,6 +157,10 @@ func (r *voteTestInvitationRepo) RespondWithCapacityGuard(context.Context, *enti
 	panic("unused")
 }
 
+func (r *voteTestInvitationRepo) Claim(context.Context, *entities.Invitation) error {
+	panic("unused")
+}
+
 func (r *voteTestInvitationRepo) Delete(context.Context, entities.InvitationID) error {
 	panic("unused")
 }
@@ -222,7 +226,7 @@ func buildVoteTestRouter(t *testing.T, matchStatus entities.MatchStatus) (*gin.E
 	confirmed, err := entities.NewInvitation("inv-1", "test-match", "p-1",
 		voteTokenService{}.HashToken("tok-p-1"),
 		time.Date(2026, 6, 8, 10, 0, 0, 0, time.UTC),
-		entities.InvitationResponseYes, &respondedAt,
+		entities.InvitationResponseYes, &respondedAt, nil,
 		time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatalf("seed confirmed invitation: %v", err)
@@ -230,7 +234,7 @@ func buildVoteTestRouter(t *testing.T, matchStatus entities.MatchStatus) (*gin.E
 	declined, err := entities.NewInvitation("inv-2", "test-match", "p-2",
 		voteTokenService{}.HashToken("tok-p-2"),
 		time.Date(2026, 6, 8, 10, 0, 0, 0, time.UTC),
-		entities.InvitationResponseNo, &respondedAt,
+		entities.InvitationResponseNo, &respondedAt, nil,
 		time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatalf("seed declined invitation: %v", err)

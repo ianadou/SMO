@@ -146,9 +146,10 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 		"answer": "yes",
 	}, nil)
 
-	// 5c. The three other players confirm too, so the match can be split
-	// into an explicit 2v2.
-	for _, playerID := range []string{p2.ID, p3.ID, p4.ID} {
+	// 5c. Carol and Dan confirm through their personal invitations; Bob
+	// confirms through the share link claim below, so the match can be
+	// split into an explicit 2v2.
+	for _, playerID := range []string{p3.ID, p4.ID} {
 		var extraInv struct {
 			PlainToken string `json:"plain_token"`
 		}
@@ -159,6 +160,88 @@ func TestBuildRouter_FullOrganizerFlow(t *testing.T) {
 			"token": extraInv.PlainToken, "answer": "yes",
 		}, nil)
 	}
+
+	// 5d. Match share link: the organizer publishes ONE link for the
+	// group chat; Bob claims his pre-created name and a stranger adds
+	// herself. Exercises the whole public /share surface end to end.
+	var shareLink struct {
+		Token string `json:"token"`
+	}
+	c.postExpect(t, http.StatusCreated, "/api/v1/matches/"+match.ID+"/share-link", c.token, nil, &shareLink)
+	if shareLink.Token == "" {
+		t.Fatalf("share link response missing token: %+v", shareLink)
+	}
+
+	var bobInv struct {
+		PlainToken string `json:"plain_token"`
+	}
+	c.postExpect(t, http.StatusCreated, "/api/v1/invitations", c.token, map[string]any{
+		"match_id": match.ID, "player_id": p2.ID,
+	}, &bobInv)
+
+	var shareCtx struct {
+		MatchID        string `json:"match_id"`
+		OrganizerName  string `json:"organizer_name"`
+		GroupName      string `json:"group_name"`
+		ConfirmedCount int    `json:"confirmed_count"`
+		Roster         []struct {
+			PlayerID string `json:"player_id"`
+			State    string `json:"state"`
+		} `json:"roster"`
+	}
+	c.getExpect(t, http.StatusOK, "/api/v1/share/"+shareLink.Token, "", &shareCtx)
+	if shareCtx.MatchID != match.ID || shareCtx.OrganizerName != "Flow Tester" ||
+		shareCtx.GroupName != "Flow Group (renamed)" || shareCtx.ConfirmedCount != 3 ||
+		len(shareCtx.Roster) != 4 {
+		t.Fatalf("unexpected share context: %+v", shareCtx)
+	}
+	for _, entry := range shareCtx.Roster {
+		wantState := "responded"
+		if entry.PlayerID == p2.ID {
+			wantState = "claimable"
+		}
+		if entry.State != wantState {
+			t.Fatalf("expected roster state %q for player %s, got %q", wantState, entry.PlayerID, entry.State)
+		}
+	}
+
+	// Claiming rotates Bob's personal token: the fresh one responds,
+	// the pre-claim one stops resolving, and a second claim conflicts.
+	var claimed struct {
+		InvitationToken string `json:"invitation_token"`
+	}
+	c.postExpect(t, http.StatusOK, "/api/v1/share/"+shareLink.Token+"/claim", "", map[string]any{
+		"player_id": p2.ID,
+	}, &claimed)
+	if claimed.InvitationToken == "" {
+		t.Fatalf("claim response missing invitation_token")
+	}
+	c.postExpect(t, http.StatusNotFound, "/api/v1/invitations/respond", "", map[string]any{
+		"token": bobInv.PlainToken, "answer": "yes",
+	}, nil)
+	c.postExpect(t, http.StatusOK, "/api/v1/invitations/respond", "", map[string]any{
+		"token": claimed.InvitationToken, "answer": "yes",
+	}, nil)
+	c.postExpect(t, http.StatusConflict, "/api/v1/share/"+shareLink.Token+"/claim", "", map[string]any{
+		"player_id": p2.ID,
+	}, nil)
+
+	// A visitor not on the roster adds herself, then declines so the
+	// 2v2 partition below keeps its four confirmed players.
+	var joined struct {
+		InvitationToken string `json:"invitation_token"`
+	}
+	c.postExpect(t, http.StatusCreated, "/api/v1/share/"+shareLink.Token+"/join", "", map[string]any{
+		"player_name": "Eve",
+	}, &joined)
+	c.postExpect(t, http.StatusOK, "/api/v1/invitations/respond", "", map[string]any{
+		"token": joined.InvitationToken, "answer": "no",
+	}, nil)
+
+	// Revoking kills the link for everyone, without revealing whether
+	// it ever existed.
+	c.deleteExpect(t, http.StatusNoContent, "/api/v1/matches/"+match.ID+"/share-link", c.token)
+	c.getExpect(t, http.StatusNotFound, "/api/v1/share/"+shareLink.Token, "", nil)
 
 	// 6. Teams must exist before teams_ready; generate, then pin an
 	// explicit partition so the vote step below knows who is whose
@@ -512,4 +595,9 @@ func (c *apiClient) putExpect(t *testing.T, want int, path, token string, body, 
 func (c *apiClient) patchExpect(t *testing.T, want int, path, token string, body, into any) {
 	t.Helper()
 	c.expect(t, http.MethodPatch, path, token, body, into, want)
+}
+
+func (c *apiClient) deleteExpect(t *testing.T, want int, path, token string) {
+	t.Helper()
+	c.expect(t, http.MethodDelete, path, token, nil, nil, want)
 }

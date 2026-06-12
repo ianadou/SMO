@@ -115,6 +115,19 @@ var (
 	// the match to be in the completed state (e.g., casting a vote) is
 	// attempted before the match has been marked completed.
 	ErrMatchNotCompleted = errors.New("match is not completed")
+
+	// ErrInvitationAlreadyClaimed is returned when a share-link claim
+	// targets an invitation that is no longer claimable: someone already
+	// claimed it, or its owner already responded through their personal
+	// link. Both are the same conflict from the claimer's perspective,
+	// so they share one sentinel.
+	ErrInvitationAlreadyClaimed = errors.New("invitation already claimed")
+
+	// ErrPlayerAlreadyInvited is returned when a share-link self-add
+	// resolves to a group player who already has an invitation for the
+	// match: the right move is to claim the existing name from the
+	// roster, not to mint a duplicate invitation.
+	ErrPlayerAlreadyInvited = errors.New("player already invited to this match")
 )
 
 // Repository errors — returned when a persistence operation fails for a
@@ -142,6 +155,17 @@ var (
 	// invitation response after the match has moved past the point
 	// where attendance can still be changed (teams_ready onward).
 	ErrInvitationLocked = errors.New("invitation locked")
+
+	// ErrShareLinkNotFound is returned when a match share link lookup
+	// by token hash or match ID has no match.
+	ErrShareLinkNotFound = errors.New("share link not found")
+
+	// ErrShareLinkInactive is returned when an operation requires an
+	// active share link but the link is revoked or expired. Distinct
+	// from ErrShareLinkNotFound so logs and metrics can tell them
+	// apart; the HTTP layer maps both to the same 404 so a token probe
+	// cannot learn which way the link died.
+	ErrShareLinkInactive = errors.New("share link inactive")
 
 	// ErrVoteNotFound is returned when a vote lookup by ID has no match.
 	ErrVoteNotFound = errors.New("vote not found")

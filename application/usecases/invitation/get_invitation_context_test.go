@@ -41,7 +41,7 @@ func newContextFixture(
 	hash := tokens.HashToken(contextFixtureToken)
 
 	createdAt := expiresAt.Add(-7 * 24 * time.Hour)
-	inv, err := entities.NewInvitation("inv-1", "match-1", "p-1", hash, expiresAt, response, respondedAt, createdAt)
+	inv, err := entities.NewInvitation("inv-1", "match-1", "p-1", hash, expiresAt, response, respondedAt, nil, createdAt)
 	if err != nil {
 		t.Fatalf("setup: NewInvitation: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestGetInvitationContextUseCase_Execute_CountsConfirmedParticipants(t *test
 	respondedAt := now
 	confirmed, err := entities.NewInvitation(
 		"inv-2", "match-1", "p-2", "other-hash", expires,
-		entities.InvitationResponseYes, &respondedAt, now.Add(-time.Hour),
+		entities.InvitationResponseYes, &respondedAt, nil, now.Add(-time.Hour),
 	)
 	if err != nil {
 		t.Fatalf("setup: confirmed invitation: %v", err)

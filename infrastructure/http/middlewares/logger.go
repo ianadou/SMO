@@ -35,6 +35,13 @@ func SLogLogger(logger *slog.Logger) gin.HandlerFunc {
 		c.Next()
 		duration := time.Since(start)
 
+		// Routes carrying a plain bearer token as a path parameter
+		// (e.g. /share/:token) are logged by their route template:
+		// the raw path would write the credential into the logs.
+		if c.Params.ByName("token") != "" {
+			path = c.FullPath()
+		}
+
 		status := c.Writer.Status()
 		level := slog.LevelInfo
 		if status >= 500 {

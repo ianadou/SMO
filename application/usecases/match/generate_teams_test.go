@@ -67,6 +67,10 @@ func (r *fakeInvitationRepoForGenerate) RespondWithCapacityGuard(
 	panic("not used")
 }
 
+func (r *fakeInvitationRepoForGenerate) Claim(context.Context, *entities.Invitation) error {
+	panic("not used")
+}
+
 func (r *fakeInvitationRepoForGenerate) Delete(context.Context, entities.InvitationID) error {
 	panic("not used")
 }

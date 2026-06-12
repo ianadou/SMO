@@ -60,6 +60,10 @@ func (r *fakeInvitationRepository) RespondWithCapacityGuard(context.Context, *en
 	panic("not implemented in vote tests")
 }
 
+func (r *fakeInvitationRepository) Claim(context.Context, *entities.Invitation) error {
+	panic("not implemented in vote tests")
+}
+
 func (r *fakeInvitationRepository) Delete(context.Context, entities.InvitationID) error {
 	panic("not implemented in vote tests")
 }

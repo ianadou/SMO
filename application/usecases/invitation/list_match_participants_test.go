@@ -21,6 +21,7 @@ func seedConfirmedInvitation(t *testing.T, repo *fakeInvitationRepository, id, m
 		expiresAt,
 		entities.InvitationResponseYes,
 		&confirmedAt,
+		nil,
 		createdAt,
 	)
 	if err != nil {
@@ -41,7 +42,7 @@ func TestListMatchParticipantsUseCase_Execute_ReturnsConfirmedOnly(t *testing.T)
 	createdAt := now.Add(-time.Hour)
 	pending, _ := entities.NewInvitation(
 		"inv-pending", "match-1", "ghost", "hash-pending",
-		now.Add(24*time.Hour), entities.InvitationResponsePending, nil, createdAt,
+		now.Add(24*time.Hour), entities.InvitationResponsePending, nil, nil, createdAt,
 	)
 	_ = repo.Save(context.Background(), pending)
 

@@ -34,10 +34,31 @@ func MapError(err error) (int, string) {
 	if status, message, matched := mapTeamStateError(err); matched {
 		return status, message
 	}
+	if status, message, matched := mapShareLinkError(err); matched {
+		return status, message
+	}
 	if status, message, matched := mapAuthError(err); matched {
 		return status, message
 	}
 	return http.StatusInternalServerError, "internal server error"
+}
+
+// mapShareLinkError handles the match share link flow. Unknown,
+// revoked and expired links deliberately share one 404 shape so a
+// caller cannot probe whether a link existed before being killed.
+// Both conflict errors are 409: the request was valid but someone got
+// there first (claim race) or the name is already on the roster.
+func mapShareLinkError(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, domainerrors.ErrShareLinkNotFound),
+		errors.Is(err, domainerrors.ErrShareLinkInactive):
+		return http.StatusNotFound, "share link not found", true
+	case errors.Is(err, domainerrors.ErrInvitationAlreadyClaimed):
+		return http.StatusConflict, "invitation already claimed", true
+	case errors.Is(err, domainerrors.ErrPlayerAlreadyInvited):
+		return http.StatusConflict, "player already invited to this match", true
+	}
+	return 0, "", false
 }
 
 // mapNotFoundError handles errors that translate to HTTP 404.

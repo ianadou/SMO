@@ -30,6 +30,7 @@ function fakeApi() {
       response: 'pending', responded_at: null, created_at: '2026-06-10T10:00:00Z',
       plain_token: 'tok-secret',
     })),
+    delete: vi.fn(async () => undefined),
   }
 }
 
@@ -43,10 +44,27 @@ describe('useMatchInvitations', () => {
     expect(api.get).toHaveBeenCalledWith('/groups/g-1/players')
     expect(api.get).toHaveBeenCalledWith('/matches/m-1/invitations')
     expect(panel.rows.value).toEqual([
-      { playerId: 'p-1', playerName: 'Inès R.', status: 'yes', shareUrl: null },
-      { playerId: 'p-2', playerName: 'Théo B.', status: 'pending', shareUrl: null },
-      { playerId: 'p-3', playerName: 'Marc R.', status: 'not-invited', shareUrl: null },
+      { playerId: 'p-1', playerName: 'Inès R.', status: 'yes', shareUrl: null, claimed: false },
+      { playerId: 'p-2', playerName: 'Théo B.', status: 'pending', shareUrl: null, claimed: false },
+      { playerId: 'p-3', playerName: 'Marc R.', status: 'not-invited', shareUrl: null, claimed: false },
     ])
+  })
+
+  it('flags a row as claimed when its invitation carries claimed_at', async () => {
+    const claimedInvitation: MatchInvitationDTO = {
+      id: 'inv-1', match_id: 'm-1', player_id: 'p-1', expires_at: '2026-06-15T10:00:00Z',
+      response: 'yes', responded_at: '2026-06-09T10:00:00Z', created_at: '2026-06-08T10:00:00Z',
+      claimed_at: '2026-06-09T12:00:00Z',
+    }
+    const api = fakeApi()
+    api.get.mockImplementation(async (path: string) =>
+      path.includes('/players') ? players : [claimedInvitation],
+    )
+    const panel = useMatchInvitations('m-1', api)
+
+    await panel.load('g-1')
+
+    expect(panel.rows.value.find(row => row.playerId === 'p-1')?.claimed).toBe(true)
   })
 
   it('counts confirmed players', async () => {
@@ -91,5 +109,72 @@ describe('useMatchInvitations', () => {
     await panel.load('g-1')
 
     expect(panel.error.value).toBe(true)
+  })
+
+  it('generates the match share link and keeps the full url in memory', async () => {
+    const api = fakeApi()
+    api.post.mockResolvedValueOnce({
+      token: 'tok-share', url: 'http://x/join/tok-share', expires_at: '2026-06-17T10:00:00Z',
+    })
+    const panel = useMatchInvitations('m-1', api)
+
+    const generated = await panel.generateShareLink()
+
+    expect(api.post).toHaveBeenCalledWith('/matches/m-1/share-link', {})
+    expect(generated).toBe(true)
+    expect(panel.shareLink.value?.url).toBe('http://x/join/tok-share')
+  })
+
+  it('derives the join url from the token when the response omits it', async () => {
+    const api = fakeApi()
+    api.post.mockResolvedValueOnce({
+      token: 'tok-share', url: '', expires_at: '2026-06-17T10:00:00Z',
+    })
+    const panel = useMatchInvitations('m-1', api)
+
+    await panel.generateShareLink()
+
+    expect(panel.shareLink.value?.url).toContain('/join/tok-share')
+  })
+
+  it('returns false and keeps no link when the generation fails', async () => {
+    const api = fakeApi()
+    api.post.mockRejectedValueOnce(new Error('boom'))
+    const panel = useMatchInvitations('m-1', api)
+
+    const generated = await panel.generateShareLink()
+
+    expect(generated).toBe(false)
+    expect(panel.shareLink.value).toBeNull()
+  })
+
+  it('revokes the match share link and forgets it', async () => {
+    const api = fakeApi()
+    api.post.mockResolvedValueOnce({
+      token: 'tok-share', url: 'http://x/join/tok-share', expires_at: '2026-06-17T10:00:00Z',
+    })
+    const panel = useMatchInvitations('m-1', api)
+    await panel.generateShareLink()
+
+    const revoked = await panel.revokeShareLink()
+
+    expect(api.delete).toHaveBeenCalledWith('/matches/m-1/share-link')
+    expect(revoked).toBe(true)
+    expect(panel.shareLink.value).toBeNull()
+  })
+
+  it('keeps the link when the revocation fails', async () => {
+    const api = fakeApi()
+    api.post.mockResolvedValueOnce({
+      token: 'tok-share', url: 'http://x/join/tok-share', expires_at: '2026-06-17T10:00:00Z',
+    })
+    api.delete.mockRejectedValueOnce(new Error('boom'))
+    const panel = useMatchInvitations('m-1', api)
+    await panel.generateShareLink()
+
+    const revoked = await panel.revokeShareLink()
+
+    expect(revoked).toBe(false)
+    expect(panel.shareLink.value?.url).toBe('http://x/join/tok-share')
   })
 })

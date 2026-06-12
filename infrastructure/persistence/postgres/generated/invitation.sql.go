@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimInvitation = `-- name: ClaimInvitation :one
+UPDATE invitations
+SET token_hash = $2, claimed_at = $3
+WHERE id = $1 AND claimed_at IS NULL AND response = 'pending'
+RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at, claimed_at
+`
+
+type ClaimInvitationParams struct {
+	ID        string
+	TokenHash string
+	ClaimedAt pgtype.Timestamptz
+}
+
+// The WHERE clause is the claim-race guard: two concurrent claims of the
+// same invitation cannot both match a row, so the loser sees zero rows.
+func (q *Queries) ClaimInvitation(ctx context.Context, arg ClaimInvitationParams) (Invitations, error) {
+	row := q.db.QueryRow(ctx, claimInvitation, arg.ID, arg.TokenHash, arg.ClaimedAt)
+	var i Invitations
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+		&i.PlayerID,
+		&i.Response,
+		&i.RespondedAt,
+		&i.ClaimedAt,
+	)
+	return i, err
+}
+
 const countConfirmedInvitationsByMatchID = `-- name: CountConfirmedInvitationsByMatchID :one
 SELECT COUNT(*) FROM invitations
 WHERE match_id = $1 AND response = 'yes'
@@ -24,9 +57,9 @@ func (q *Queries) CountConfirmedInvitationsByMatchID(ctx context.Context, matchI
 }
 
 const createInvitation = `-- name: CreateInvitation :one
-INSERT INTO invitations (id, match_id, player_id, token_hash, expires_at, response, responded_at, created_at)
-VALUES ($1, $2, $3, $4, $5, 'pending', NULL, $6)
-RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at
+INSERT INTO invitations (id, match_id, player_id, token_hash, expires_at, response, responded_at, claimed_at, created_at)
+VALUES ($1, $2, $3, $4, $5, 'pending', NULL, $6, $7)
+RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at, claimed_at
 `
 
 type CreateInvitationParams struct {
@@ -35,9 +68,12 @@ type CreateInvitationParams struct {
 	PlayerID  string
 	TokenHash string
 	ExpiresAt pgtype.Timestamptz
+	ClaimedAt pgtype.Timestamptz
 	CreatedAt pgtype.Timestamptz
 }
 
+// claimed_at is a parameter, not a constant NULL: a share-link self-add
+// mints an invitation that is born claimed by its creator.
 func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitations, error) {
 	row := q.db.QueryRow(ctx, createInvitation,
 		arg.ID,
@@ -45,6 +81,7 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		arg.PlayerID,
 		arg.TokenHash,
 		arg.ExpiresAt,
+		arg.ClaimedAt,
 		arg.CreatedAt,
 	)
 	var i Invitations
@@ -58,6 +95,7 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		&i.PlayerID,
 		&i.Response,
 		&i.RespondedAt,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -72,7 +110,7 @@ func (q *Queries) DeleteInvitation(ctx context.Context, id string) error {
 }
 
 const getInvitationByID = `-- name: GetInvitationByID :one
-SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at FROM invitations WHERE id = $1
+SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at, claimed_at FROM invitations WHERE id = $1
 `
 
 func (q *Queries) GetInvitationByID(ctx context.Context, id string) (Invitations, error) {
@@ -88,12 +126,13 @@ func (q *Queries) GetInvitationByID(ctx context.Context, id string) (Invitations
 		&i.PlayerID,
 		&i.Response,
 		&i.RespondedAt,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
 
 const getInvitationByTokenHash = `-- name: GetInvitationByTokenHash :one
-SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at FROM invitations WHERE token_hash = $1
+SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at, claimed_at FROM invitations WHERE token_hash = $1
 `
 
 func (q *Queries) GetInvitationByTokenHash(ctx context.Context, tokenHash string) (Invitations, error) {
@@ -109,6 +148,7 @@ func (q *Queries) GetInvitationByTokenHash(ctx context.Context, tokenHash string
 		&i.PlayerID,
 		&i.Response,
 		&i.RespondedAt,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -159,7 +199,7 @@ func (q *Queries) ListConfirmedParticipantsByMatchID(ctx context.Context, matchI
 }
 
 const listInvitationsByMatchID = `-- name: ListInvitationsByMatchID :many
-SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at FROM invitations
+SELECT id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at, claimed_at FROM invitations
 WHERE match_id = $1
 ORDER BY created_at DESC
 `
@@ -183,6 +223,7 @@ func (q *Queries) ListInvitationsByMatchID(ctx context.Context, matchID string) 
 			&i.PlayerID,
 			&i.Response,
 			&i.RespondedAt,
+			&i.ClaimedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -208,7 +249,7 @@ const updateInvitationResponse = `-- name: UpdateInvitationResponse :one
 UPDATE invitations
 SET response = $2, responded_at = $3
 WHERE id = $1
-RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at
+RETURNING id, match_id, token_hash, expires_at, used_at, created_at, player_id, response, responded_at, claimed_at
 `
 
 type UpdateInvitationResponseParams struct {
@@ -230,6 +271,7 @@ func (q *Queries) UpdateInvitationResponse(ctx context.Context, arg UpdateInvita
 		&i.PlayerID,
 		&i.Response,
 		&i.RespondedAt,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
